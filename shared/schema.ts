@@ -39,10 +39,16 @@ export const insertUserSchema = createInsertSchema(users).omit({
 
 export const insertPendingUserSchema = createInsertSchema(pendingUsers);
 
-export const insertElectionSchema = createInsertSchema(elections).omit({
-  id: true,
-  createdAt: true,
-});
+export const insertElectionSchema = createInsertSchema(elections)
+  .omit({
+    id: true,
+    createdAt: true,
+  })
+  .extend({
+    // Allow dates to be passed as ISO strings
+    startDate: z.union([z.string().transform(str => new Date(str)), z.date()]),
+    endDate: z.union([z.string().transform(str => new Date(str)), z.date()]),
+  });
 
 // Login schema
 export const loginSchema = z.object({
