@@ -1,7 +1,8 @@
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { LogOut } from "lucide-react";
+import { LogOut, ShieldAlert } from "lucide-react";
+import { Link } from "wouter";
 
 export default function Dashboard() {
   const { user, logoutMutation } = useAuth();
@@ -61,6 +62,18 @@ export default function Dashboard() {
             <p className="text-gray-600 mb-4">
               You have successfully logged in as {user?.isAdmin ? "an administrator" : "a student"}.
             </p>
+            
+            {user?.isAdmin && (
+              <div className="mt-6 mb-6">
+                <Link href="/admin">
+                  <Button className="bg-primary hover:bg-primary/90">
+                    <ShieldAlert className="mr-2 h-4 w-4" />
+                    Go to Admin Dashboard
+                  </Button>
+                </Link>
+              </div>
+            )}
+            
             <p className="text-gray-500">
               This page is a placeholder for the voting system dashboard that will be implemented in future development phases.
             </p>

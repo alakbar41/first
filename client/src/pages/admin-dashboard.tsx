@@ -18,7 +18,7 @@ import CreateElectionForm from "@/components/admin/create-election-form";
 export default function AdminDashboard() {
   const { user, logoutMutation } = useAuth();
   const { toast } = useToast();
-  const [location, navigate] = useLocation();
+  const [, navigate] = useLocation();
   const [isCreateElectionOpen, setIsCreateElectionOpen] = useState(false);
 
   // Fetch elections
@@ -37,7 +37,11 @@ export default function AdminDashboard() {
 
   if (!user?.isAdmin) {
     navigate("/");
-    return null;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p>Redirecting...</p>
+      </div>
+    );
   }
 
   const getStatusColor = (status: string) => {
