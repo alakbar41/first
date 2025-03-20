@@ -102,6 +102,42 @@ export class MemStorage implements IStorage {
   async deletePendingUser(email: string): Promise<void> {
     this.pendingUsers.delete(email);
   }
+
+  // Election methods
+  async getElections(): Promise<Election[]> {
+    return Array.from(this.elections.values());
+  }
+
+  async getElection(id: number): Promise<Election | undefined> {
+    return this.elections.get(id);
+  }
+
+  async createElection(election: InsertElection): Promise<Election> {
+    const id = this.currentElectionId++;
+    const newElection: Election = {
+      id,
+      name: election.name,
+      position: election.position,
+      description: election.description,
+      startDate: new Date(election.startDate),
+      endDate: new Date(election.endDate),
+      eligibleFaculties: election.eligibleFaculties,
+      status: election.status || "upcoming",
+      createdBy: election.createdBy,
+      createdAt: new Date(),
+    };
+    
+    this.elections.set(id, newElection);
+    return newElection;
+  }
+
+  async updateElectionStatus(id: number, status: string): Promise<void> {
+    const election = this.elections.get(id);
+    if (election) {
+      election.status = status;
+      this.elections.set(id, election);
+    }
+  }
 }
 
 export const storage = new MemStorage();
