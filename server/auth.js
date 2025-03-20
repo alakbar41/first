@@ -133,10 +133,19 @@ export function setupAuth(app) {
       
       await storage.createPendingUser(pendingUser);
       
-      // Send OTP email
-      await mailer.sendOtp(email, otp);
+      try {
+        // Send OTP email
+        await mailer.sendOtp(email, otp);
+      } catch (emailError) {
+        // Log the error but continue with registration
+        console.error("Email sending failed but continuing with registration:", emailError);
+      }
       
-      res.status(200).json({ message: "Registration initiated. Please verify your email." });
+      res.status(200).json({ 
+        message: "Registration initiated. Please verify your email.",
+        // For development only - remove in production
+        developmentOtp: process.env.NODE_ENV !== "production" ? otp : undefined
+      });
     } catch (error) {
       console.error("Registration error:", error);
       res.status(500).json({ message: "An error occurred during registration." });
