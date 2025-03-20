@@ -41,7 +41,7 @@
   }
   
   .auth-input {
-    @apply w-full p-3 border rounded-md focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition;
+    @apply w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 outline-none transition;
   }
   
   .auth-button {
