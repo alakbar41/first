@@ -1,8 +1,49 @@
 import nodemailer from "nodemailer";
 
-// For development, let's use Ethereal Mail - a testing service that captures emails
+// For production and real email sending
 let transporter;
 
+// Create our transporter based on configuration
+function createTransporter() {
+  // Check for required email credentials
+  if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+    try {
+      // Create Gmail transporter
+      transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS
+        },
+        // Required for better compatibility with Gmail
+        tls: {
+          rejectUnauthorized: false
+        }
+      });
+      
+      console.log("Email service initialized with Gmail account:", process.env.EMAIL_USER);
+      
+      // Verify connection
+      transporter.verify(function(error, success) {
+        if (error) {
+          console.error("Email verification error:", error);
+          console.log("Falling back to Ethereal for development...");
+          createTestAccount();
+        } else {
+          console.log("Email server is ready to send messages");
+        }
+      });
+    } catch (error) {
+      console.error("Error setting up Gmail transporter:", error);
+      createTestAccount();
+    }
+  } else {
+    console.log("EMAIL_USER and EMAIL_PASS environment variables not found");
+    createTestAccount();
+  }
+}
+
+// Fallback to Ethereal for development
 async function createTestAccount() {
   try {
     // Generate Ethereal test account
@@ -23,8 +64,8 @@ async function createTestAccount() {
     
     console.log("Email service initialized with Ethereal test account");
   } catch (error) {
-    console.error("Failed to create Ethereal test account:", error);
-    // Fallback to console logging the OTP for development
+    console.error("Failed to create any email transport:", error);
+    // Last resort fallback to console logging
     transporter = {
       sendMail: async (mailOptions) => {
         console.log("DEVELOPMENT MODE - EMAIL WOULD BE SENT:");
@@ -37,8 +78,8 @@ async function createTestAccount() {
   }
 }
 
-// Initialize test account and transporter
-createTestAccount();
+// Initialize transporter
+createTransporter();
 
 export const mailer = {
   async sendOtp(to, otp) {
