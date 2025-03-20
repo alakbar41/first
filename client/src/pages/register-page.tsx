@@ -131,8 +131,8 @@ export default function RegisterPage() {
         {currentStep === "form" ? (
           <>
             {/* Registration Heading */}
-            <h1 className="text-2xl font-bold mb-2 text-center">Sign Up for Decentralized</h1>
-            <p className="text-gray-500 mb-6 text-center">Create your account to start voting</p>
+            <h1 className="text-2xl font-bold mb-2 text-center">Sign Up for ADA Voting</h1>
+            <p className="text-gray-500 mb-6 text-center">Create your account to participate in university elections</p>
 
             {/* Registration Form */}
             <form onSubmit={form.handleSubmit(onSubmit)} className="w-full space-y-6">
@@ -188,6 +188,16 @@ export default function RegisterPage() {
                   >
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
+                </div>
+                <div className="text-xs text-gray-500 space-y-1 mt-1">
+                  <p>Password must:</p>
+                  <ul className="list-disc pl-4 space-y-1">
+                    <li>Be at least 8 characters long</li>
+                    <li>Include at least one uppercase letter</li>
+                    <li>Include at least one lowercase letter</li>
+                    <li>Include at least one number</li>
+                    <li>Include at least one special character</li>
+                  </ul>
                 </div>
                 {form.formState.errors.password && (
                   <p className="text-red-500 text-sm">{form.formState.errors.password.message}</p>
