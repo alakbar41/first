@@ -127,7 +127,7 @@ export function setupAuth(app) {
         password: hashedPassword,
         faculty,
         otp,
-        createdAt: Date.now(),
+        createdAt: new Date(),
         isAdmin: false
       };
       
@@ -192,7 +192,7 @@ export function setupAuth(app) {
       }
       
       // Check if OTP expired (3 minutes)
-      if (Date.now() - pendingUser.createdAt > OTP_EXPIRY_TIME) {
+      if (Date.now() - pendingUser.createdAt.getTime() > OTP_EXPIRY_TIME) {
         await storage.deletePendingUser(email);
         return res.status(401).json({ message: "Verification code has expired. Please request a new one." });
       }
