@@ -1,0 +1,84 @@
+import { users, pendingUsers, type User, type InsertUser, type PendingUser, type InsertPendingUser } from "@shared/schema";
+import session from "express-session";
+import createMemoryStore from "memorystore";
+
+const MemoryStore = createMemoryStore(session);
+
+// modify the interface with any CRUD methods
+// you might need
+export interface IStorage {
+  sessionStore: session.Store;
+  getUser(id: number): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  createUser(user: InsertUser): Promise<User>;
+  getPendingUserByEmail(email: string): Promise<PendingUser | undefined>;
+  createPendingUser(user: InsertPendingUser): Promise<PendingUser>;
+  updatePendingUserOtp(email: string, otp: string): Promise<void>;
+  deletePendingUser(email: string): Promise<void>;
+}
+
+export class MemStorage implements IStorage {
+  private users: Map<number, User>;
+  private pendingUsers: Map<string, PendingUser>;
+  sessionStore: session.Store;
+  currentId: number;
+
+  constructor() {
+    this.users = new Map();
+    this.pendingUsers = new Map();
+    this.currentId = 1;
+    this.sessionStore = new MemoryStore({
+      checkPeriod: 86400000, // prune expired entries every 24h
+    });
+    
+    // Pre-populate admin user
+    this.createUser({
+      email: 'admin@admin.ada.edu.az',
+      password: '$2b$10$uV.kh0NmHzT9w5OuFMv84.e1NGw7MZi0XTdJFg9tX0WFYI6wgVaP2', // 'AdminPassword123!'
+      faculty: 'ADMIN',
+      isAdmin: true
+    });
+  }
+
+  async getUser(id: number): Promise<User | undefined> {
+    return this.users.get(id);
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => user.email === email,
+    );
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const id = this.currentId++;
+    const user: User = { id, ...insertUser };
+    this.users.set(id, user);
+    return user;
+  }
+
+  async getPendingUserByEmail(email: string): Promise<PendingUser | undefined> {
+    return this.pendingUsers.get(email);
+  }
+
+  async createPendingUser(user: InsertPendingUser): Promise<PendingUser> {
+    const pendingUser: PendingUser = { ...user };
+    this.pendingUsers.set(user.email, pendingUser);
+    return pendingUser;
+  }
+
+  async updatePendingUserOtp(email: string, otp: string): Promise<void> {
+    const pendingUser = this.pendingUsers.get(email);
+    if (pendingUser) {
+      pendingUser.otp = otp;
+      pendingUser.createdAt = Date.now();
+      this.pendingUsers.set(email, pendingUser);
+    }
+  }
+
+  async deletePendingUser(email: string): Promise<void> {
+    this.pendingUsers.delete(email);
+  }
+}
+
+export const storage = new MemStorage();
