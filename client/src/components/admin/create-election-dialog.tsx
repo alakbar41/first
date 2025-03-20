@@ -90,12 +90,16 @@ export function CreateElectionDialog({ open, onOpenChange }: CreateElectionDialo
       // Debug the data before sending
       console.log("Submitting election data:", data);
       
+      // Ensure dates are properly formatted as ISO strings
+      const startDateIso = data.startDate.toISOString();
+      const endDateIso = data.endDate.toISOString();
+      
       const payload = {
         name: data.name,
         position: data.position === "president_vp" ? "President/Vice President" : "Senator",
         description: `Election for ${data.position === "president_vp" ? "President/Vice President" : "Senator"} position`,
-        startDate: data.startDate,
-        endDate: data.endDate,
+        startDate: startDateIso,
+        endDate: endDateIso,
         eligibleFaculties: data.eligibility === "all" 
           ? ["SITE", "SPA", "SB", "SESD"]
           : [data.eligibility],

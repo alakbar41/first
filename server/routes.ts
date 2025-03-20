@@ -105,8 +105,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Election not found" });
       }
 
-      // For now, we'll just return success as we don't have a delete method implemented
-      // In a real implementation, this would be: await storage.deleteElection(id);
+      await storage.deleteElection(id);
       res.status(200).json({ message: "Election deleted successfully" });
     } catch (error) {
       console.error("Error deleting election:", error);

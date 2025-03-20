@@ -21,6 +21,7 @@ export interface IStorage {
   getElection(id: number): Promise<Election | undefined>;
   createElection(election: InsertElection): Promise<Election>;
   updateElectionStatus(id: number, status: string): Promise<void>;
+  deleteElection(id: number): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -137,6 +138,10 @@ export class MemStorage implements IStorage {
       election.status = status;
       this.elections.set(id, election);
     }
+  }
+  
+  async deleteElection(id: number): Promise<void> {
+    this.elections.delete(id);
   }
 }
 
