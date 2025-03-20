@@ -44,7 +44,7 @@ export class MemStorage implements IStorage {
     // Pre-populate admin user
     this.createUser({
       email: 'admin@ada.edu.az',
-      password: '$2b$10$lKEe7Dy8RTKTSJZTKoHkTOfR59aW0a0Uq43Lmp93QdlUEklzGKs2C', // 'Admin123@'
+      password: '$2b$10$pxB6DROWxUGrMa5nrgr9JOcP62WMJ0gQyWYm7VIxyOgaRADqg1BmS', // 'Admin123@'
       faculty: 'ADMIN',
       isAdmin: true
     });
