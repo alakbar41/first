@@ -64,7 +64,7 @@ export default function AdminDashboard() {
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
           <div className="flex items-center space-x-2">
             <img 
-              src="/images/adalogo.svg" 
+              src="https://ada.edu.az/wp-content/uploads/2021/02/ADA_ED_LOGO_E_H1.png" 
               alt="ADA University Logo" 
               className="h-10"
             />
