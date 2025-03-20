@@ -41,7 +41,7 @@
   }
   
   .auth-input {
-    @apply w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition bg-white;
+    @apply w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition bg-white text-black;
   }
   
   .password-requirement {

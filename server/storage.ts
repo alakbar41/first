@@ -1,4 +1,4 @@
-import { users, pendingUsers, type User, type InsertUser, type PendingUser, type InsertPendingUser } from "@shared/schema";
+import { users, pendingUsers, elections, type User, type InsertUser, type PendingUser, type InsertPendingUser, type Election, type InsertElection } from "@shared/schema";
 import session from "express-session";
 import createMemoryStore from "memorystore";
 
@@ -15,18 +15,28 @@ export interface IStorage {
   createPendingUser(user: InsertPendingUser): Promise<PendingUser>;
   updatePendingUserOtp(email: string, otp: string): Promise<void>;
   deletePendingUser(email: string): Promise<void>;
+  
+  // Election methods
+  getElections(): Promise<Election[]>;
+  getElection(id: number): Promise<Election | undefined>;
+  createElection(election: InsertElection): Promise<Election>;
+  updateElectionStatus(id: number, status: string): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private pendingUsers: Map<string, PendingUser>;
+  private elections: Map<number, Election>;
   sessionStore: session.Store;
   currentId: number;
+  currentElectionId: number;
 
   constructor() {
     this.users = new Map();
     this.pendingUsers = new Map();
+    this.elections = new Map();
     this.currentId = 1;
+    this.currentElectionId = 1;
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000, // prune expired entries every 24h
     });
