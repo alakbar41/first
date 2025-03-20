@@ -9,5 +9,46 @@
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
+    position: relative;
+    overflow-x: hidden;
+  }
+  
+  body::before, 
+  body::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 30%;
+    z-index: -1;
+    background: linear-gradient(135deg, hsl(265 83% 45% / 0.9), hsl(265 83% 65% / 0.5), hsl(265 83% 85% / 0.3));
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 30% 100%);
+  }
+  
+  body::before {
+    left: 0;
+    transform: scaleX(-1);
+  }
+  
+  body::after {
+    right: 0;
+  }
+}
+
+@layer components {
+  .auth-card {
+    @apply bg-white rounded-lg shadow-lg p-8 max-w-md w-full mx-auto;
+  }
+  
+  .auth-input {
+    @apply w-full p-3 border rounded-md focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition;
+  }
+  
+  .auth-button {
+    @apply w-full py-3 bg-primary text-white rounded-md hover:bg-primary/90 transition;
+  }
+  
+  .auth-link {
+    @apply text-primary hover:underline transition;
   }
 }

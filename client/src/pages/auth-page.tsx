@@ -1,14 +1,45 @@
 import { useAuth } from "@/hooks/use-auth";
-import { Redirect } from "wouter";
+import { Redirect, Link } from "wouter";
 import { useState } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import LoginForm from "@/components/auth/login-form";
-import RegisterForm from "@/components/auth/register-form";
-import { Card } from "@/components/ui/card";
+import { Eye, EyeOff } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+// Login form schema
+const loginSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  isAdmin: z.boolean().optional()
+});
 
 export default function AuthPage() {
-  const { user, isLoading } = useAuth();
-  const [activeTab, setActiveTab] = useState("login");
+  const { user, isLoading, loginMutation } = useAuth();
+  const [showPassword, setShowPassword] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Form setup
+  const form = useForm<z.infer<typeof loginSchema>>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+      isAdmin: false
+    }
+  });
+
+  // Handle form submission
+  const onSubmit = async (values: z.infer<typeof loginSchema>) => {
+    // Include isAdmin flag in login data
+    await loginMutation.mutate({
+      ...values,
+      username: values.email, // API uses username field
+      isAdmin
+    });
+  };
 
   // Redirect to dashboard if already logged in
   if (!isLoading && user) {
@@ -16,99 +47,100 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Header */}
-      <header className="bg-[#005A9C] shadow-md">
-        <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <img 
-              src="https://ada.edu.az/wp-content/uploads/2021/02/ADA_ED_LOGO_E_H1.png" 
-              alt="ADA University Logo" 
-              className="h-10"
-            />
-            <h1 className="text-white font-heading font-bold text-xl hidden md:block">Voting System</h1>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <div className="flex-grow flex items-center justify-center px-4 py-12 bg-[#F8F9FA]">
-        <div className="w-full max-w-5xl grid md:grid-cols-2 gap-8">
-          {/* Auth Form */}
-          <Card className="overflow-hidden bg-white shadow-lg">
-            <Tabs 
-              value={activeTab} 
-              onValueChange={setActiveTab}
-              className="w-full"
+    <div className="min-h-screen flex flex-col items-center justify-center p-4">
+      <div className="auth-card flex flex-col items-center">
+        {/* Logo */}
+        <div className="mb-4 flex flex-col items-center">
+          <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-2">
+            <svg 
+              className="w-8 h-8 text-primary" 
+              fill="currentColor" 
+              viewBox="0 0 20 20" 
+              xmlns="http://www.w3.org/2000/svg"
             >
-              <TabsList className="w-full grid grid-cols-2">
-                <TabsTrigger 
-                  value="login"
-                  className="font-medium py-3 px-4 data-[state=active]:bg-[#005A9C] data-[state=active]:text-white"
-                >
-                  Login
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="register"
-                  className="font-medium py-3 px-4 data-[state=active]:bg-[#005A9C] data-[state=active]:text-white"
-                >
-                  Register
-                </TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="login" className="p-6">
-                <LoginForm />
-              </TabsContent>
-              
-              <TabsContent value="register" className="p-6">
-                <RegisterForm onSuccess={() => setActiveTab("login")} />
-              </TabsContent>
-            </Tabs>
-          </Card>
-
-          {/* Hero Section */}
-          <div className="flex flex-col justify-center bg-[#3D5A80] text-white p-10 rounded-lg shadow-lg hidden md:flex">
-            <div className="mb-8">
-              <h2 className="text-3xl font-bold mb-4 font-heading">ADA University Voting System</h2>
-              <p className="text-gray-100 mb-6">
-                Your secure platform for university elections. Register with your university email to participate in votes that shape our community.
-              </p>
-              <ul className="space-y-2">
-                <li className="flex items-center">
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                  </svg>
-                  Secure ADA University authentication
-                </li>
-                <li className="flex items-center">
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                  </svg>
-                  Email verification for student safety
-                </li>
-                <li className="flex items-center">
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                  </svg>
-                  Easy participation in campus elections
-                </li>
-              </ul>
-            </div>
-            <div className="mt-auto text-sm text-gray-300">
-              &copy; {new Date().getFullYear()} ADA University Voting System
-            </div>
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path>
+            </svg>
           </div>
+          <h3 className="text-lg text-gray-400 font-medium">Decentralized Voting</h3>
         </div>
+
+        {/* Login Heading */}
+        <h1 className="text-2xl font-bold mb-2 text-center">Log In to Decentralized</h1>
+        <p className="text-gray-500 mb-6 text-center">Enter your email and password below</p>
+
+        {/* Login Form */}
+        <form onSubmit={form.handleSubmit(onSubmit)} className="w-full space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="email" className="text-sm font-medium uppercase">EMAIL</Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="Email address"
+              className="auth-input"
+              {...form.register("email")}
+            />
+            {form.formState.errors.email && (
+              <p className="text-red-500 text-sm">{form.formState.errors.email.message}</p>
+            )}
+          </div>
+          
+          <div className="space-y-2">
+            <div className="flex justify-between">
+              <Label htmlFor="password" className="text-sm font-medium uppercase">PASSWORD</Label>
+              <Button 
+                type="button" 
+                variant="link" 
+                className="p-0 h-auto text-sm"
+                onClick={() => {}}
+              >
+                Forgot password?
+              </Button>
+            </div>
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                placeholder="Password"
+                className="auth-input pr-10"
+                {...form.register("password")}
+              />
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+            {form.formState.errors.password && (
+              <p className="text-red-500 text-sm">{form.formState.errors.password.message}</p>
+            )}
+          </div>
+
+          <div className="flex items-center">
+            <input 
+              type="checkbox" 
+              id="isAdmin" 
+              className="rounded border-gray-300 text-primary focus:ring-primary/50 mr-2"
+              checked={isAdmin}
+              onChange={() => setIsAdmin(!isAdmin)}
+            />
+            <Label htmlFor="isAdmin" className="text-sm">Login as Administrator</Label>
+          </div>
+
+          <Button 
+            type="submit"
+            className="auth-button"
+            disabled={loginMutation.isPending}
+          >
+            {loginMutation.isPending ? "Logging in..." : "Log In"}
+          </Button>
+          
+          <div className="text-center text-sm">
+            Don't have an account? <Link href="/register" className="auth-link">Sign up</Link>
+          </div>
+        </form>
       </div>
-
-      {/* Footer */}
-      <footer className="bg-[#E9ECEF] border-t border-gray-200">
-        <div className="container mx-auto px-4 py-4">
-          <div className="text-center text-[#6C757D] text-sm">
-            &copy; {new Date().getFullYear()} ADA University Voting System. All rights reserved.
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
