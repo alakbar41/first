@@ -35,6 +35,7 @@ export default function AuthPage() {
   // Handle form submission
   const onSubmit = async (values: z.infer<typeof loginSchema>) => {
     // Include isAdmin flag in login data
+    console.log("Login with:", { email: values.email, password: values.password, isAdmin });
     await loginMutation.mutate({
       email: values.email,
       password: values.password,

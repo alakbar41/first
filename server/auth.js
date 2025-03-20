@@ -38,7 +38,10 @@ export function setupAuth(app) {
   }
 
   async function comparePasswords(plainPassword, hashedPassword) {
-    return await bcrypt.compare(plainPassword, hashedPassword);
+    console.log(`Comparing password: ${plainPassword} with hash: ${hashedPassword}`);
+    const result = await bcrypt.compare(plainPassword, hashedPassword);
+    console.log(`Password comparison result: ${result}`);
+    return result;
   }
 
   // Set up Passport strategy
