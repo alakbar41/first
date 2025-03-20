@@ -21,7 +21,7 @@
     bottom: 0;
     width: 30%;
     z-index: -1;
-    background: linear-gradient(135deg, hsl(350 50% 50% / 0.9), hsl(350 50% 65% / 0.5), hsl(350 50% 85% / 0.3));
+    background: linear-gradient(135deg, hsl(265 83% 45% / 0.9), hsl(265 83% 65% / 0.5), hsl(265 83% 85% / 0.3));
     clip-path: polygon(0 0, 100% 0, 100% 100%, 30% 100%);
   }
   
