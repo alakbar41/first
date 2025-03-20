@@ -21,7 +21,7 @@
     bottom: 0;
     width: 30%;
     z-index: -1;
-    background: linear-gradient(135deg, hsl(265 83% 45% / 0.9), hsl(265 83% 65% / 0.5), hsl(265 83% 85% / 0.3));
+    background: linear-gradient(135deg, hsl(350 50% 50% / 0.9), hsl(350 50% 65% / 0.5), hsl(350 50% 85% / 0.3));
     clip-path: polygon(0 0, 100% 0, 100% 100%, 30% 100%);
   }
   
@@ -41,7 +41,7 @@
   }
   
   .auth-input {
-    @apply w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 outline-none transition;
+    @apply w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition;
   }
   
   .auth-button {

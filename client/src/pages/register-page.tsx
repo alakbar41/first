@@ -126,8 +126,8 @@ export default function RegisterPage() {
         {currentStep === "form" ? (
           <>
             {/* Registration Heading */}
-            <h1 className="text-2xl font-bold mb-2 text-center">Sign Up for Decentralized</h1>
-            <p className="text-gray-500 mb-6 text-center">Create your account to start voting</p>
+            <h1 className="text-2xl font-bold mb-2 text-center">Sign Up for ADA Voting</h1>
+            <p className="text-gray-500 mb-6 text-center">Create your account to participate in university elections</p>
 
             {/* Registration Form */}
             <form onSubmit={form.handleSubmit(onSubmit)} className="w-full space-y-6">
