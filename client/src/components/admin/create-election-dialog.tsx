@@ -1,5 +1,5 @@
-import { FormEvent, useState } from "react";
-import { CalendarIcon, ChevronDownIcon } from "lucide-react";
+import { FormEvent, useState, useEffect } from "react";
+import { CalendarIcon, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -23,12 +23,41 @@ export function CreateElectionDialog({ open, onOpenChange }: CreateElectionDialo
   const { toast } = useToast();
   const { user } = useAuth();
   
+  // Form state
   const [name, setName] = useState("");
   const [position, setPosition] = useState("");
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [eligibility, setEligibility] = useState("all");
-  const [electionType, setElectionType] = useState("");
+  const [startHour, setStartHour] = useState("09");
+  const [startMinute, setStartMinute] = useState("00");
+  const [endHour, setEndHour] = useState("18");
+  const [endMinute, setEndMinute] = useState("00");
+  
+  // Derived values
+  const finalStartDate = startDate ? 
+    new Date(
+      startDate.getFullYear(), 
+      startDate.getMonth(), 
+      startDate.getDate(), 
+      parseInt(startHour), 
+      parseInt(startMinute)
+    ) : undefined;
+    
+  const finalEndDate = endDate ? 
+    new Date(
+      endDate.getFullYear(), 
+      endDate.getMonth(), 
+      endDate.getDate(), 
+      parseInt(endHour), 
+      parseInt(endMinute)
+    ) : undefined;
+
+  // Options for select fields
+  const positionOptions = [
+    { id: "president_vp", label: "President/Vice President" },
+    { id: "senator", label: "Senator" }
+  ];
 
   const eligibilityOptions = [
     { id: "all", label: "All Students" },
@@ -38,12 +67,30 @@ export function CreateElectionDialog({ open, onOpenChange }: CreateElectionDialo
     { id: "SESD", label: "SESD Students" },
   ];
 
+  const hourOptions = Array.from({length: 24}, (_, i) => {
+    const hour = i.toString().padStart(2, '0');
+    return { value: hour, label: hour };
+  });
+
+  const minuteOptions = Array.from({length: 12}, (_, i) => {
+    const minute = (i * 5).toString().padStart(2, '0');
+    return { value: minute, label: minute };
+  });
+
+  // Update eligibility when position changes
+  useEffect(() => {
+    if (position === "president_vp") {
+      setEligibility("all");
+    }
+  }, [position]);
+
+  // Create election mutation
   const createElectionMutation = useMutation({
     mutationFn: async (data: any) => {
       const res = await apiRequest("POST", "/api/elections", {
         name: data.name,
-        position: data.position,
-        description: `Election for ${data.position} position`,
+        position: data.position === "president_vp" ? "President/Vice President" : "Senator",
+        description: `Election for ${data.position === "president_vp" ? "President/Vice President" : "Senator"} position`,
         startDate: data.startDate,
         endDate: data.endDate,
         eligibleFaculties: data.eligibility === "all" 
@@ -72,22 +119,47 @@ export function CreateElectionDialog({ open, onOpenChange }: CreateElectionDialo
     },
   });
 
+  // Reset form fields
   const resetForm = () => {
     setName("");
     setPosition("");
     setStartDate(undefined);
     setEndDate(undefined);
     setEligibility("all");
-    setElectionType("");
+    setStartHour("09");
+    setStartMinute("00");
+    setEndHour("18");
+    setEndMinute("00");
   };
 
+  // Form submission handler
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     
-    if (!name || !position || !startDate || !endDate || !eligibility) {
+    if (!name || !position || !startDate || !endDate) {
       toast({
         title: "Error",
         description: "Please fill all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate position and eligibility constraints
+    if (position === "senator" && eligibility === "all") {
+      toast({
+        title: "Error",
+        description: "Senator elections must be for a specific faculty",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Validate date range
+    if (finalStartDate && finalEndDate && finalStartDate >= finalEndDate) {
+      toast({
+        title: "Error",
+        description: "End date must be after start date",
         variant: "destructive",
       });
       return;
@@ -96,8 +168,8 @@ export function CreateElectionDialog({ open, onOpenChange }: CreateElectionDialo
     createElectionMutation.mutate({
       name,
       position,
-      startDate,
-      endDate,
+      startDate: finalStartDate,
+      endDate: finalEndDate,
       eligibility,
     });
   };
@@ -110,46 +182,77 @@ export function CreateElectionDialog({ open, onOpenChange }: CreateElectionDialo
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Election Name */}
           <div className="space-y-3">
-            <Label htmlFor="name" className="text-sm font-medium text-purple-800">Election Name</Label>
+            <Label htmlFor="name" className="text-sm font-medium text-purple-800">Election Name*</Label>
             <Input
               id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="President Election"
+              placeholder="Fall 2025 Presidential Election"
               className="bg-white border-purple-200 focus:border-purple-400 focus:ring-purple-400"
+              required
             />
           </div>
           
+          {/* Position Contested */}
           <div className="space-y-3">
-            <Label htmlFor="type" className="text-sm font-medium text-purple-800">Election Type</Label>
-            <Select value={electionType} onValueChange={setElectionType}>
+            <Label htmlFor="position" className="text-sm font-medium text-purple-800">Position Contested*</Label>
+            <Select value={position} onValueChange={setPosition} required>
               <SelectTrigger className="bg-white border-purple-200 focus:border-purple-400 focus:ring-purple-400">
-                <SelectValue placeholder="Presidency" />
+                <SelectValue placeholder="Select position" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="presidency">Presidency</SelectItem>
-                <SelectItem value="senate">Senate</SelectItem>
-                <SelectItem value="faculty">Faculty</SelectItem>
-                <SelectItem value="class">Class Representative</SelectItem>
+                {positionOptions.map(option => (
+                  <SelectItem key={option.id} value={option.id}>{option.label}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
           
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-3">
-              <Label htmlFor="startDate" className="text-sm font-medium text-purple-800">Start Date</Label>
+          {/* Eligibility */}
+          <div className="space-y-3">
+            <Label htmlFor="eligibility" className="text-sm font-medium text-purple-800">Eligibility*</Label>
+            <Select 
+              value={eligibility} 
+              onValueChange={setEligibility} 
+              disabled={position === "president_vp"}
+              required
+            >
+              <SelectTrigger className="bg-white border-purple-200 focus:border-purple-400 focus:ring-purple-400">
+                <SelectValue placeholder="Select eligibility" />
+              </SelectTrigger>
+              <SelectContent>
+                {eligibilityOptions.filter(option => 
+                  position !== "senator" || option.id !== "all"
+                ).map(option => (
+                  <SelectItem key={option.id} value={option.id}>{option.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {position === "president_vp" && (
+              <p className="text-xs text-purple-700 italic">
+                Presidential elections are automatically open to all students
+              </p>
+            )}
+          </div>
+          
+          {/* Start Date and Time */}
+          <div className="space-y-3">
+            <Label htmlFor="startDate" className="text-sm font-medium text-purple-800">Start Date & Time*</Label>
+            <div className="grid grid-cols-3 gap-2">
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
+                    id="startDate"
                     variant="outline"
                     className={cn(
-                      "w-full justify-start text-left font-normal bg-white border-purple-200 focus:border-purple-400 focus:ring-purple-400",
+                      "col-span-1 justify-start text-left font-normal bg-white border-purple-200 focus:border-purple-400 focus:ring-purple-400",
                       !startDate && "text-muted-foreground"
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {startDate ? format(startDate, "PP") : <span>Pick a date</span>}
+                    {startDate ? format(startDate, "MMM dd, yyyy") : <span>Date</span>}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0">
@@ -158,24 +261,52 @@ export function CreateElectionDialog({ open, onOpenChange }: CreateElectionDialo
                     selected={startDate}
                     onSelect={setStartDate}
                     initialFocus
+                    disabled={(date) => date < new Date()} // Prevent selecting dates in the past
                   />
                 </PopoverContent>
               </Popover>
+              
+              <Select value={startHour} onValueChange={setStartHour}>
+                <SelectTrigger className="bg-white border-purple-200 focus:border-purple-400 focus:ring-purple-400">
+                  <Clock className="mr-2 h-4 w-4" />
+                  <SelectValue placeholder="Hour" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[200px]">
+                  {hourOptions.map(hour => (
+                    <SelectItem key={hour.value} value={hour.value}>{hour.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              <Select value={startMinute} onValueChange={setStartMinute}>
+                <SelectTrigger className="bg-white border-purple-200 focus:border-purple-400 focus:ring-purple-400">
+                  <SelectValue placeholder="Min" />
+                </SelectTrigger>
+                <SelectContent>
+                  {minuteOptions.map(minute => (
+                    <SelectItem key={minute.value} value={minute.value}>{minute.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            
-            <div className="space-y-3">
-              <Label htmlFor="endDate" className="text-sm font-medium text-purple-800">End Date</Label>
+          </div>
+          
+          {/* End Date and Time */}
+          <div className="space-y-3">
+            <Label htmlFor="endDate" className="text-sm font-medium text-purple-800">End Date & Time*</Label>
+            <div className="grid grid-cols-3 gap-2">
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
+                    id="endDate"
                     variant="outline"
                     className={cn(
-                      "w-full justify-start text-left font-normal bg-white border-purple-200 focus:border-purple-400 focus:ring-purple-400",
+                      "col-span-1 justify-start text-left font-normal bg-white border-purple-200 focus:border-purple-400 focus:ring-purple-400",
                       !endDate && "text-muted-foreground"
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {endDate ? format(endDate, "PP") : <span>Pick a date</span>}
+                    {endDate ? format(endDate, "MMM dd, yyyy") : <span>Date</span>}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0">
@@ -184,26 +315,44 @@ export function CreateElectionDialog({ open, onOpenChange }: CreateElectionDialo
                     selected={endDate}
                     onSelect={setEndDate}
                     initialFocus
+                    disabled={(date) => startDate ? date < startDate : date < new Date()}
                   />
                 </PopoverContent>
               </Popover>
+              
+              <Select value={endHour} onValueChange={setEndHour}>
+                <SelectTrigger className="bg-white border-purple-200 focus:border-purple-400 focus:ring-purple-400">
+                  <Clock className="mr-2 h-4 w-4" />
+                  <SelectValue placeholder="Hour" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[200px]">
+                  {hourOptions.map(hour => (
+                    <SelectItem key={hour.value} value={hour.value}>{hour.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              <Select value={endMinute} onValueChange={setEndMinute}>
+                <SelectTrigger className="bg-white border-purple-200 focus:border-purple-400 focus:ring-purple-400">
+                  <SelectValue placeholder="Min" />
+                </SelectTrigger>
+                <SelectContent>
+                  {minuteOptions.map(minute => (
+                    <SelectItem key={minute.value} value={minute.value}>{minute.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           
-          <div className="space-y-3">
-            <Label htmlFor="eligibility" className="text-sm font-medium text-purple-800">Eligibility</Label>
-            <Select value={eligibility} onValueChange={setEligibility}>
-              <SelectTrigger className="bg-white border-purple-200 focus:border-purple-400 focus:ring-purple-400">
-                <SelectValue placeholder="All Students" />
-              </SelectTrigger>
-              <SelectContent>
-                {eligibilityOptions.map(option => (
-                  <SelectItem key={option.id} value={option.id}>{option.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          {/* Status Note */}
+          <div className="bg-white p-3 rounded-md border border-purple-200">
+            <p className="text-xs text-gray-600">
+              <span className="font-medium">Status:</span> New elections will be created with an "Upcoming" status. The status will automatically change to "Active" when the start date is reached and to "Completed" after the end date.
+            </p>
           </div>
           
+          {/* Form Actions */}
           <DialogFooter className="flex space-x-3 pt-2">
             <Button 
               type="button" 
@@ -221,7 +370,7 @@ export function CreateElectionDialog({ open, onOpenChange }: CreateElectionDialo
               className="flex-1 bg-purple-700 hover:bg-purple-800"
               disabled={createElectionMutation.isPending}
             >
-              Create
+              {createElectionMutation.isPending ? "Creating..." : "Create Election"}
             </Button>
           </DialogFooter>
         </form>
