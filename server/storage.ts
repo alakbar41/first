@@ -52,7 +52,13 @@ export class MemStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.currentId++;
-    const user: User = { id, ...insertUser };
+    const user: User = { 
+      id, 
+      email: insertUser.email,
+      password: insertUser.password,
+      faculty: insertUser.faculty,
+      isAdmin: insertUser.isAdmin ?? false
+    };
     this.users.set(id, user);
     return user;
   }
@@ -62,7 +68,14 @@ export class MemStorage implements IStorage {
   }
 
   async createPendingUser(user: InsertPendingUser): Promise<PendingUser> {
-    const pendingUser: PendingUser = { ...user };
+    const pendingUser: PendingUser = {
+      email: user.email,
+      password: user.password,
+      faculty: user.faculty,
+      otp: user.otp,
+      createdAt: user.createdAt instanceof Date ? user.createdAt : new Date(user.createdAt),
+      isAdmin: user.isAdmin ?? false
+    };
     this.pendingUsers.set(user.email, pendingUser);
     return pendingUser;
   }
@@ -71,7 +84,7 @@ export class MemStorage implements IStorage {
     const pendingUser = this.pendingUsers.get(email);
     if (pendingUser) {
       pendingUser.otp = otp;
-      pendingUser.createdAt = Date.now();
+      pendingUser.createdAt = new Date();
       this.pendingUsers.set(email, pendingUser);
     }
   }

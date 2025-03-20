@@ -1,33 +1,16 @@
 import nodemailer from "nodemailer";
 
-// Configure transporter
-const createTransporter = () => {
-  // For development/testing, use a test account from Ethereal
-  if (process.env.NODE_ENV !== "production") {
-    return nodemailer.createTransport({
-      host: "smtp.ethereal.email",
-      port: 587,
-      secure: false,
-      auth: {
-        user: process.env.EMAIL_USER || "ethereal.user@ethereal.email",
-        pass: process.env.EMAIL_PASS || "ethereal_password"
-      }
-    });
+// Create reusable transporter with Gmail credentials
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
   }
-  
-  // For production, use configured email service
-  return nodemailer.createTransport({
-    host: process.env.EMAIL_HOST || "smtp.gmail.com",
-    port: process.env.EMAIL_PORT || 587,
-    secure: process.env.EMAIL_SECURE === "true",
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS
-    }
-  });
-};
+});
 
-const transporter = createTransporter();
+// Log successful initialization
+console.log("Email service initialized with account:", process.env.EMAIL_USER);
 
 export const mailer = {
   async sendOtp(to, otp) {
