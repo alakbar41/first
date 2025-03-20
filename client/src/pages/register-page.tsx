@@ -1,7 +1,7 @@
 import { useAuth } from "@/hooks/use-auth";
 import { Redirect, useLocation } from "wouter";
-import { useState } from "react";
-import { Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Eye, EyeOff, ArrowLeft, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,6 +47,16 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
 
+  // Password validation states
+  const [passwordCriteria, setPasswordCriteria] = useState({
+    length: false,
+    uppercase: false,
+    lowercase: false,
+    number: false,
+    special: false,
+    match: false
+  });
+  
   // Form setup
   const form = useForm<z.infer<typeof registerSchema>>({
     resolver: zodResolver(registerSchema),
@@ -57,6 +67,21 @@ export default function RegisterPage() {
       faculty: "",
     }
   });
+  
+  // Update password validation criteria
+  useEffect(() => {
+    const password = form.watch("password");
+    const confirmPassword = form.watch("confirmPassword");
+    
+    setPasswordCriteria({
+      length: password.length >= 8,
+      uppercase: /[A-Z]/.test(password),
+      lowercase: /[a-z]/.test(password),
+      number: /\d/.test(password),
+      special: /[@$!%*?&]/.test(password),
+      match: password === confirmPassword && password.length > 0 && confirmPassword.length > 0
+    });
+  }, [form.watch("password"), form.watch("confirmPassword")]);
 
   // Handle registration form submission
   const onSubmit = async (values: z.infer<typeof registerSchema>) => {
@@ -189,14 +214,29 @@ export default function RegisterPage() {
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
-                <div className="text-xs text-gray-500 space-y-1 mt-1">
-                  <p>Password must:</p>
-                  <ul className="list-disc pl-4 space-y-1">
-                    <li>Be at least 8 characters long</li>
-                    <li>Include at least one uppercase letter</li>
-                    <li>Include at least one lowercase letter</li>
-                    <li>Include at least one number</li>
-                    <li>Include at least one special character</li>
+                <div className="text-xs space-y-1 mt-1">
+                  <p className="text-gray-500">Password requirements:</p>
+                  <ul className="space-y-1">
+                    <li className={`password-requirement ${passwordCriteria.length ? 'met' : 'not-met'}`}>
+                      {passwordCriteria.length ? <Check size={12} /> : <X size={12} />}
+                      At least 8 characters long
+                    </li>
+                    <li className={`password-requirement ${passwordCriteria.uppercase ? 'met' : 'not-met'}`}>
+                      {passwordCriteria.uppercase ? <Check size={12} /> : <X size={12} />}
+                      Include at least one uppercase letter
+                    </li>
+                    <li className={`password-requirement ${passwordCriteria.lowercase ? 'met' : 'not-met'}`}>
+                      {passwordCriteria.lowercase ? <Check size={12} /> : <X size={12} />}
+                      Include at least one lowercase letter
+                    </li>
+                    <li className={`password-requirement ${passwordCriteria.number ? 'met' : 'not-met'}`}>
+                      {passwordCriteria.number ? <Check size={12} /> : <X size={12} />}
+                      Include at least one number
+                    </li>
+                    <li className={`password-requirement ${passwordCriteria.special ? 'met' : 'not-met'}`}>
+                      {passwordCriteria.special ? <Check size={12} /> : <X size={12} />}
+                      Include at least one special character
+                    </li>
                   </ul>
                 </div>
                 {form.formState.errors.password && (
@@ -221,6 +261,14 @@ export default function RegisterPage() {
                   >
                     {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
+                </div>
+                <div className="mt-1">
+                  {form.watch("confirmPassword") && (
+                    <div className={`password-requirement ${passwordCriteria.match ? 'met' : 'not-met'}`}>
+                      {passwordCriteria.match ? <Check size={12} /> : <X size={12} />}
+                      {passwordCriteria.match ? "Passwords match" : "Passwords don't match"}
+                    </div>
+                  )}
                 </div>
                 {form.formState.errors.confirmPassword && (
                   <p className="text-red-500 text-sm">{form.formState.errors.confirmPassword.message}</p>
