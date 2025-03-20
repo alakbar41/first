@@ -1,5 +1,5 @@
-import { useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
+import { useEffect, useRef, useState } from "react";
 
 interface OtpInputProps {
   value: string;
@@ -8,77 +8,92 @@ interface OtpInputProps {
 }
 
 export default function OtpInput({ value, onChange, length = 6 }: OtpInputProps) {
+  const [activeIndex, setActiveIndex] = useState(0);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
-  
+
+  // Initialize input refs
   useEffect(() => {
-    // Pre-populate refs array
     inputRefs.current = inputRefs.current.slice(0, length);
-    
-    // Focus on first input when component mounts
-    if (inputRefs.current[0]) {
-      inputRefs.current[0].focus();
-    }
   }, [length]);
-  
+
+  // Focus the next input after input change
+  useEffect(() => {
+    if (activeIndex < length) {
+      inputRefs.current[activeIndex]?.focus();
+    }
+  }, [activeIndex, length]);
+
+  // Handle input change
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
-    const newValue = e.target.value;
+    const currentValue = e.target.value;
     
-    // Only accept digits
-    if (!/^\d*$/.test(newValue)) return;
+    // Only allow one digit per input
+    const digit = currentValue.replace(/\D/g, '').slice(-1);
     
-    // Update the value
-    const otpArray = value.split('');
-    otpArray[index] = newValue.slice(-1); // Only take the last character
-    const newOtp = otpArray.join('');
-    onChange(newOtp);
+    // Update the OTP string
+    const newValue = 
+      value.substring(0, index) + 
+      (digit || '') + 
+      value.substring(index + 1);
+    
+    onChange(newValue);
     
     // Move to next input if a digit was entered
-    if (newValue && index < length - 1) {
-      inputRefs.current[index + 1]?.focus();
+    if (digit && index < length - 1) {
+      setActiveIndex(index + 1);
     }
   };
-  
+
+  // Handle key down events
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, index: number) => {
     if (e.key === 'Backspace') {
+      // If input is empty and not first input, move to previous input
       if (!value[index] && index > 0) {
-        // If current input is empty and backspace is pressed, focus previous input
-        inputRefs.current[index - 1]?.focus();
+        setActiveIndex(index - 1);
       }
+      
+      // Clear current digit
+      const newValue = 
+        value.substring(0, index) + 
+        '' + 
+        value.substring(index + 1);
+      
+      onChange(newValue);
     } else if (e.key === 'ArrowLeft' && index > 0) {
-      inputRefs.current[index - 1]?.focus();
+      setActiveIndex(index - 1);
     } else if (e.key === 'ArrowRight' && index < length - 1) {
-      inputRefs.current[index + 1]?.focus();
+      setActiveIndex(index + 1);
     }
   };
-  
-  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+
+  // Handle paste event
+  const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
     const pastedData = e.clipboardData.getData('text');
-    const digitsOnly = pastedData.replace(/[^\d]/g, '').slice(0, length);
+    const digits = pastedData.replace(/\D/g, '').slice(0, length);
     
-    if (digitsOnly) {
-      onChange(digitsOnly.padEnd(length, '').slice(0, length));
-      
-      // Focus on the next empty input or the last one
-      const focusIndex = Math.min(digitsOnly.length, length - 1);
-      inputRefs.current[focusIndex]?.focus();
+    if (digits) {
+      const newValue = digits.padEnd(value.length, value.substring(digits.length));
+      onChange(newValue);
+      setActiveIndex(Math.min(digits.length, length - 1));
     }
   };
-  
+
   return (
-    <div className="flex justify-between space-x-2">
+    <div className="flex gap-2 justify-center" onPaste={handlePaste}>
       {Array.from({ length }).map((_, index) => (
         <Input
           key={index}
-          ref={el => inputRefs.current[index] = el}
+          ref={(el) => (inputRefs.current[index] = el)}
           type="text"
           inputMode="numeric"
+          pattern="[0-9]*"
           maxLength={1}
           value={value[index] || ''}
-          onChange={e => handleChange(e, index)}
-          onKeyDown={e => handleKeyDown(e, index)}
-          onPaste={handlePaste}
-          className="w-12 h-12 text-center text-lg font-mono border border-gray-300 rounded-md focus:ring-2 focus:ring-[#005A9C] focus:border-[#005A9C]"
+          className="w-12 h-12 text-center text-lg font-medium"
+          onChange={(e) => handleChange(e, index)}
+          onKeyDown={(e) => handleKeyDown(e, index)}
+          onFocus={() => setActiveIndex(index)}
         />
       ))}
     </div>

@@ -35,8 +35,8 @@ export default function AuthPage() {
   const onSubmit = async (values: z.infer<typeof loginSchema>) => {
     // Include isAdmin flag in login data
     await loginMutation.mutate({
-      ...values,
-      username: values.email, // API uses username field
+      email: values.email,
+      password: values.password,
       isAdmin
     });
   };
@@ -137,7 +137,7 @@ export default function AuthPage() {
           </Button>
           
           <div className="text-center text-sm">
-            Don't have an account? <Link href="/register" className="auth-link">Sign up</Link>
+            Don't have an account? <Button variant="link" className="auth-link p-0 h-auto" onClick={() => navigate("/register")}>Sign up</Button>
           </div>
         </form>
       </div>
