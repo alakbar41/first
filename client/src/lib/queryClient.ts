@@ -2,8 +2,36 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
-    const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
+    let errorMessage = '';
+    
+    try {
+      // Try to parse as JSON first
+      const errorData = await res.json();
+      
+      if (errorData.message) {
+        errorMessage = errorData.message;
+      } else if (errorData.errors) {
+        // Format validation errors
+        const errors = errorData.errors;
+        errorMessage = Object.keys(errors)
+          .map(key => `${key}: ${errors[key]}`)
+          .join(', ');
+      } else {
+        errorMessage = JSON.stringify(errorData);
+      }
+    } catch (e) {
+      // If it's not JSON, get the text
+      try {
+        errorMessage = await res.text();
+      } catch (textError) {
+        errorMessage = res.statusText;
+      }
+    }
+    
+    const error = new Error(`${res.status}: ${errorMessage}`);
+    // @ts-ignore
+    error.response = res;
+    throw error;
   }
 }
 
@@ -19,7 +47,9 @@ export async function apiRequest(
     credentials: "include",
   });
 
-  await throwIfResNotOk(res);
+  // Clone the response before checking it, so we can still use it later
+  const resClone = res.clone();
+  await throwIfResNotOk(resClone);
   return res;
 }
 
@@ -37,7 +67,9 @@ export const getQueryFn: <T>(options: {
       return null;
     }
 
-    await throwIfResNotOk(res);
+    // Clone the response before checking it
+    const resClone = res.clone();
+    await throwIfResNotOk(resClone);
     return await res.json();
   };
 

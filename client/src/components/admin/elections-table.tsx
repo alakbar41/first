@@ -38,13 +38,16 @@ export function ElectionsTable({ elections, onEdit, onDelete }: ElectionsTablePr
         <thead className="bg-gray-50">
           <tr>
             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Election
+              Election Name
             </th>
             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Date Range
+              Position Contested
             </th>
             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Eligibility
+            </th>
+            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Start & End Date
             </th>
             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Status
@@ -57,7 +60,7 @@ export function ElectionsTable({ elections, onEdit, onDelete }: ElectionsTablePr
         <tbody className="bg-white divide-y divide-gray-200">
           {elections.length === 0 ? (
             <tr>
-              <td colSpan={5} className="px-6 py-12 text-center text-sm text-gray-500">
+              <td colSpan={6} className="px-6 py-12 text-center text-sm text-gray-500">
                 <p className="font-medium mb-2">No elections found</p>
                 <p>Create your first election to get started</p>
               </td>
@@ -65,18 +68,19 @@ export function ElectionsTable({ elections, onEdit, onDelete }: ElectionsTablePr
           ) : (
             elections.map((election) => (
               <tr key={election.id} className="hover:bg-gray-50">
+                {/* Election Name */}
                 <td className="px-6 py-4">
                   <div className="flex flex-col">
                     <span className="text-sm font-medium text-gray-900">{election.name}</span>
-                    <span className="text-xs text-gray-500">{election.position}</span>
                   </div>
                 </td>
+                
+                {/* Position Contested */}
                 <td className="px-6 py-4 text-sm text-gray-500">
-                  <div className="flex flex-col space-y-1">
-                    <span>Start: {format(new Date(election.startDate), "MMM d, yyyy")}</span>
-                    <span>End: {format(new Date(election.endDate), "MMM d, yyyy")}</span>
-                  </div>
+                  <span>{election.position}</span>
                 </td>
+                
+                {/* Eligibility */}
                 <td className="px-6 py-4 text-sm text-gray-500">
                   <div className="flex flex-wrap gap-1">
                     {election.eligibleFaculties.map((faculty) => (
@@ -90,6 +94,20 @@ export function ElectionsTable({ elections, onEdit, onDelete }: ElectionsTablePr
                     ))}
                   </div>
                 </td>
+                
+                {/* Start & End Date */}
+                <td className="px-6 py-4 text-sm text-gray-500">
+                  <div className="flex flex-col space-y-1">
+                    <div>
+                      <span className="font-medium">Start:</span> {format(new Date(election.startDate), "MMM d, yyyy - HH:mm")}
+                    </div>
+                    <div>
+                      <span className="font-medium">End:</span> {format(new Date(election.endDate), "MMM d, yyyy - HH:mm")}
+                    </div>
+                  </div>
+                </td>
+                
+                {/* Status */}
                 <td className="px-6 py-4 text-sm text-gray-500">
                   <Badge className={getStatusColor(election.status)}>
                     {election.status.charAt(0).toUpperCase() + election.status.slice(1)}

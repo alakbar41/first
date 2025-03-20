@@ -87,7 +87,10 @@ export function CreateElectionDialog({ open, onOpenChange }: CreateElectionDialo
   // Create election mutation
   const createElectionMutation = useMutation({
     mutationFn: async (data: any) => {
-      const res = await apiRequest("POST", "/api/elections", {
+      // Debug the data before sending
+      console.log("Submitting election data:", data);
+      
+      const payload = {
         name: data.name,
         position: data.position === "president_vp" ? "President/Vice President" : "Senator",
         description: `Election for ${data.position === "president_vp" ? "President/Vice President" : "Senator"} position`,
@@ -98,8 +101,18 @@ export function CreateElectionDialog({ open, onOpenChange }: CreateElectionDialo
           : [data.eligibility],
         status: "upcoming",
         createdBy: user?.id || 0,
-      });
-      return res.json();
+      };
+      
+      console.log("Payload to send:", payload);
+      
+      try {
+        const res = await apiRequest("POST", "/api/elections", payload);
+        const result = await res.json();
+        return result;
+      } catch (error) {
+        console.error("API request error:", error);
+        throw error;
+      }
     },
     onSuccess: () => {
       toast({
@@ -110,10 +123,27 @@ export function CreateElectionDialog({ open, onOpenChange }: CreateElectionDialo
       resetForm();
       onOpenChange(false);
     },
-    onError: (error: Error) => {
+    onError: (error: any) => {
+      console.error("Mutation error:", error);
+      let errorMessage = error.message || "Failed to create election";
+      
+      // Try to extract more detailed error information if available
+      if (error.response) {
+        try {
+          const responseData = error.response;
+          if (responseData.errors) {
+            errorMessage = Object.values(responseData.errors).join(", ");
+          } else if (responseData.message) {
+            errorMessage = responseData.message;
+          }
+        } catch (e) {
+          console.error("Error parsing error response:", e);
+        }
+      }
+      
       toast({
         title: "Error",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     },
