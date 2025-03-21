@@ -240,9 +240,8 @@ export class MemStorage implements IStorage {
       studentId: candidate.studentId,
       faculty: candidate.faculty,
       position: candidate.position,
-      status: candidate.status || "pending",
+      status: "inactive", // Default status is inactive until added to an election
       pictureUrl: candidate.pictureUrl || "",
-      bio: candidate.bio || "",
       createdAt: now,
       updatedAt: now
     };
@@ -263,15 +262,11 @@ export class MemStorage implements IStorage {
       candidate.pictureUrl = existingCandidate.pictureUrl;
     }
     
-    if (candidate.bio === undefined) {
-      candidate.bio = existingCandidate.bio;
-    }
-    
     const updatedCandidate: Candidate = {
       ...existingCandidate,
       ...candidate,
       pictureUrl: candidate.pictureUrl || "",
-      bio: candidate.bio || "",
+      status: existingCandidate.status, // Preserve status - it's managed by election associations
       updatedAt: new Date()
     };
     
@@ -292,6 +287,15 @@ export class MemStorage implements IStorage {
   
   async deleteCandidate(id: number): Promise<void> {
     this.candidates.delete(id);
+    
+    // After deletion, if no candidates are left, reset the ID counter
+    if (this.candidates.size === 0) {
+      this.currentCandidateId = 1;
+    } else {
+      // Set the next ID to be the maximum existing ID + 1
+      const maxId = Math.max(...Array.from(this.candidates.keys()));
+      this.currentCandidateId = maxId + 1;
+    }
   }
   
   // Election-Candidate methods

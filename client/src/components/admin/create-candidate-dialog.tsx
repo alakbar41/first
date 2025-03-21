@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, ChangeEvent } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -29,15 +29,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
-import { insertCandidateSchema } from "@shared/schema";
+import { Loader2, Upload } from "lucide-react";
+import { FACULTIES, CANDIDATE_POSITIONS, insertCandidateSchema } from "@shared/schema";
 
 // Extend the candidate schema for the form
 const formSchema = insertCandidateSchema.extend({
-  pictureUrl: z.string().url({ message: "Please enter a valid URL" }).optional().or(z.literal("")),
-  bio: z.string().optional().or(z.literal("")),
+  pictureUrl: z.string().optional().default(""),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -50,17 +48,16 @@ interface CreateCandidateDialogProps {
 export function CreateCandidateDialog({ open, onOpenChange }: CreateCandidateDialogProps) {
   const { toast } = useToast();
   const [picturePreview, setPicturePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       fullName: "",
       studentId: "",
-      faculty: "",
-      position: "",
-      status: "pending",
+      faculty: "School of IT and Engineering",
+      position: "President",
       pictureUrl: "",
-      bio: "",
     },
   });
 
@@ -75,7 +72,13 @@ export function CreateCandidateDialog({ open, onOpenChange }: CreateCandidateDia
         description: "Candidate created successfully",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/candidates"] });
-      form.reset();
+      form.reset({
+        fullName: "",
+        studentId: "",
+        faculty: "School of IT and Engineering",
+        position: "President",
+        pictureUrl: "",
+      });
       setPicturePreview(null);
       onOpenChange(false);
     },
@@ -92,12 +95,41 @@ export function CreateCandidateDialog({ open, onOpenChange }: CreateCandidateDia
     createCandidateMutation.mutate(data);
   };
 
-  const handlePictureUrlChange = (url: string) => {
-    if (url && url.match(/^https?:\/\/.+/)) {
-      setPicturePreview(url);
-    } else {
-      setPicturePreview(null);
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check if file is an image
+    if (!file.type.match('image.*')) {
+      toast({
+        title: "Invalid file",
+        description: "Please select an image file",
+        variant: "destructive",
+      });
+      return;
     }
+
+    // Check if file size is less than 5MB
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please select an image less than 5MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64String = e.target?.result as string;
+      setPicturePreview(base64String);
+      form.setValue("pictureUrl", base64String);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
   };
 
   return (
@@ -112,6 +144,34 @@ export function CreateCandidateDialog({ open, onOpenChange }: CreateCandidateDia
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <div className="flex justify-center mb-4">
+              <div className="relative">
+                <div 
+                  className="w-24 h-24 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center cursor-pointer border-2 border-purple-300"
+                  onClick={triggerFileInput}
+                >
+                  {picturePreview ? (
+                    <img 
+                      src={picturePreview} 
+                      alt="Preview" 
+                      className="w-full h-full object-cover"
+                      onError={() => setPicturePreview(null)}
+                    />
+                  ) : (
+                    <Upload className="h-8 w-8 text-gray-400" />
+                  )}
+                </div>
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  className="hidden"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                />
+                <p className="text-xs text-center mt-1 text-gray-500">Click to upload photo</p>
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
                 <FormField
@@ -150,7 +210,21 @@ export function CreateCandidateDialog({ open, onOpenChange }: CreateCandidateDia
                   <FormItem>
                     <FormLabel>Faculty</FormLabel>
                     <FormControl>
-                      <Input placeholder="School of IT and Engineering" {...field} />
+                      <Select 
+                        onValueChange={field.onChange} 
+                        defaultValue={field.value}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select faculty" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {FACULTIES.map((faculty) => (
+                            <SelectItem key={faculty} value={faculty}>
+                              {faculty}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -162,7 +236,7 @@ export function CreateCandidateDialog({ open, onOpenChange }: CreateCandidateDia
                 name="position"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Position</FormLabel>
+                    <FormLabel>Position Contested</FormLabel>
                     <FormControl>
                       <Select 
                         onValueChange={field.onChange} 
@@ -172,38 +246,11 @@ export function CreateCandidateDialog({ open, onOpenChange }: CreateCandidateDia
                           <SelectValue placeholder="Select position" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="President">President</SelectItem>
-                          <SelectItem value="Vice President">Vice President</SelectItem>
-                          <SelectItem value="Secretary">Secretary</SelectItem>
-                          <SelectItem value="Treasurer">Treasurer</SelectItem>
-                          <SelectItem value="Faculty Representative">Faculty Representative</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Status</FormLabel>
-                    <FormControl>
-                      <Select 
-                        onValueChange={field.onChange} 
-                        defaultValue={field.value}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="active">Active</SelectItem>
-                          <SelectItem value="withdrawn">Withdrawn</SelectItem>
-                          <SelectItem value="disqualified">Disqualified</SelectItem>
+                          {CANDIDATE_POSITIONS.map((position) => (
+                            <SelectItem key={position} value={position}>
+                              {position}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </FormControl>
@@ -212,64 +259,6 @@ export function CreateCandidateDialog({ open, onOpenChange }: CreateCandidateDia
                 )}
               />
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <FormField
-                  control={form.control}
-                  name="pictureUrl"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Picture URL</FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="https://example.com/photo.jpg"
-                          {...field}
-                          onChange={(e) => {
-                            field.onChange(e);
-                            handlePictureUrlChange(e.target.value);
-                          }}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className="flex items-center justify-center border rounded p-2">
-                {picturePreview ? (
-                  <img 
-                    src={picturePreview} 
-                    alt="Preview" 
-                    className="h-32 object-cover"
-                    onError={() => setPicturePreview(null)}
-                  />
-                ) : (
-                  <div className="text-gray-400 text-sm text-center">
-                    Picture preview will appear here
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <FormField
-              control={form.control}
-              name="bio"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Biography</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      placeholder="Brief description of the candidate..."
-                      className="min-h-[100px]"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
             <DialogFooter>
               <Button 

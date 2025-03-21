@@ -2,6 +2,20 @@ import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Constants for dropdown options
+export const FACULTIES = [
+  "School of IT and Engineering",
+  "School of Business",
+  "School of Public and International Affairs",
+  "School of Education"
+] as const;
+
+export const CANDIDATE_POSITIONS = [
+  "President",
+  "Vice President",
+  "Senator"
+] as const;
+
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   email: text("email").notNull().unique(),
@@ -36,11 +50,10 @@ export const candidates = pgTable("candidates", {
   id: serial("id").primaryKey(),
   fullName: text("full_name").notNull(),
   studentId: text("student_id").notNull().unique(),
-  faculty: text("faculty").notNull(),
-  position: text("position").notNull(), // President, Vice President, Secretary, etc.
-  status: text("status").notNull().default("pending"), // active, pending, withdrawn, disqualified
-  pictureUrl: text("picture_url").default("").notNull(), // URL to candidate's picture
-  bio: text("bio").default("").notNull(), // Candidate's biography
+  faculty: text("faculty").notNull(), // Will be a dropdown selection
+  position: text("position").notNull(), // Limited to: President, Vice President, Senator
+  status: text("status").notNull().default("inactive"), // active (in election), inactive (not in election)
+  pictureUrl: text("picture_url").default("").notNull(), // URL to candidate's picture (stored as base64)
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -71,11 +84,18 @@ export const insertElectionSchema = createInsertSchema(elections)
     endDate: z.union([z.string().transform(str => new Date(str)), z.date()]),
   });
 
-export const insertCandidateSchema = createInsertSchema(candidates).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+export const insertCandidateSchema = createInsertSchema(candidates)
+  .omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+    status: true, // Status is automatically set based on elections
+  })
+  .extend({
+    faculty: z.enum(FACULTIES),
+    position: z.enum(CANDIDATE_POSITIONS),
+    pictureUrl: z.string().optional().default(""),
+  });
 
 export const insertElectionCandidateSchema = createInsertSchema(electionCandidates).omit({
   id: true, 

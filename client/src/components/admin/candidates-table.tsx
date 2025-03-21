@@ -8,9 +8,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash2, ExternalLink } from "lucide-react";
+import { Edit, Trash2, UserCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -28,7 +27,7 @@ interface CandidatesTableProps {
 export function CandidatesTable({ candidates, onEdit, onDelete }: CandidatesTableProps) {
   if (candidates.length === 0) {
     return (
-      <div className="p-8 text-center bg-white">
+      <div className="p-8 text-center bg-white rounded-md border">
         <p className="text-gray-500">No candidates found.</p>
       </div>
     );
@@ -38,25 +37,21 @@ export function CandidatesTable({ candidates, onEdit, onDelete }: CandidatesTabl
   const renderStatusBadge = (status: string) => {
     switch (status.toLowerCase()) {
       case 'active':
-        return <Badge className="bg-green-100 text-green-800">Active</Badge>;
-      case 'pending':
-        return <Badge className="bg-yellow-100 text-yellow-800">Pending</Badge>;
-      case 'withdrawn':
-        return <Badge className="bg-red-100 text-red-800">Withdrawn</Badge>;
-      case 'disqualified':
-        return <Badge className="bg-gray-100 text-gray-800">Disqualified</Badge>;
+        return <Badge className="bg-green-500 text-white hover:bg-green-600">Active</Badge>;
+      case 'inactive':
+        return <Badge className="bg-gray-500 text-white hover:bg-gray-600">Inactive</Badge>;
       default:
-        return <Badge className="bg-blue-100 text-blue-800">{status}</Badge>;
+        return <Badge className="bg-blue-500 text-white hover:bg-blue-600">{status}</Badge>;
     }
   };
 
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto rounded-md border">
       <Table>
         <TableHeader>
           <TableRow className="bg-gray-50">
             <TableHead className="w-12">ID</TableHead>
-            <TableHead className="w-36">Picture</TableHead>
+            <TableHead className="w-20">Photo</TableHead>
             <TableHead>Full Name</TableHead>
             <TableHead>Student ID</TableHead>
             <TableHead>Faculty</TableHead>
@@ -71,21 +66,28 @@ export function CandidatesTable({ candidates, onEdit, onDelete }: CandidatesTabl
               <TableCell className="font-medium">{candidate.id}</TableCell>
               <TableCell>
                 {candidate.pictureUrl && candidate.pictureUrl !== "" ? (
-                  <img 
-                    src={candidate.pictureUrl} 
-                    alt={candidate.fullName} 
-                    className="w-20 h-20 rounded-md object-cover" 
-                    onError={(e) => {
-                      e.currentTarget.src = "https://images.unsplash.com/photo-1633332755192-727a05c4013d?auto=format&fit=crop&w=80&h=80";
-                    }}
-                  />
+                  <div className="w-12 h-12 rounded-full overflow-hidden">
+                    <img 
+                      src={candidate.pictureUrl} 
+                      alt={candidate.fullName} 
+                      className="w-full h-full object-cover" 
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const parent = target.parentElement;
+                        if (parent) {
+                          parent.innerHTML = '<div class="w-12 h-12 bg-gray-200 flex items-center justify-center rounded-full"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-500"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></div>';
+                        }
+                      }}
+                    />
+                  </div>
                 ) : (
-                  <div className="w-20 h-20 bg-gray-200 rounded-md flex items-center justify-center">
-                    <span className="text-gray-500 text-xs">No Image</span>
+                  <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
+                    <UserCircle className="text-gray-400 w-8 h-8" />
                   </div>
                 )}
               </TableCell>
-              <TableCell>{candidate.fullName}</TableCell>
+              <TableCell className="font-medium">{candidate.fullName}</TableCell>
               <TableCell>{candidate.studentId}</TableCell>
               <TableCell>{candidate.faculty}</TableCell>
               <TableCell>{candidate.position}</TableCell>
