@@ -85,15 +85,24 @@ export function ElectionsTable({ elections, onEdit, onDelete, onAddCandidates, o
                 {/* Eligibility */}
                 <td className="px-6 py-4 text-sm text-gray-500">
                   <div className="flex flex-wrap gap-1">
-                    {election.eligibleFaculties.map((faculty) => (
+                    {election.position === "President/Vice President" ? (
                       <Badge 
-                        key={faculty} 
                         variant="secondary" 
                         className="bg-purple-50 text-purple-800 border border-purple-100"
                       >
-                        {faculty}
+                        All Students
                       </Badge>
-                    ))}
+                    ) : (
+                      election.eligibleFaculties.map((faculty) => (
+                        <Badge 
+                          key={faculty} 
+                          variant="secondary" 
+                          className="bg-purple-50 text-purple-800 border border-purple-100"
+                        >
+                          {faculty}
+                        </Badge>
+                      ))
+                    )}
                   </div>
                 </td>
                 

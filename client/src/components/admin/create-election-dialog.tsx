@@ -52,11 +52,24 @@ export function CreateElectionDialog({ open, onOpenChange }: CreateElectionDialo
       parseInt(endHour), 
       parseInt(endMinute)
     ) : undefined;
-
-  // Options for select fields
+  
+  // Reset form function
+  const resetForm = () => {
+    setName("");
+    setPosition("");
+    setStartDate(undefined);
+    setEndDate(undefined);
+    setEligibility("all");
+    setStartHour("09");
+    setStartMinute("00");
+    setEndHour("18");
+    setEndMinute("00");
+  };
+  
+  // Position options
   const positionOptions = [
     { id: "president_vp", label: "President/Vice President" },
-    { id: "senator", label: "Senator" }
+    { id: "senator", label: "Senator" },
   ];
 
   const eligibilityOptions = [
@@ -100,119 +113,89 @@ export function CreateElectionDialog({ open, onOpenChange }: CreateElectionDialo
         description: `Election for ${data.position === "president_vp" ? "President/Vice President" : "Senator"} position`,
         startDate: startDateIso,
         endDate: endDateIso,
-        eligibleFaculties: data.eligibility === "all" 
-          ? ["SITE", "SPA", "SB", "SESD"]
-          : [data.eligibility],
-        status: "upcoming",
-        createdBy: user?.id || 0,
+        eligibility: data.eligibility,
+        status: "upcoming" // Default status for new elections
       };
       
-      console.log("Payload to send:", payload);
+      const response = await apiRequest("POST", "/api/elections", payload);
       
-      try {
-        const res = await apiRequest("POST", "/api/elections", payload);
-        const result = await res.json();
-        return result;
-      } catch (error) {
-        console.error("API request error:", error);
-        throw error;
+      if (!response.ok) {
+        // Try to parse error message
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.message || "Failed to create election");
       }
+      
+      return await response.json();
     },
     onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "Election created successfully",
-      });
+      // Invalidate elections cache to refresh data
       queryClient.invalidateQueries({ queryKey: ["/api/elections"] });
+      
+      // Close dialog and reset form
       resetForm();
       onOpenChange(false);
-    },
-    onError: (error: any) => {
-      console.error("Mutation error:", error);
-      let errorMessage = error.message || "Failed to create election";
       
-      // Try to extract more detailed error information if available
-      if (error.response) {
-        try {
-          const responseData = error.response;
-          if (responseData.errors) {
-            errorMessage = Object.values(responseData.errors).join(", ");
-          } else if (responseData.message) {
-            errorMessage = responseData.message;
-          }
-        } catch (e) {
-          console.error("Error parsing error response:", e);
-        }
-      }
-      
+      // Notify user
       toast({
-        title: "Error",
-        description: errorMessage,
+        title: "Election created",
+        description: "The election has been created successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      console.error("Error creating election:", error);
+      
+      // Notify user
+      toast({
+        title: "Failed to create election",
+        description: error.message || "An unexpected error occurred.",
         variant: "destructive",
       });
     },
   });
 
-  // Reset form fields
-  const resetForm = () => {
-    setName("");
-    setPosition("");
-    setStartDate(undefined);
-    setEndDate(undefined);
-    setEligibility("all");
-    setStartHour("09");
-    setStartMinute("00");
-    setEndHour("18");
-    setEndMinute("00");
-  };
-
   // Form submission handler
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     
-    if (!name || !position || !startDate || !endDate) {
+    // Validate required fields
+    if (!name || !position || !finalStartDate || !finalEndDate) {
       toast({
-        title: "Error",
-        description: "Please fill all required fields",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Validate position and eligibility constraints
-    if (position === "senator" && eligibility === "all") {
-      toast({
-        title: "Error",
-        description: "Senator elections must be for a specific faculty",
+        title: "Invalid form",
+        description: "Please fill out all required fields.",
         variant: "destructive",
       });
       return;
     }
     
-    // Validate date range
-    if (finalStartDate && finalEndDate && finalStartDate >= finalEndDate) {
+    // Validate dates
+    if (finalEndDate <= finalStartDate) {
       toast({
-        title: "Error",
-        description: "End date must be after start date",
+        title: "Invalid dates",
+        description: "End date must be after start date.",
         variant: "destructive",
       });
       return;
     }
     
-    createElectionMutation.mutate({
+    // Prepare data for mutation
+    const data = {
       name,
       position,
       startDate: finalStartDate,
       endDate: finalEndDate,
       eligibility,
-    });
+      createdBy: user?.id,
+    };
+    
+    // Submit data
+    createElectionMutation.mutate(data);
   };
-
+  
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-purple-100 border-0 rounded-xl max-w-md mx-auto">
+      <DialogContent className="sm:max-w-[550px] overflow-y-auto max-h-[85vh] bg-purple-50">
         <DialogHeader>
-          <DialogTitle className="text-center text-xl font-bold text-purple-900 mb-4">Add New Election</DialogTitle>
+          <DialogTitle className="text-xl font-bold text-purple-800">Create New Election</DialogTitle>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -247,27 +230,31 @@ export function CreateElectionDialog({ open, onOpenChange }: CreateElectionDialo
           {/* Eligibility */}
           <div className="space-y-3">
             <Label htmlFor="eligibility" className="text-sm font-medium text-purple-800">Eligibility*</Label>
-            <Select 
-              value={eligibility} 
-              onValueChange={setEligibility} 
-              disabled={position === "president_vp"}
-              required
-            >
-              <SelectTrigger className="bg-white border-purple-200 focus:border-purple-400 focus:ring-purple-400">
-                <SelectValue placeholder="Select eligibility" />
-              </SelectTrigger>
-              <SelectContent>
-                {eligibilityOptions.filter(option => 
-                  position !== "senator" || option.id !== "all"
-                ).map(option => (
-                  <SelectItem key={option.id} value={option.id}>{option.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {position === "president_vp" && (
-              <p className="text-xs text-purple-700 italic">
-                Presidential elections are automatically open to all students
-              </p>
+            
+            {position === "president_vp" ? (
+              <div className="border rounded-md px-3 py-2 bg-purple-50 text-purple-800 border-purple-200">
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm font-medium">All Students</span>
+                  <span className="text-xs bg-purple-100 px-2 py-0.5 rounded">Default for President/VP Elections</span>
+                </div>
+              </div>
+            ) : (
+              <Select 
+                value={eligibility} 
+                onValueChange={setEligibility} 
+                required
+              >
+                <SelectTrigger className="bg-white border-purple-200 focus:border-purple-400 focus:ring-purple-400">
+                  <SelectValue placeholder="Select eligibility" />
+                </SelectTrigger>
+                <SelectContent>
+                  {eligibilityOptions.filter(option => 
+                    position !== "senator" || option.id !== "all"
+                  ).map(option => (
+                    <SelectItem key={option.id} value={option.id}>{option.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             )}
           </div>
           
