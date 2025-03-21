@@ -3,18 +3,24 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // Constants for dropdown options
-export const FACULTIES = [
-  "School of IT and Engineering",
-  "School of Business",
-  "School of Public and International Affairs",
-  "School of Education"
-] as const;
+export const FACULTY_ABBREVIATIONS = {
+  "SITE": "School of IT and Engineering",
+  "BSCS": "School of Business",
+  "SPIA": "School of Public and International Affairs",
+  "SEDU": "School of Education"
+} as const;
+
+// Array of faculty abbreviations for dropdowns
+export const FACULTY_CODES = ["SITE", "BSCS", "SPIA", "SEDU"] as const;
+
+// Array of full faculty names
+export const FACULTIES = Object.values(FACULTY_ABBREVIATIONS) as readonly string[];
 
 export const CANDIDATE_POSITIONS = [
   "President",
   "Vice President",
   "Senator"
-] as const;
+] as [string, ...string[]];
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -92,7 +98,7 @@ export const insertCandidateSchema = createInsertSchema(candidates)
     status: true, // Status is automatically set based on elections
   })
   .extend({
-    faculty: z.enum(FACULTIES),
+    faculty: z.string(), // Accept full faculty name or code
     position: z.enum(CANDIDATE_POSITIONS),
     pictureUrl: z.string().optional().default(""),
   });

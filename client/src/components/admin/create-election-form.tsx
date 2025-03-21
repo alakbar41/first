@@ -15,11 +15,11 @@ import { useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
-import { insertElectionSchema, FACULTIES } from "@shared/schema";
+import { insertElectionSchema, FACULTY_CODES, FACULTY_ABBREVIATIONS } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
 
-// Faculties at ADA University
-const faculties = FACULTIES.map(faculty => ({ id: faculty, label: faculty }));
+// Faculties at ADA University - using the abbreviation codes
+const faculties = FACULTY_CODES.map(code => ({ id: code, label: FACULTY_ABBREVIATIONS[code] }));
 
 // Create a schema for the form
 const formSchema = insertElectionSchema.extend({

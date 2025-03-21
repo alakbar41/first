@@ -10,6 +10,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import OtpInput from "@/components/auth/otp-input";
+import { FACULTY_CODES, FACULTY_ABBREVIATIONS } from "@shared/schema";
 
 // Registration form schema
 const registerSchema = z.object({
@@ -185,10 +186,11 @@ export default function RegisterPage() {
                     <SelectValue placeholder="Select your faculty" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="BSCS">School of Business</SelectItem>
-                    <SelectItem value="SITE">School of IT and Engineering</SelectItem>
-                    <SelectItem value="SPSS">School of Public and Social Sciences</SelectItem>
-                    <SelectItem value="SEDU">School of Education</SelectItem>
+                    {FACULTY_CODES.map(code => (
+                      <SelectItem key={code} value={code}>
+                        {FACULTY_ABBREVIATIONS[code]}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 {form.formState.errors.faculty && (
