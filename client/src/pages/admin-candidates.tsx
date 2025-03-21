@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { CreateCandidateDialog } from "@/components/admin/create-candidate-dialog";
+import { EditCandidateDialog } from "@/components/admin/edit-candidate-dialog";
 import { CandidatesTable } from "@/components/admin/candidates-table";
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 
@@ -18,6 +19,8 @@ export default function AdminCandidates() {
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const [isCreateCandidateOpen, setIsCreateCandidateOpen] = useState(false);
+  const [isEditCandidateOpen, setIsEditCandidateOpen] = useState(false);
+  const [currentCandidate, setCurrentCandidate] = useState<Candidate | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState("");
 
   // Fetch candidates
@@ -58,11 +61,17 @@ export default function AdminCandidates() {
   };
 
   const handleEditCandidate = (id: number) => {
-    // Will be implemented in future update
-    toast({
-      title: "Info",
-      description: "Edit functionality will be implemented soon.",
-    });
+    const candidate = candidates?.find(c => c.id === id);
+    if (candidate) {
+      setCurrentCandidate(candidate);
+      setIsEditCandidateOpen(true);
+    } else {
+      toast({
+        title: "Error",
+        description: "Candidate not found",
+        variant: "destructive",
+      });
+    }
   };
 
   if (!user?.isAdmin) {
@@ -175,6 +184,12 @@ export default function AdminCandidates() {
       <CreateCandidateDialog 
         open={isCreateCandidateOpen} 
         onOpenChange={setIsCreateCandidateOpen}
+      />
+      
+      <EditCandidateDialog
+        open={isEditCandidateOpen}
+        onOpenChange={setIsEditCandidateOpen}
+        candidate={currentCandidate}
       />
     </div>
   );
