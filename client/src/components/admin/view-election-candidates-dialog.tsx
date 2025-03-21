@@ -47,8 +47,9 @@ export function ViewElectionCandidatesDialog({
         description: "Candidate removed from election successfully",
       });
       
-      // Invalidate election candidates query
+      // Invalidate both election candidates and general candidates queries
       queryClient.invalidateQueries({ queryKey: ["/api/elections", election?.id, "candidates"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/candidates"] });
     },
     onError: (error: Error) => {
       toast({

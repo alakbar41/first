@@ -61,22 +61,30 @@ export function AddCandidatesToElectionDialog({
   });
   
   // Filter out candidates that are already in this election
-  // Also filter by position: President/VP positions should only show President or VP candidates
-  // Senator positions should only show Senator candidates
+  // Also filter by position and faculty:
+  // 1. President/VP positions should only show President or VP candidates (any faculty)
+  // 2. Senator positions should only show Senator candidates from matching faculty
   const availableCandidates = candidates?.filter(candidate => {
     if (!electionCandidates) return true;
+    if (!election) return true;
     
     // Check if candidate is already in this election
     const notAlreadyInElection = !electionCandidates.some(
       (ec: any) => ec.candidateId === candidate.id || ec.runningMateId === candidate.id
     );
     
-    // Filter by position based on election type
-    const isPositionValid = isPresidentVP 
-      ? (candidate.position === "President" || candidate.position === "Vice President")
-      : (candidate.position === "Senator");
-      
-    return notAlreadyInElection && isPositionValid;
+    // For President/VP elections
+    if (isPresidentVP) {
+      return notAlreadyInElection && 
+             (candidate.position === "President" || candidate.position === "Vice President");
+    } 
+    // For Senator elections - must match faculty
+    else {
+      const isFacultyMatch = election.eligibleFaculties.includes(candidate.faculty);
+      return notAlreadyInElection && 
+             candidate.position === "Senator" && 
+             isFacultyMatch;
+    }
   }) || [];
   
   // Form setup
@@ -114,8 +122,9 @@ export function AddCandidatesToElectionDialog({
       form.reset();
       onOpenChange(false);
       
-      // Invalidate election candidates query
+      // Invalidate queries to refresh both the election's candidates and the candidates table
       queryClient.invalidateQueries({ queryKey: ["/api/elections", election?.id, "candidates"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/candidates"] });
     },
     onError: (error: Error) => {
       toast({
