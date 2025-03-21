@@ -49,7 +49,6 @@ const formSchema = z.object({
   endDate: z.date({
     required_error: "End date is required",
   }),
-  active: z.boolean().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -74,7 +73,6 @@ export function EditElectionDialog({ open, onOpenChange, election }: EditElectio
       description: "",
       startDate: new Date(),
       endDate: new Date(),
-      active: false,
     },
   });
 
@@ -92,7 +90,6 @@ export function EditElectionDialog({ open, onOpenChange, election }: EditElectio
         description: election.description || "",
         startDate: new Date(election.startDate),
         endDate: new Date(election.endDate),
-        active: election.status === "active",
       });
       
       // Show/hide faculty field based on position
@@ -105,17 +102,26 @@ export function EditElectionDialog({ open, onOpenChange, election }: EditElectio
       if (!election) return null;
       
       // Format data for API
+      const now = new Date();
+      let status = "upcoming";
+      
+      // Calculate status based on dates
+      if (data.startDate <= now && data.endDate >= now) {
+        status = "active";
+      } else if (data.endDate < now) {
+        status = "completed";
+      }
+      
       const apiData = {
         ...data,
-        status: data.active ? "active" : "inactive",
+        status,
         startDate: data.startDate.toISOString(),
         endDate: data.endDate.toISOString(),
         // For Senator elections, use the faculty as an array. For others, use an empty array
         eligibleFaculties: data.position === "Senator" && data.faculty ? [data.faculty] : [],
       };
       
-      // Remove properties that aren't part of the API model
-      delete (apiData as any).active;
+      // Remove faculty property since it's handled via eligibleFaculties
       delete (apiData as any).faculty;
       
       const res = await apiRequest("PATCH", `/api/elections/${election.id}`, apiData);
@@ -237,10 +243,10 @@ export function EditElectionDialog({ open, onOpenChange, election }: EditElectio
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="SITE">School of IT and Engineering</SelectItem>
-                        <SelectItem value="SB">School of Business</SelectItem>
-                        <SelectItem value="SPIA">School of Public and International Affairs</SelectItem>
-                        <SelectItem value="SE">School of Education</SelectItem>
+                        <SelectItem value="School of IT and Engineering">School of IT and Engineering</SelectItem>
+                        <SelectItem value="School of Business">School of Business</SelectItem>
+                        <SelectItem value="School of Public and International Affairs">School of Public and International Affairs</SelectItem>
+                        <SelectItem value="School of Education">School of Education</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -338,27 +344,12 @@ export function EditElectionDialog({ open, onOpenChange, election }: EditElectio
               )}
             />
 
-            {/* Active Status */}
-            <FormField
-              control={form.control}
-              name="active"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                  <div className="space-y-1 leading-none">
-                    <FormLabel>Active</FormLabel>
-                    <p className="text-sm text-muted-foreground">
-                      Set the election to active status
-                    </p>
-                  </div>
-                </FormItem>
-              )}
-            />
+            {/* Status info message */}
+            <div className="rounded-md border p-4 bg-blue-50">
+              <p className="text-sm text-blue-700">
+                <strong>Note:</strong> Election status is automatically managed based on start and end dates.
+              </p>
+            </div>
 
             <div className="flex justify-end space-x-2">
               <Button 

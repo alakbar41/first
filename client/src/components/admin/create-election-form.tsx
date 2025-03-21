@@ -20,10 +20,10 @@ import { useAuth } from "@/hooks/use-auth";
 
 // Faculties at ADA University
 const faculties = [
-  { id: "SITE", label: "School of IT and Engineering" },
-  { id: "SPA", label: "School of Public Affairs" },
-  { id: "SB", label: "School of Business" },
-  { id: "SESD", label: "School of Education" },
+  { id: "School of IT and Engineering", label: "School of IT and Engineering" },
+  { id: "School of Public and International Affairs", label: "School of Public and International Affairs" },
+  { id: "School of Business", label: "School of Business" },
+  { id: "School of Education", label: "School of Education" },
 ];
 
 // Create a schema for the form
