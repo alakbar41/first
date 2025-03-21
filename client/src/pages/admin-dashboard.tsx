@@ -212,6 +212,12 @@ export default function AdminDashboard() {
         onOpenChange={setIsViewCandidatesOpen}
         election={selectedElection}
       />
+      
+      <EditElectionDialog
+        open={isEditElectionOpen}
+        onOpenChange={setIsEditElectionOpen}
+        election={selectedElection}
+      />
     </div>
   );
 }
