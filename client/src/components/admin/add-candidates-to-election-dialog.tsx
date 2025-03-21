@@ -137,6 +137,7 @@ export function AddCandidatesToElectionDialog({
   );
   
   const selectedCandidateId = form.watch("candidateId");
+  const selectedCandidate = availableCandidates.find(c => c.id === selectedCandidateId);
   
   // Filter running mates - in President/VP elections, Presidents need VP running mates and vice versa
   const filteredRunningMates = availableCandidates.filter(candidate => {
@@ -178,7 +179,13 @@ export function AddCandidatesToElectionDialog({
               name="candidateId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Select Candidate</FormLabel>
+                  <FormLabel>
+                    {isPresidentVP && selectedCandidate?.position === "Vice President" 
+                      ? "Select Vice President" 
+                      : isPresidentVP 
+                        ? "Select President" 
+                        : "Select Senator"}
+                  </FormLabel>
                   <FormControl>
                     <Select
                       disabled={isFormDisabled}
@@ -186,7 +193,13 @@ export function AddCandidatesToElectionDialog({
                       value={field.value?.toString()}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select a candidate" />
+                        <SelectValue placeholder={
+                          isPresidentVP && selectedCandidate?.position === "Vice President" 
+                            ? "Select a vice president" 
+                            : isPresidentVP 
+                              ? "Select a president" 
+                              : "Select a senator"
+                        } />
                       </SelectTrigger>
                       <SelectContent>
                         {availableCandidates.map((candidate) => (
@@ -208,7 +221,11 @@ export function AddCandidatesToElectionDialog({
                 name="runningMateId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Select Running Mate</FormLabel>
+                    <FormLabel>
+                      {selectedCandidate?.position === "President" 
+                        ? "Select Vice President" 
+                        : "Select President"}
+                    </FormLabel>
                     <FormControl>
                       <Select
                         disabled={!selectedCandidateId || isFormDisabled || filteredRunningMates.length === 0}
@@ -216,7 +233,11 @@ export function AddCandidatesToElectionDialog({
                         value={field.value?.toString()}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Select a running mate" />
+                          <SelectValue placeholder={
+                            selectedCandidate?.position === "President" 
+                              ? "Select a vice president" 
+                              : "Select a president"
+                          } />
                         </SelectTrigger>
                         <SelectContent>
                           {filteredRunningMates.map((candidate) => (

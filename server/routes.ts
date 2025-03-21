@@ -260,11 +260,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Candidate not found" });
       }
       
+      // Check if candidate position matches election type
+      if ((election.position === "President/VP" || election.position === "President/Vice President") && 
+          candidate.position === "Senator") {
+        return res.status(400).json({ 
+          message: "This candidate is running as a Senator and cannot be added to a President/Vice President election" 
+        });
+      }
+      
+      if (election.position === "Senator" && 
+          (candidate.position === "President" || candidate.position === "Vice President")) {
+        return res.status(400).json({ 
+          message: "This candidate is running as " + candidate.position + " and cannot be added to a Senator election" 
+        });
+      }
+      
       // Check if running mate exists
       if (result.data.runningMateId) {
         const runningMate = await storage.getCandidate(result.data.runningMateId);
         if (!runningMate) {
           return res.status(404).json({ message: "Running mate not found" });
+        }
+        
+        // Check if running mate position matches election type
+        if ((election.position === "President/VP" || election.position === "President/Vice President") && 
+            runningMate.position === "Senator") {
+          return res.status(400).json({ 
+            message: "The running mate is registered as a Senator and cannot be added to a President/Vice President election" 
+          });
         }
       }
       
@@ -324,6 +347,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ 
           message: "Running mate is required for President/VP elections" 
         });
+      }
+      
+      // Check if candidate exists
+      const candidate = await storage.getCandidate(result.data.candidateId);
+      if (!candidate) {
+        return res.status(404).json({ message: "Candidate not found" });
+      }
+      
+      // Check if candidate position matches election type
+      if ((election.position === "President/VP" || election.position === "President/Vice President") && 
+          candidate.position === "Senator") {
+        return res.status(400).json({ 
+          message: "This candidate is running as a Senator and cannot be added to a President/Vice President election" 
+        });
+      }
+      
+      if (election.position === "Senator" && 
+          (candidate.position === "President" || candidate.position === "Vice President")) {
+        return res.status(400).json({ 
+          message: "This candidate is running as " + candidate.position + " and cannot be added to a Senator election" 
+        });
+      }
+      
+      // Check if running mate exists
+      if (result.data.runningMateId) {
+        const runningMate = await storage.getCandidate(result.data.runningMateId);
+        if (!runningMate) {
+          return res.status(404).json({ message: "Running mate not found" });
+        }
+        
+        // Check if running mate position matches election type
+        if ((election.position === "President/VP" || election.position === "President/Vice President") && 
+            runningMate.position === "Senator") {
+          return res.status(400).json({ 
+            message: "The running mate is registered as a Senator and cannot be added to a President/Vice President election" 
+          });
+        }
       }
       
       // Check if candidate already in this election
