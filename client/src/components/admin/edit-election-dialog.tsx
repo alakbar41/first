@@ -279,31 +279,62 @@ export function EditElectionDialog({ open, onOpenChange, election }: EditElectio
               render={({ field }) => (
                 <FormItem className="flex flex-col">
                   <FormLabel>Start Date</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant={"outline"}
+                              className="pl-3 text-left font-normal w-full"
+                            >
+                              {field.value ? (
+                                format(field.value, "PPP")
+                              ) : (
+                                <span>Pick a date</span>
+                              )}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={(date) => {
+                              if (date) {
+                                // Keep the time from the existing date value
+                                const updatedDate = new Date(date);
+                                if (field.value) {
+                                  updatedDate.setHours(
+                                    field.value.getHours(),
+                                    field.value.getMinutes()
+                                  );
+                                }
+                                field.onChange(updatedDate);
+                              }
+                            }}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    <div>
                       <FormControl>
-                        <Button
-                          variant={"outline"}
-                          className="pl-3 text-left font-normal"
-                        >
-                          {field.value ? (
-                            format(field.value, "PPP")
-                          ) : (
-                            <span>Pick a date</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
+                        <Input
+                          type="time"
+                          className="w-[140px]"
+                          value={field.value ? `${String(field.value.getHours()).padStart(2, '0')}:${String(field.value.getMinutes()).padStart(2, '0')}` : '00:00'}
+                          onChange={(e) => {
+                            const [hours, minutes] = e.target.value.split(':').map(Number);
+                            const newDate = new Date(field.value || new Date());
+                            newDate.setHours(hours, minutes);
+                            field.onChange(newDate);
+                          }}
+                        />
                       </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
+                    </div>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
@@ -316,31 +347,62 @@ export function EditElectionDialog({ open, onOpenChange, election }: EditElectio
               render={({ field }) => (
                 <FormItem className="flex flex-col">
                   <FormLabel>End Date</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant={"outline"}
+                              className="pl-3 text-left font-normal w-full"
+                            >
+                              {field.value ? (
+                                format(field.value, "PPP")
+                              ) : (
+                                <span>Pick a date</span>
+                              )}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={(date) => {
+                              if (date) {
+                                // Keep the time from the existing date value
+                                const updatedDate = new Date(date);
+                                if (field.value) {
+                                  updatedDate.setHours(
+                                    field.value.getHours(),
+                                    field.value.getMinutes()
+                                  );
+                                }
+                                field.onChange(updatedDate);
+                              }
+                            }}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    <div>
                       <FormControl>
-                        <Button
-                          variant={"outline"}
-                          className="pl-3 text-left font-normal"
-                        >
-                          {field.value ? (
-                            format(field.value, "PPP")
-                          ) : (
-                            <span>Pick a date</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
+                        <Input
+                          type="time"
+                          className="w-[140px]"
+                          value={field.value ? `${String(field.value.getHours()).padStart(2, '0')}:${String(field.value.getMinutes()).padStart(2, '0')}` : '00:00'}
+                          onChange={(e) => {
+                            const [hours, minutes] = e.target.value.split(':').map(Number);
+                            const newDate = new Date(field.value || new Date());
+                            newDate.setHours(hours, minutes);
+                            field.onChange(newDate);
+                          }}
+                        />
                       </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
+                    </div>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
