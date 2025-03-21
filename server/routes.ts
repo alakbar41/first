@@ -248,7 +248,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // For president/VP elections, require a running mate
-      if (election.position === "President/VP" && !result.data.runningMateId) {
+      if ((election.position === "President/VP" || election.position === "President/Vice President") && !result.data.runningMateId) {
         return res.status(400).json({ 
           message: "Running mate is required for President/VP elections" 
         });
@@ -320,7 +320,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // For president/VP elections, require a running mate
-      if (election.position === "President/VP" && !result.data.runningMateId) {
+      if ((election.position === "President/VP" || election.position === "President/Vice President") && !result.data.runningMateId) {
         return res.status(400).json({ 
           message: "Running mate is required for President/VP elections" 
         });

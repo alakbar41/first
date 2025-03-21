@@ -35,7 +35,7 @@ export function AddCandidatesToElectionDialog({
 }: AddCandidatesToElectionDialogProps) {
   const { toast } = useToast();
   
-  const isPresidentVP = election?.position === "President/VP";
+  const isPresidentVP = election?.position === "President/VP" || election?.position === "President/Vice President";
   
   // Fetch all candidates
   const { data: candidates, isLoading: isCandidatesLoading } = useQuery<Candidate[]>({
