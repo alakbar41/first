@@ -211,9 +211,9 @@ export default function AdminCandidates() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Positions</SelectItem>
-                    <SelectItem value="President">President</SelectItem>
-                    <SelectItem value="Vice President">Vice President</SelectItem>
-                    <SelectItem value="Senator">Senator</SelectItem>
+                    {CANDIDATE_POSITIONS.map(position => (
+                      <SelectItem key={position} value={position}>{position}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
