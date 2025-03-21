@@ -1,9 +1,9 @@
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, X, Filter } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Candidate } from "@shared/schema";
+import { Candidate, FACULTIES, CANDIDATE_POSITIONS } from "@shared/schema";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -13,6 +13,7 @@ import { CreateCandidateDialog } from "@/components/admin/create-candidate-dialo
 import { EditCandidateDialog } from "@/components/admin/edit-candidate-dialog";
 import { CandidatesTable } from "@/components/admin/candidates-table";
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function AdminCandidates() {
   const { user } = useAuth();
@@ -22,6 +23,11 @@ export default function AdminCandidates() {
   const [isEditCandidateOpen, setIsEditCandidateOpen] = useState(false);
   const [currentCandidate, setCurrentCandidate] = useState<Candidate | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState("");
+  
+  // Filters for candidates
+  const [facultyFilter, setFacultyFilter] = useState<string>("all");
+  const [positionFilter, setPositionFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
   // Fetch candidates
   const { data: candidates, isLoading } = useQuery<Candidate[]>({
@@ -83,13 +89,27 @@ export default function AdminCandidates() {
     );
   }
 
-  // Filter candidates by search query
+  // Apply all filters to candidates
   const filteredCandidates = candidates
-    ? candidates.filter(candidate => 
-        candidate.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        candidate.faculty.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        candidate.studentId.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+    ? candidates.filter(candidate => {
+        // Search filter
+        const matchesSearch = 
+          searchQuery === "" || 
+          candidate.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          candidate.faculty.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          candidate.studentId.toLowerCase().includes(searchQuery.toLowerCase());
+        
+        // Faculty filter
+        const matchesFaculty = facultyFilter === "all" || candidate.faculty === facultyFilter;
+        
+        // Position filter
+        const matchesPosition = positionFilter === "all" || candidate.position === positionFilter;
+        
+        // Status filter
+        const matchesStatus = statusFilter === "all" || candidate.status === statusFilter;
+        
+        return matchesSearch && matchesFaculty && matchesPosition && matchesStatus;
+      })
     : [];
 
   return (
@@ -104,33 +124,100 @@ export default function AdminCandidates() {
         </div>
         
         <div className="p-6">
-          {/* Search and actions */}
-          <div className="flex justify-between items-center mb-6">
-            <div className="relative w-72">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input 
-                placeholder="Search candidates..." 
-                className="pl-9 h-10 bg-white" 
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-              />
-              {searchQuery && (
-                <button 
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                  onClick={() => setSearchQuery("")}
-                >
-                  &times;
-                </button>
-              )}
+          {/* Search, filters, and actions */}
+          <div className="mb-6">
+            {/* Top row: Search and Add Button */}
+            <div className="flex justify-between items-center mb-4">
+              <div className="relative w-72">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input 
+                  placeholder="Search candidates..." 
+                  className="pl-9 h-10 bg-white" 
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                />
+                {searchQuery && (
+                  <button 
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                    onClick={() => setSearchQuery("")}
+                  >
+                    &times;
+                  </button>
+                )}
+              </div>
+              
+              <Button 
+                onClick={() => setIsCreateCandidateOpen(true)}
+                className="flex items-center rounded-md bg-purple-700 px-4 py-2 text-sm font-medium text-white hover:bg-purple-800"
+              >
+                <Plus className="mr-1 h-4 w-4" />
+                Add Candidate
+              </Button>
             </div>
             
-            <Button 
-              onClick={() => setIsCreateCandidateOpen(true)}
-              className="flex items-center rounded-md bg-purple-700 px-4 py-2 text-sm font-medium text-white hover:bg-purple-800"
-            >
-              <Plus className="mr-1 h-4 w-4" />
-              Add Candidate
-            </Button>
+            {/* Filters row */}
+            <div className="flex space-x-4">
+              {/* Faculty filter */}
+              <div className="w-48">
+                <Select value={facultyFilter} onValueChange={setFacultyFilter}>
+                  <SelectTrigger className="bg-white">
+                    <SelectValue placeholder="Faculty" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Faculties</SelectItem>
+                    <SelectItem value="SITE">SITE</SelectItem>
+                    <SelectItem value="SB">SB</SelectItem>
+                    <SelectItem value="SPA">SPA</SelectItem>
+                    <SelectItem value="SESD">SESD</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {/* Position filter */}
+              <div className="w-48">
+                <Select value={positionFilter} onValueChange={setPositionFilter}>
+                  <SelectTrigger className="bg-white">
+                    <SelectValue placeholder="Position" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Positions</SelectItem>
+                    <SelectItem value="President">President</SelectItem>
+                    <SelectItem value="Vice President">Vice President</SelectItem>
+                    <SelectItem value="Senator">Senator</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {/* Status filter */}
+              <div className="w-48">
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="bg-white">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {/* Clear filters button */}
+              {(facultyFilter !== "all" || positionFilter !== "all" || statusFilter !== "all") && (
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setFacultyFilter("all");
+                    setPositionFilter("all");
+                    setStatusFilter("all");
+                  }}
+                  className="flex items-center"
+                >
+                  <X className="mr-1 h-4 w-4" />
+                  Clear Filters
+                </Button>
+              )}
+            </div>
           </div>
           
           <div className="shadow-sm rounded-md overflow-hidden">
