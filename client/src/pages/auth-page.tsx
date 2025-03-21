@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { ResetPasswordModal } from "@/components/auth/reset-password-modal";
 
 // Login form schema
 const loginSchema = z.object({
@@ -20,6 +21,7 @@ export default function AuthPage() {
   const { user, isLoading, loginMutation } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
   const [, navigate] = useLocation();
 
   // Form setup
@@ -88,7 +90,7 @@ export default function AuthPage() {
                 type="button" 
                 variant="link" 
                 className="p-0 h-auto text-sm"
-                onClick={() => {}}
+                onClick={() => setResetPasswordOpen(true)}
               >
                 Forgot password?
               </Button>
@@ -138,6 +140,12 @@ export default function AuthPage() {
           </div>
         </form>
       </div>
+      
+      {/* Reset Password Modal */}
+      <ResetPasswordModal 
+        open={resetPasswordOpen}
+        onOpenChange={setResetPasswordOpen}
+      />
     </div>
   );
 }
