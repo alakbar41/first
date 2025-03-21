@@ -1,17 +1,17 @@
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
-import { Plus, Search, MoreHorizontal } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Election } from "@shared/schema";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
-import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { ElectionsTable } from "@/components/admin/elections-table";
 import { CreateElectionDialog } from "@/components/admin/create-election-dialog";
+import { AddCandidatesToElectionDialog } from "@/components/admin/add-candidates-to-election-dialog";
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 
 export default function AdminDashboard() {
@@ -19,6 +19,8 @@ export default function AdminDashboard() {
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const [isCreateElectionOpen, setIsCreateElectionOpen] = useState(false);
+  const [isAddCandidatesOpen, setIsAddCandidatesOpen] = useState(false);
+  const [selectedElection, setSelectedElection] = useState<Election | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState("");
 
   // Fetch elections

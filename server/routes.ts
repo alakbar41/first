@@ -230,6 +230,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Direct endpoint for election candidates
+  app.post("/api/election-candidates", isAdmin, async (req, res) => {
+    try {
+      const result = insertElectionCandidateSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ 
+          message: "Invalid election candidate data", 
+          errors: result.error.format() 
+        });
+      }
+      
+      // Verify election exists
+      const election = await storage.getElection(result.data.electionId);
+      if (!election) {
+        return res.status(404).json({ message: "Election not found" });
+      }
+      
+      // For president/VP elections, require a running mate
+      if (election.position === "President/VP" && !result.data.runningMateId) {
+        return res.status(400).json({ 
+          message: "Running mate is required for President/VP elections" 
+        });
+      }
+      
+      // Check if candidate exists
+      const candidate = await storage.getCandidate(result.data.candidateId);
+      if (!candidate) {
+        return res.status(404).json({ message: "Candidate not found" });
+      }
+      
+      // Check if running mate exists
+      if (result.data.runningMateId) {
+        const runningMate = await storage.getCandidate(result.data.runningMateId);
+        if (!runningMate) {
+          return res.status(404).json({ message: "Running mate not found" });
+        }
+      }
+      
+      // Check if candidate already in this election
+      const existingCandidates = await storage.getElectionCandidates(result.data.electionId);
+      const alreadyAdded = existingCandidates.some(
+        ec => ec.candidateId === result.data.candidateId
+      );
+      
+      if (alreadyAdded) {
+        return res.status(400).json({ message: "Candidate already added to this election" });
+      }
+      
+      // Check if running mate already in this election
+      if (result.data.runningMateId) {
+        const runningMateAlreadyAdded = existingCandidates.some(
+          ec => ec.candidateId === result.data.runningMateId || ec.runningMateId === result.data.runningMateId
+        );
+        
+        if (runningMateAlreadyAdded) {
+          return res.status(400).json({ message: "Running mate already added to this election" });
+        }
+      }
+      
+      const electionCandidate = await storage.addCandidateToElection(result.data);
+      res.status(201).json(electionCandidate);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to add candidate to election" });
+    }
+  });
+  
   app.post("/api/elections/:electionId/candidates", isAdmin, async (req, res) => {
     try {
       const electionId = parseInt(req.params.electionId);
@@ -254,9 +320,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // For president/VP elections, require a running mate
-      if (election.position === "President/Vice President" && !result.data.runningMateId) {
+      if (election.position === "President/VP" && !result.data.runningMateId) {
         return res.status(400).json({ 
-          message: "Running mate is required for President/Vice President elections" 
+          message: "Running mate is required for President/VP elections" 
         });
       }
       
@@ -273,7 +339,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if running mate already in this election
       if (result.data.runningMateId) {
         const runningMateAlreadyAdded = existingCandidates.some(
-          ec => ec.candidateId === result.data.runningMateId
+          ec => ec.candidateId === result.data.runningMateId || ec.runningMateId === result.data.runningMateId
         );
         
         if (runningMateAlreadyAdded) {

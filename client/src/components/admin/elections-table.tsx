@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { MoreHorizontal, Edit, Trash } from "lucide-react";
+import { MoreHorizontal, Edit, Trash, UserPlus, Users } from "lucide-react";
 import { Election } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,9 +16,11 @@ interface ElectionsTableProps {
   elections: Election[];
   onEdit?: (electionId: number) => void;
   onDelete?: (electionId: number) => void;
+  onAddCandidates?: (election: Election) => void;
+  onViewCandidates?: (election: Election) => void;
 }
 
-export function ElectionsTable({ elections, onEdit, onDelete }: ElectionsTableProps) {
+export function ElectionsTable({ elections, onEdit, onDelete, onAddCandidates, onViewCandidates }: ElectionsTableProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "upcoming":
@@ -123,14 +125,31 @@ export function ElectionsTable({ elections, onEdit, onDelete }: ElectionsTablePr
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                      <DropdownMenuItem 
+                        onClick={() => onAddCandidates && onAddCandidates(election)}
+                        className="cursor-pointer"
+                      >
+                        <UserPlus className="mr-2 h-4 w-4" />
+                        <span>Add Candidates</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => onViewCandidates && onViewCandidates(election)}
+                        className="cursor-pointer"
+                      >
+                        <Users className="mr-2 h-4 w-4" />
+                        <span>View Candidates</span>
+                      </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => onEdit && onEdit(election.id)}>
+                      <DropdownMenuItem 
+                        onClick={() => onEdit && onEdit(election.id)}
+                        className="cursor-pointer"
+                      >
                         <Edit className="mr-2 h-4 w-4" />
                         <span>Edit</span>
                       </DropdownMenuItem>
                       <DropdownMenuItem 
                         onClick={() => onDelete && onDelete(election.id)}
-                        className="text-red-600 focus:text-red-700"
+                        className="text-red-600 cursor-pointer focus:text-red-700"
                       >
                         <Trash className="mr-2 h-4 w-4" />
                         <span>Delete</span>
