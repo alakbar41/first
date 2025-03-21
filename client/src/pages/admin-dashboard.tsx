@@ -11,6 +11,7 @@ import { useLocation } from "wouter";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { ElectionsTable } from "@/components/admin/elections-table";
 import { CreateElectionDialog } from "@/components/admin/create-election-dialog";
+import { EditElectionDialog } from "@/components/admin/edit-election-dialog";
 import { AddCandidatesToElectionDialog } from "@/components/admin/add-candidates-to-election-dialog";
 import { ViewElectionCandidatesDialog } from "@/components/admin/view-election-candidates-dialog";
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
@@ -20,6 +21,7 @@ export default function AdminDashboard() {
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const [isCreateElectionOpen, setIsCreateElectionOpen] = useState(false);
+  const [isEditElectionOpen, setIsEditElectionOpen] = useState(false);
   const [isAddCandidatesOpen, setIsAddCandidatesOpen] = useState(false);
   const [isViewCandidatesOpen, setIsViewCandidatesOpen] = useState(false);
   const [selectedElection, setSelectedElection] = useState<Election | undefined>(undefined);
@@ -63,11 +65,17 @@ export default function AdminDashboard() {
   };
 
   const handleEditElection = (id: number) => {
-    // Will be implemented in future update
-    toast({
-      title: "Info",
-      description: "Edit functionality will be implemented in a future update.",
-    });
+    const election = elections?.find(e => e.id === id);
+    if (election) {
+      setSelectedElection(election);
+      setIsEditElectionOpen(true);
+    } else {
+      toast({
+        title: "Error",
+        description: "Election not found",
+        variant: "destructive",
+      });
+    }
   };
   
   const handleAddCandidates = (election: Election) => {
