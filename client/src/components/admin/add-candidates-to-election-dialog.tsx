@@ -124,8 +124,8 @@ export function AddCandidatesToElectionDialog({
   const renderCandidateAvatar = (candidate: Candidate) => (
     <div className="flex items-center">
       <Avatar className="h-8 w-8 mr-2">
-        {candidate.profilePicture ? (
-          <AvatarImage src={candidate.profilePicture} alt={candidate.fullName} />
+        {candidate.pictureUrl ? (
+          <AvatarImage src={candidate.pictureUrl} alt={candidate.fullName} />
         ) : (
           <AvatarFallback>
             <UserRound className="h-4 w-4" />
