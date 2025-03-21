@@ -1,6 +1,6 @@
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, X } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Election } from "@shared/schema";
@@ -15,6 +15,7 @@ import { EditElectionDialog } from "@/components/admin/edit-election-dialog";
 import { AddCandidatesToElectionDialog } from "@/components/admin/add-candidates-to-election-dialog";
 import { ViewElectionCandidatesDialog } from "@/components/admin/view-election-candidates-dialog";
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function AdminDashboard() {
   const { user, logoutMutation } = useAuth();
@@ -97,12 +98,37 @@ export default function AdminDashboard() {
     );
   }
 
-  // Filter elections by search query
+  // State for filters
+  const [positionFilter, setPositionFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [facultyFilter, setFacultyFilter] = useState<string>("all");
+  
+  // Apply all filters to elections
   const filteredElections = elections
-    ? elections.filter(election => 
-        election.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        election.position.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+    ? elections.filter(election => {
+        // Search filter
+        const matchesSearch = 
+          searchQuery === "" || 
+          election.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          election.position.toLowerCase().includes(searchQuery.toLowerCase());
+        
+        // Position filter
+        const matchesPosition = 
+          positionFilter === "all" || 
+          election.position === positionFilter;
+        
+        // Status filter
+        const matchesStatus = 
+          statusFilter === "all" || 
+          election.status === statusFilter;
+        
+        // Faculty filter (for Senator elections)
+        const matchesFaculty = 
+          facultyFilter === "all" || 
+          (election.eligibleFaculties && election.eligibleFaculties.includes(facultyFilter));
+        
+        return matchesSearch && matchesPosition && matchesStatus && matchesFaculty;
+      })
     : [];
 
   return (
@@ -117,33 +143,100 @@ export default function AdminDashboard() {
         </div>
         
         <div className="p-6">
-          {/* Search and actions */}
-          <div className="flex justify-between items-center mb-6">
-            <div className="relative w-72">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input 
-                placeholder="Search..." 
-                className="pl-9 h-10 bg-white" 
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-              />
-              {searchQuery && (
-                <button 
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                  onClick={() => setSearchQuery("")}
-                >
-                  &times;
-                </button>
-              )}
+          {/* Search, filters, and actions */}
+          <div className="mb-6">
+            {/* Top row: Search and Add Button */}
+            <div className="flex justify-between items-center mb-4">
+              <div className="relative w-72">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input 
+                  placeholder="Search..." 
+                  className="pl-9 h-10 bg-white" 
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                />
+                {searchQuery && (
+                  <button 
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                    onClick={() => setSearchQuery("")}
+                  >
+                    &times;
+                  </button>
+                )}
+              </div>
+              
+              <Button 
+                onClick={() => setIsCreateElectionOpen(true)}
+                className="flex items-center rounded-md bg-purple-700 px-4 py-2 text-sm font-medium text-white hover:bg-purple-800"
+              >
+                <Plus className="mr-1 h-4 w-4" />
+                Add Election
+              </Button>
             </div>
             
-            <Button 
-              onClick={() => setIsCreateElectionOpen(true)}
-              className="flex items-center rounded-md bg-purple-700 px-4 py-2 text-sm font-medium text-white hover:bg-purple-800"
-            >
-              <Plus className="mr-1 h-4 w-4" />
-              Add Election
-            </Button>
+            {/* Filters row */}
+            <div className="flex space-x-4">
+              {/* Position filter */}
+              <div className="w-48">
+                <Select value={positionFilter} onValueChange={setPositionFilter}>
+                  <SelectTrigger className="bg-white">
+                    <SelectValue placeholder="Position" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Positions</SelectItem>
+                    <SelectItem value="President/Vice President">President/Vice President</SelectItem>
+                    <SelectItem value="Senator">Senator</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {/* Status filter */}
+              <div className="w-48">
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="bg-white">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="upcoming">Upcoming</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {/* Faculty filter */}
+              <div className="w-72">
+                <Select value={facultyFilter} onValueChange={setFacultyFilter}>
+                  <SelectTrigger className="bg-white">
+                    <SelectValue placeholder="Faculty" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Faculties</SelectItem>
+                    <SelectItem value="School of IT and Engineering">School of IT and Engineering</SelectItem>
+                    <SelectItem value="School of Business">School of Business</SelectItem>
+                    <SelectItem value="School of Public and International Affairs">School of Public and International Affairs</SelectItem>
+                    <SelectItem value="School of Education">School of Education</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {/* Clear filters button */}
+              {(positionFilter !== "all" || statusFilter !== "all" || facultyFilter !== "all") && (
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setPositionFilter("all");
+                    setStatusFilter("all");
+                    setFacultyFilter("all");
+                  }}
+                  className="flex items-center"
+                >
+                  <X className="mr-1 h-4 w-4" />
+                  Clear Filters
+                </Button>
+              )}
+            </div>
           </div>
           
           <div className="shadow-sm rounded-md overflow-hidden">
