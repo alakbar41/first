@@ -236,13 +236,13 @@ export class MemStorage implements IStorage {
     
     const newCandidate: Candidate = {
       id,
-      firstName: candidate.firstName,
-      lastName: candidate.lastName,
+      fullName: candidate.fullName,
       studentId: candidate.studentId,
       faculty: candidate.faculty,
-      positionContested: candidate.positionContested,
-      participationStatus: candidate.participationStatus || "inactive",
-      picture: candidate.picture || "default.png",
+      position: candidate.position,
+      status: candidate.status || "pending",
+      pictureUrl: candidate.pictureUrl,
+      bio: candidate.bio,
       createdAt: now,
       updatedAt: now
     };
@@ -271,7 +271,7 @@ export class MemStorage implements IStorage {
   async updateCandidateStatus(id: number, status: string): Promise<void> {
     const candidate = this.candidates.get(id);
     if (candidate) {
-      candidate.participationStatus = status;
+      candidate.status = status;
       candidate.updatedAt = new Date();
       this.candidates.set(id, candidate);
     } else {
@@ -312,7 +312,7 @@ export class MemStorage implements IStorage {
     // Update candidate status to active
     const candidate = this.candidates.get(electionCandidate.candidateId);
     if (candidate) {
-      candidate.participationStatus = "active";
+      candidate.status = "active";
       candidate.updatedAt = new Date();
       this.candidates.set(candidate.id, candidate);
     }
@@ -321,7 +321,7 @@ export class MemStorage implements IStorage {
     if (electionCandidate.runningMateId) {
       const runningMate = this.candidates.get(electionCandidate.runningMateId);
       if (runningMate) {
-        runningMate.participationStatus = "active";
+        runningMate.status = "active";
         runningMate.updatedAt = new Date();
         this.candidates.set(runningMate.id, runningMate);
       }
@@ -348,7 +348,7 @@ export class MemStorage implements IStorage {
       if (otherElections.length === 0) {
         const candidate = this.candidates.get(candidateId);
         if (candidate) {
-          candidate.participationStatus = "inactive";
+          candidate.status = "inactive";
           candidate.updatedAt = new Date();
           this.candidates.set(candidateId, candidate);
         }
@@ -364,7 +364,7 @@ export class MemStorage implements IStorage {
         if (runningMateOtherElections.length === 0) {
           const runningMate = this.candidates.get(entry.runningMateId);
           if (runningMate) {
-            runningMate.participationStatus = "inactive";
+            runningMate.status = "inactive";
             runningMate.updatedAt = new Date();
             this.candidates.set(entry.runningMateId, runningMate);
           }

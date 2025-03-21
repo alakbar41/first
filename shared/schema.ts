@@ -34,13 +34,13 @@ export const elections = pgTable("elections", {
 
 export const candidates = pgTable("candidates", {
   id: serial("id").primaryKey(),
-  firstName: text("first_name").notNull(),
-  lastName: text("last_name").notNull(),
+  fullName: text("full_name").notNull(),
   studentId: text("student_id").notNull().unique(),
   faculty: text("faculty").notNull(),
-  positionContested: text("position_contested").notNull(), // President, Vice President, Senator
-  participationStatus: text("participation_status").notNull().default("inactive"), // active, upcoming, inactive
-  picture: text("picture").notNull().default("default.png"),
+  position: text("position").notNull(), // President, Vice President, Secretary, etc.
+  status: text("status").notNull().default("pending"), // active, pending, withdrawn, disqualified
+  pictureUrl: text("picture_url").default("").notNull(), // URL to candidate's picture
+  bio: text("bio").default("").notNull(), // Candidate's biography
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
