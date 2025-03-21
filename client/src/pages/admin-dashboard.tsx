@@ -67,6 +67,18 @@ export default function AdminDashboard() {
       description: "Edit functionality will be implemented in a future update.",
     });
   };
+  
+  const handleAddCandidates = (election: Election) => {
+    setSelectedElection(election);
+    setIsAddCandidatesOpen(true);
+  };
+  
+  const handleViewCandidates = (election: Election) => {
+    toast({
+      title: "Coming Soon",
+      description: "View candidates functionality will be available soon.",
+    });
+  };
 
   if (!user?.isAdmin) {
     navigate("/");
@@ -141,6 +153,8 @@ export default function AdminDashboard() {
                   elections={filteredElections} 
                   onDelete={handleDeleteElection}
                   onEdit={handleEditElection}
+                  onAddCandidates={handleAddCandidates}
+                  onViewCandidates={handleViewCandidates}
                 />
                 
                 <div className="px-6 py-4 bg-white border-t border-gray-200 flex justify-between items-center">
@@ -177,6 +191,12 @@ export default function AdminDashboard() {
       <CreateElectionDialog 
         open={isCreateElectionOpen} 
         onOpenChange={setIsCreateElectionOpen}
+      />
+      
+      <AddCandidatesToElectionDialog
+        open={isAddCandidatesOpen}
+        onOpenChange={setIsAddCandidatesOpen}
+        election={selectedElection}
       />
     </div>
   );
