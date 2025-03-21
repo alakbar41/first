@@ -62,7 +62,6 @@ interface EditElectionDialogProps {
 export function EditElectionDialog({ open, onOpenChange, election }: EditElectionDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [showFaculty, setShowFaculty] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -91,9 +90,6 @@ export function EditElectionDialog({ open, onOpenChange, election }: EditElectio
         startDate: new Date(election.startDate),
         endDate: new Date(election.endDate),
       });
-      
-      // Show/hide faculty field based on position
-      setShowFaculty(election.position === "Senator");
     }
   }, [election, form]);
 
@@ -159,14 +155,12 @@ export function EditElectionDialog({ open, onOpenChange, election }: EditElectio
     updateElectionMutation.mutate(data);
   };
 
-  // Handle position change to show/hide faculty field
+  // Handle position change
   const handlePositionChange = (position: string) => {
     form.setValue("position", position);
     
-    if (position === "Senator") {
-      setShowFaculty(true);
-    } else {
-      setShowFaculty(false);
+    // Clear the faculty/eligibility field when switching to President/VP
+    if (position === "President/Vice President") {
       form.setValue("faculty", "");
     }
   };
@@ -228,32 +222,40 @@ export function EditElectionDialog({ open, onOpenChange, election }: EditElectio
               )}
             />
 
-            {/* Faculty (only for Senator position) */}
-            {showFaculty && (
-              <FormField
-                control={form.control}
-                name="faculty"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Faculty</FormLabel>
+            {/* Eligibility Field */}
+            <FormField
+              control={form.control}
+              name="faculty"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Eligibility</FormLabel>
+                  
+                  {form.watch("position") === "President/Vice President" ? (
+                    <div className="border rounded-md px-3 py-2 bg-purple-50 text-purple-800 border-purple-200">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm font-medium">All Students</span>
+                        <span className="text-xs bg-purple-100 px-2 py-0.5 rounded">Default for President/VP Elections</span>
+                      </div>
+                    </div>
+                  ) : (
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select faculty" />
+                          <SelectValue placeholder="Select eligibility" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="School of IT and Engineering">School of IT and Engineering</SelectItem>
-                        <SelectItem value="School of Business">School of Business</SelectItem>
-                        <SelectItem value="School of Public and International Affairs">School of Public and International Affairs</SelectItem>
-                        <SelectItem value="School of Education">School of Education</SelectItem>
+                        <SelectItem value="SITE">SITE Students</SelectItem>
+                        <SelectItem value="SB">SB Students</SelectItem>
+                        <SelectItem value="SPA">SPA Students</SelectItem>
+                        <SelectItem value="SESD">SESD Students</SelectItem>
                       </SelectContent>
                     </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
+                  )}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             {/* Description */}
             <FormField
