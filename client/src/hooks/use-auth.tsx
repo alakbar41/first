@@ -4,7 +4,7 @@ import {
   useMutation,
   UseMutationResult,
 } from "@tanstack/react-query";
-import { User, InsertUser, LoginData, OtpVerifyData, SendOtpData } from "@shared/schema";
+import { User, InsertUser, LoginData, OtpVerifyData, SendOtpData, ResetPasswordData } from "@shared/schema";
 import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -17,6 +17,8 @@ type AuthContextType = {
   registerMutation: UseMutationResult<void, Error, InsertUser>;
   sendOtpMutation: UseMutationResult<void, Error, SendOtpData>;
   verifyOtpMutation: UseMutationResult<User, Error, OtpVerifyData>;
+  resetPasswordSendOtpMutation: UseMutationResult<void, Error, SendOtpData>;
+  resetPasswordVerifyMutation: UseMutationResult<void, Error, ResetPasswordData>;
 };
 
 export const AuthContext = createContext<AuthContextType | null>(null);
@@ -135,6 +137,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
+  // Password reset mutations
+  const resetPasswordSendOtpMutation = useMutation({
+    mutationFn: async (data: SendOtpData) => {
+      const res = await apiRequest("POST", "/api/reset-password", data);
+      await res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Reset Code Sent",
+        description: "A verification code has been sent to your email for password reset.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to send reset code",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const resetPasswordVerifyMutation = useMutation({
+    mutationFn: async (data: ResetPasswordData) => {
+      const res = await apiRequest("POST", "/api/reset-password/verify", data);
+      await res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Password Reset Successful",
+        description: "Your password has been reset. You can now log in with your new password.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Password Reset Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   return (
     <AuthContext.Provider
       value={{
@@ -146,6 +189,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         registerMutation,
         sendOtpMutation,
         verifyOtpMutation,
+        resetPasswordSendOtpMutation,
+        resetPasswordVerifyMutation,
       }}
     >
       {children}
