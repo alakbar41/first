@@ -184,6 +184,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Check if a candidate is in any election
+  app.get("/api/candidates/:id/in-elections", isAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      const candidate = await storage.getCandidate(id);
+      if (!candidate) {
+        return res.status(404).json({ message: "Candidate not found" });
+      }
+      
+      const candidateElections = await storage.getCandidateElections(id);
+      
+      if (candidateElections.length === 0) {
+        return res.json({ inElections: false, elections: [] });
+      }
+      
+      // Get full election details
+      const elections = await Promise.all(
+        candidateElections.map(async (ce) => {
+          const election = await storage.getElection(ce.electionId);
+          return election;
+        })
+      );
+      
+      res.json({ 
+        inElections: true, 
+        elections: elections.filter(e => e !== undefined) 
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to check candidate elections" });
+    }
+  });
+
   app.delete("/api/candidates/:id", isAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -191,6 +224,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const candidate = await storage.getCandidate(id);
       if (!candidate) {
         return res.status(404).json({ message: "Candidate not found" });
+      }
+      
+      // Check if candidate is part of any election
+      const candidateElections = await storage.getCandidateElections(id);
+      if (candidateElections.length > 0) {
+        return res.status(400).json({ 
+          message: "Cannot delete candidate that is part of an election. Remove the candidate from all elections first.",
+          inElections: true
+        });
       }
       
       await storage.deleteCandidate(id);
