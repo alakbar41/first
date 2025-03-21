@@ -142,7 +142,11 @@ export function ViewElectionCandidatesDialog({
                             </Avatar>
                             <div className="flex flex-col">
                               <span className="text-sm font-medium text-gray-900">{ec.runningMate?.fullName}</span>
-                              <span className="text-sm text-gray-500">{ec.runningMate?.position}</span>
+                              <span className="text-sm text-gray-500 flex space-x-1">
+                                <span>{ec.runningMate?.position}</span>
+                                <span>·</span>
+                                <span>ID: {ec.runningMate?.studentId}</span>
+                              </span>
                             </div>
                           </div>
                         ) : (

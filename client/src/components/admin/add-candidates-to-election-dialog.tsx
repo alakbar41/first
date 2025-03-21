@@ -61,13 +61,22 @@ export function AddCandidatesToElectionDialog({
   });
   
   // Filter out candidates that are already in this election
+  // Also filter by position: President/VP positions should only show President or VP candidates
+  // Senator positions should only show Senator candidates
   const availableCandidates = candidates?.filter(candidate => {
     if (!electionCandidates) return true;
     
     // Check if candidate is already in this election
-    return !electionCandidates.some(
+    const notAlreadyInElection = !electionCandidates.some(
       (ec: any) => ec.candidateId === candidate.id || ec.runningMateId === candidate.id
     );
+    
+    // Filter by position based on election type
+    const isPositionValid = isPresidentVP 
+      ? (candidate.position === "President" || candidate.position === "Vice President")
+      : (candidate.position === "Senator");
+      
+    return notAlreadyInElection && isPositionValid;
   }) || [];
   
   // Form setup
