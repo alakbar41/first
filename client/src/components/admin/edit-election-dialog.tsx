@@ -245,10 +245,11 @@ export function EditElectionDialog({ open, onOpenChange, election }: EditElectio
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="SITE">SITE Students</SelectItem>
-                        <SelectItem value="SB">SB Students</SelectItem>
-                        <SelectItem value="SPA">SPA Students</SelectItem>
-                        <SelectItem value="SESD">SESD Students</SelectItem>
+                        {FACULTIES.map(faculty => (
+                          <SelectItem key={faculty} value={faculty}>
+                            {faculty} Students
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   )}

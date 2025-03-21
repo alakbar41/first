@@ -196,10 +196,9 @@ export default function AdminCandidates() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Faculties</SelectItem>
-                    <SelectItem value="SITE">SITE</SelectItem>
-                    <SelectItem value="SB">SB</SelectItem>
-                    <SelectItem value="SPA">SPA</SelectItem>
-                    <SelectItem value="SESD">SESD</SelectItem>
+                    {FACULTIES.map(faculty => (
+                      <SelectItem key={faculty} value={faculty}>{faculty}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
