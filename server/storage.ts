@@ -1,4 +1,10 @@
-import { users, pendingUsers, elections, type User, type InsertUser, type PendingUser, type InsertPendingUser, type Election, type InsertElection } from "@shared/schema";
+import { users, pendingUsers, elections, candidates, electionCandidates, 
+  type User, type InsertUser, 
+  type PendingUser, type InsertPendingUser, 
+  type Election, type InsertElection,
+  type Candidate, type InsertCandidate,
+  type ElectionCandidate, type InsertElectionCandidate
+} from "@shared/schema";
 import session from "express-session";
 import createMemoryStore from "memorystore";
 
@@ -8,9 +14,14 @@ const MemoryStore = createMemoryStore(session);
 // you might need
 export interface IStorage {
   sessionStore: session.Store;
+  
+  // User methods
   getUser(id: number): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUserPassword(email: string, newPassword: string): Promise<void>;
+  
+  // Pending user methods
   getPendingUserByEmail(email: string): Promise<PendingUser | undefined>;
   createPendingUser(user: InsertPendingUser): Promise<PendingUser>;
   updatePendingUserOtp(email: string, otp: string): Promise<void>;
@@ -20,24 +31,51 @@ export interface IStorage {
   getElections(): Promise<Election[]>;
   getElection(id: number): Promise<Election | undefined>;
   createElection(election: InsertElection): Promise<Election>;
+  updateElection(id: number, election: Partial<InsertElection>): Promise<Election>;
   updateElectionStatus(id: number, status: string): Promise<void>;
   deleteElection(id: number): Promise<void>;
+  
+  // Candidate methods
+  getCandidates(): Promise<Candidate[]>;
+  getCandidate(id: number): Promise<Candidate | undefined>;
+  getCandidateByStudentId(studentId: string): Promise<Candidate | undefined>;
+  createCandidate(candidate: InsertCandidate): Promise<Candidate>;
+  updateCandidate(id: number, candidate: Partial<InsertCandidate>): Promise<Candidate>;
+  updateCandidateStatus(id: number, status: string): Promise<void>;
+  deleteCandidate(id: number): Promise<void>;
+  
+  // Election-Candidate methods
+  getElectionCandidates(electionId: number): Promise<ElectionCandidate[]>;
+  getCandidateElections(candidateId: number): Promise<ElectionCandidate[]>;
+  addCandidateToElection(electionCandidate: InsertElectionCandidate): Promise<ElectionCandidate>;
+  removeCandidateFromElection(electionId: number, candidateId: number): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private pendingUsers: Map<string, PendingUser>;
   private elections: Map<number, Election>;
+  private candidates: Map<number, Candidate>;
+  private electionCandidates: Map<number, ElectionCandidate>;
+  
   sessionStore: session.Store;
   currentId: number;
   currentElectionId: number;
+  currentCandidateId: number;
+  currentElectionCandidateId: number;
 
   constructor() {
     this.users = new Map();
     this.pendingUsers = new Map();
     this.elections = new Map();
+    this.candidates = new Map();
+    this.electionCandidates = new Map();
+    
     this.currentId = 1;
     this.currentElectionId = 1;
+    this.currentCandidateId = 1;
+    this.currentElectionCandidateId = 1;
+    
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000, // prune expired entries every 24h
     });
@@ -142,6 +180,197 @@ export class MemStorage implements IStorage {
   
   async deleteElection(id: number): Promise<void> {
     this.elections.delete(id);
+  }
+  
+  async updateElection(id: number, election: Partial<InsertElection>): Promise<Election> {
+    const existingElection = this.elections.get(id);
+    
+    if (!existingElection) {
+      throw new Error(`Election with id ${id} not found`);
+    }
+    
+    const updatedElection: Election = {
+      ...existingElection,
+      ...election,
+      startDate: election.startDate ? 
+        (election.startDate instanceof Date ? election.startDate : new Date(election.startDate)) 
+        : existingElection.startDate,
+      endDate: election.endDate ? 
+        (election.endDate instanceof Date ? election.endDate : new Date(election.endDate)) 
+        : existingElection.endDate,
+      eligibleFaculties: election.eligibleFaculties || existingElection.eligibleFaculties,
+    };
+    
+    this.elections.set(id, updatedElection);
+    return updatedElection;
+  }
+  
+  async updateUserPassword(email: string, newPassword: string): Promise<void> {
+    const user = await this.getUserByEmail(email);
+    if (user) {
+      user.password = newPassword;
+      this.users.set(user.id, user);
+    } else {
+      throw new Error(`User with email ${email} not found`);
+    }
+  }
+  
+  // Candidate methods
+  async getCandidates(): Promise<Candidate[]> {
+    return Array.from(this.candidates.values());
+  }
+  
+  async getCandidate(id: number): Promise<Candidate | undefined> {
+    return this.candidates.get(id);
+  }
+  
+  async getCandidateByStudentId(studentId: string): Promise<Candidate | undefined> {
+    return Array.from(this.candidates.values()).find(
+      (candidate) => candidate.studentId === studentId
+    );
+  }
+  
+  async createCandidate(candidate: InsertCandidate): Promise<Candidate> {
+    const id = this.currentCandidateId++;
+    const now = new Date();
+    
+    const newCandidate: Candidate = {
+      id,
+      firstName: candidate.firstName,
+      lastName: candidate.lastName,
+      studentId: candidate.studentId,
+      faculty: candidate.faculty,
+      positionContested: candidate.positionContested,
+      participationStatus: candidate.participationStatus || "inactive",
+      picture: candidate.picture || "default.png",
+      createdAt: now,
+      updatedAt: now
+    };
+    
+    this.candidates.set(id, newCandidate);
+    return newCandidate;
+  }
+  
+  async updateCandidate(id: number, candidate: Partial<InsertCandidate>): Promise<Candidate> {
+    const existingCandidate = this.candidates.get(id);
+    
+    if (!existingCandidate) {
+      throw new Error(`Candidate with id ${id} not found`);
+    }
+    
+    const updatedCandidate: Candidate = {
+      ...existingCandidate,
+      ...candidate,
+      updatedAt: new Date()
+    };
+    
+    this.candidates.set(id, updatedCandidate);
+    return updatedCandidate;
+  }
+  
+  async updateCandidateStatus(id: number, status: string): Promise<void> {
+    const candidate = this.candidates.get(id);
+    if (candidate) {
+      candidate.participationStatus = status;
+      candidate.updatedAt = new Date();
+      this.candidates.set(id, candidate);
+    } else {
+      throw new Error(`Candidate with id ${id} not found`);
+    }
+  }
+  
+  async deleteCandidate(id: number): Promise<void> {
+    this.candidates.delete(id);
+  }
+  
+  // Election-Candidate methods
+  async getElectionCandidates(electionId: number): Promise<ElectionCandidate[]> {
+    return Array.from(this.electionCandidates.values()).filter(
+      (ec) => ec.electionId === electionId
+    );
+  }
+  
+  async getCandidateElections(candidateId: number): Promise<ElectionCandidate[]> {
+    return Array.from(this.electionCandidates.values()).filter(
+      (ec) => ec.candidateId === candidateId
+    );
+  }
+  
+  async addCandidateToElection(electionCandidate: InsertElectionCandidate): Promise<ElectionCandidate> {
+    const id = this.currentElectionCandidateId++;
+    
+    const newElectionCandidate: ElectionCandidate = {
+      id,
+      electionId: electionCandidate.electionId,
+      candidateId: electionCandidate.candidateId,
+      runningMateId: electionCandidate.runningMateId,
+      createdAt: new Date()
+    };
+    
+    this.electionCandidates.set(id, newElectionCandidate);
+    
+    // Update candidate status to active
+    const candidate = this.candidates.get(electionCandidate.candidateId);
+    if (candidate) {
+      candidate.participationStatus = "active";
+      candidate.updatedAt = new Date();
+      this.candidates.set(candidate.id, candidate);
+    }
+    
+    // If there's a running mate, update their status too
+    if (electionCandidate.runningMateId) {
+      const runningMate = this.candidates.get(electionCandidate.runningMateId);
+      if (runningMate) {
+        runningMate.participationStatus = "active";
+        runningMate.updatedAt = new Date();
+        this.candidates.set(runningMate.id, runningMate);
+      }
+    }
+    
+    return newElectionCandidate;
+  }
+  
+  async removeCandidateFromElection(electionId: number, candidateId: number): Promise<void> {
+    // Find the election-candidate entry
+    const entry = Array.from(this.electionCandidates.values()).find(
+      (ec) => ec.electionId === electionId && ec.candidateId === candidateId
+    );
+    
+    if (entry) {
+      this.electionCandidates.delete(entry.id);
+      
+      // Check if candidate is still in any elections
+      const otherElections = Array.from(this.electionCandidates.values()).filter(
+        (ec) => ec.candidateId === candidateId
+      );
+      
+      // If candidate is not in any other elections, change status to inactive
+      if (otherElections.length === 0) {
+        const candidate = this.candidates.get(candidateId);
+        if (candidate) {
+          candidate.participationStatus = "inactive";
+          candidate.updatedAt = new Date();
+          this.candidates.set(candidateId, candidate);
+        }
+      }
+      
+      // If there was a running mate, check if they are in any other elections
+      if (entry.runningMateId) {
+        const runningMateOtherElections = Array.from(this.electionCandidates.values()).filter(
+          (ec) => ec.candidateId === entry.runningMateId || ec.runningMateId === entry.runningMateId
+        );
+        
+        // If running mate is not in any other elections, change status to inactive
+        if (runningMateOtherElections.length === 0) {
+          const runningMate = this.candidates.get(entry.runningMateId);
+          if (runningMate) {
+            runningMate.participationStatus = "inactive";
+            runningMate.updatedAt = new Date();
+            this.candidates.set(entry.runningMateId, runningMate);
+          }
+        }
+      }
+    }
   }
 }
 
