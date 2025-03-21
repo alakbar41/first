@@ -7,6 +7,7 @@ import AuthPage from "@/pages/auth-page";
 import RegisterPage from "@/pages/register-page";
 import Dashboard from "@/pages/dashboard";
 import AdminDashboard from "@/pages/admin-dashboard";
+import AdminCandidates from "@/pages/admin-candidates";
 import { ProtectedRoute } from "./lib/protected-route";
 import { AuthProvider } from "./hooks/use-auth";
 
@@ -16,8 +17,8 @@ function Router() {
       <ProtectedRoute path="/" component={Dashboard} />
       <ProtectedRoute path="/admin" component={AdminDashboard} />
       <ProtectedRoute path="/admin/elections" component={AdminDashboard} />
-      <ProtectedRoute path="/admin/students" component={AdminDashboard} />
-      <ProtectedRoute path="/admin/reports" component={AdminDashboard} />
+      <ProtectedRoute path="/admin/candidates" component={AdminCandidates} />
+      <ProtectedRoute path="/admin/voters" component={AdminDashboard} />
       <ProtectedRoute path="/admin/settings" component={AdminDashboard} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/register" component={RegisterPage} />

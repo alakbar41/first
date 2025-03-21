@@ -39,16 +39,16 @@ export function AdminSidebar({ user }: SidebarProps) {
       active: location.includes("/admin/elections")
     },
     {
-      title: "Students",
+      title: "Candidates",
       icon: Users,
-      path: "/admin/students",
-      active: location.includes("/admin/students")
+      path: "/admin/candidates",
+      active: location.includes("/admin/candidates")
     },
     {
-      title: "Reports",
+      title: "Voters",
       icon: FileText,
-      path: "/admin/reports",
-      active: location.includes("/admin/reports")
+      path: "/admin/voters",
+      active: location.includes("/admin/voters")
     },
     {
       title: "Settings",
