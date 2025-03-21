@@ -12,6 +12,7 @@ import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { ElectionsTable } from "@/components/admin/elections-table";
 import { CreateElectionDialog } from "@/components/admin/create-election-dialog";
 import { AddCandidatesToElectionDialog } from "@/components/admin/add-candidates-to-election-dialog";
+import { ViewElectionCandidatesDialog } from "@/components/admin/view-election-candidates-dialog";
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 
 export default function AdminDashboard() {
@@ -20,6 +21,7 @@ export default function AdminDashboard() {
   const [, navigate] = useLocation();
   const [isCreateElectionOpen, setIsCreateElectionOpen] = useState(false);
   const [isAddCandidatesOpen, setIsAddCandidatesOpen] = useState(false);
+  const [isViewCandidatesOpen, setIsViewCandidatesOpen] = useState(false);
   const [selectedElection, setSelectedElection] = useState<Election | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -74,10 +76,8 @@ export default function AdminDashboard() {
   };
   
   const handleViewCandidates = (election: Election) => {
-    toast({
-      title: "Coming Soon",
-      description: "View candidates functionality will be available soon.",
-    });
+    setSelectedElection(election);
+    setIsViewCandidatesOpen(true);
   };
 
   if (!user?.isAdmin) {
@@ -196,6 +196,12 @@ export default function AdminDashboard() {
       <AddCandidatesToElectionDialog
         open={isAddCandidatesOpen}
         onOpenChange={setIsAddCandidatesOpen}
+        election={selectedElection}
+      />
+      
+      <ViewElectionCandidatesDialog
+        open={isViewCandidatesOpen}
+        onOpenChange={setIsViewCandidatesOpen}
         election={selectedElection}
       />
     </div>
