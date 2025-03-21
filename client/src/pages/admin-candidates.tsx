@@ -60,10 +60,41 @@ export default function AdminCandidates() {
     },
   });
 
+  // To check if candidate is in elections
+  const checkCandidateInElectionsMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("GET", `/api/candidates/${id}/in-elections`);
+      return res.json();
+    },
+    onSuccess: (data, id) => {
+      if (data.inElections) {
+        // Candidate is in elections, show proper warning
+        const electionNames = data.elections.map((e: any) => e.name).join(", ");
+        
+        toast({
+          title: "Cannot Delete Candidate",
+          description: `This candidate is part of the following election(s): ${electionNames}. Please remove the candidate from all elections first.`,
+          variant: "destructive",
+        });
+      } else {
+        // Safe to delete, ask for confirmation
+        if (confirm("Are you sure you want to delete this candidate?")) {
+          deleteCandidateMutation.mutate(id);
+        }
+      }
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: "Failed to check if candidate is part of elections. " + error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleDeleteCandidate = (id: number) => {
-    if (confirm("Are you sure you want to delete this candidate?")) {
-      deleteCandidateMutation.mutate(id);
-    }
+    // First check if candidate is in any elections
+    checkCandidateInElectionsMutation.mutate(id);
   };
 
   const handleEditCandidate = (id: number) => {

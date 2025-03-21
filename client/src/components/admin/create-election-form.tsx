@@ -15,16 +15,11 @@ import { useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
-import { insertElectionSchema } from "@shared/schema";
+import { insertElectionSchema, FACULTIES } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
 
 // Faculties at ADA University
-const faculties = [
-  { id: "School of IT and Engineering", label: "School of IT and Engineering" },
-  { id: "School of Public and International Affairs", label: "School of Public and International Affairs" },
-  { id: "School of Business", label: "School of Business" },
-  { id: "School of Education", label: "School of Education" },
-];
+const faculties = FACULTIES.map(faculty => ({ id: faculty, label: faculty }));
 
 // Create a schema for the form
 const formSchema = insertElectionSchema.extend({
