@@ -303,7 +303,7 @@ export class MemStorage implements IStorage {
       id,
       electionId: electionCandidate.electionId,
       candidateId: electionCandidate.candidateId,
-      runningMateId: electionCandidate.runningMateId,
+      runningMateId: electionCandidate.runningMateId || 0,
       createdAt: new Date()
     };
     

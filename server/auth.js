@@ -38,7 +38,6 @@ export function setupAuth(app) {
   }
 
   async function comparePasswords(plainPassword, hashedPassword) {
-    console.log(`Comparing password: ${plainPassword} with hash: ${hashedPassword}`);
     const result = await bcrypt.compare(plainPassword, hashedPassword);
     console.log(`Password comparison result: ${result}`);
     return result;
@@ -145,9 +144,7 @@ export function setupAuth(app) {
       }
       
       res.status(200).json({ 
-        message: "Registration initiated. Please verify your email.",
-        // For development only - remove in production
-        developmentOtp: process.env.NODE_ENV !== "production" ? otp : undefined
+        message: "Registration initiated. Please verify your email. Check your inbox for verification code."
       });
     } catch (error) {
       console.error("Registration error:", error);

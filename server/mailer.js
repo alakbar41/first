@@ -119,9 +119,6 @@ export const mailer = {
       const info = await transporter.sendMail(mailOptions);
       console.log("Email sent:", info.messageId);
       
-      // Log OTP to console for testing purposes
-      console.log(`DEVELOPMENT MODE - OTP for ${to} is: ${otp}`);
-      
       // If using Ethereal, log preview URL
       if (transporter.options && transporter.options.host === "smtp.ethereal.email") {
         console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info));

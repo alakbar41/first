@@ -49,7 +49,7 @@ export const electionCandidates = pgTable("election_candidates", {
   id: serial("id").primaryKey(),
   electionId: integer("election_id").notNull(), // Reference to election id
   candidateId: integer("candidate_id").notNull(), // Reference to candidate id
-  runningMateId: integer("running_mate_id"), // For President/VP pairs, null for senator elections
+  runningMateId: integer("running_mate_id").notNull().default(0), // For President/VP pairs, 0 for senator elections
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
