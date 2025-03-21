@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Election, FACULTIES } from "@shared/schema";
+import { Election, FACULTY_CODES, FACULTY_ABBREVIATIONS } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -245,9 +245,9 @@ export function EditElectionDialog({ open, onOpenChange, election }: EditElectio
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {FACULTIES.map(faculty => (
-                          <SelectItem key={faculty} value={faculty}>
-                            {faculty} Students
+                        {FACULTY_CODES.map(code => (
+                          <SelectItem key={code} value={code}>
+                            {FACULTY_ABBREVIATIONS[code]} Students ({code})
                           </SelectItem>
                         ))}
                       </SelectContent>
