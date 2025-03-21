@@ -36,7 +36,8 @@ import { insertCandidateSchema } from "@shared/schema";
 
 // Extend the candidate schema for the form
 const formSchema = insertCandidateSchema.extend({
-  pictureUrl: z.string().url({ message: "Please enter a valid URL" }).optional(),
+  pictureUrl: z.string().url({ message: "Please enter a valid URL" }).optional().or(z.literal("")),
+  bio: z.string().optional().or(z.literal("")),
 });
 
 type FormValues = z.infer<typeof formSchema>;

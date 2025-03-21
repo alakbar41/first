@@ -70,7 +70,7 @@ export function CandidatesTable({ candidates, onEdit, onDelete }: CandidatesTabl
             <TableRow key={candidate.id} className="border-b border-gray-200">
               <TableCell className="font-medium">{candidate.id}</TableCell>
               <TableCell>
-                {candidate.pictureUrl ? (
+                {candidate.pictureUrl && candidate.pictureUrl !== "" ? (
                   <img 
                     src={candidate.pictureUrl} 
                     alt={candidate.fullName} 

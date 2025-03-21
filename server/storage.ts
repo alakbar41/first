@@ -241,8 +241,8 @@ export class MemStorage implements IStorage {
       faculty: candidate.faculty,
       position: candidate.position,
       status: candidate.status || "pending",
-      pictureUrl: candidate.pictureUrl,
-      bio: candidate.bio,
+      pictureUrl: candidate.pictureUrl || "",
+      bio: candidate.bio || "",
       createdAt: now,
       updatedAt: now
     };
@@ -258,9 +258,20 @@ export class MemStorage implements IStorage {
       throw new Error(`Candidate with id ${id} not found`);
     }
     
+    // Ensure optional fields have default values
+    if (candidate.pictureUrl === undefined) {
+      candidate.pictureUrl = existingCandidate.pictureUrl;
+    }
+    
+    if (candidate.bio === undefined) {
+      candidate.bio = existingCandidate.bio;
+    }
+    
     const updatedCandidate: Candidate = {
       ...existingCandidate,
       ...candidate,
+      pictureUrl: candidate.pictureUrl || "",
+      bio: candidate.bio || "",
       updatedAt: new Date()
     };
     
