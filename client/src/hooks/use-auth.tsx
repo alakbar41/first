@@ -98,11 +98,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await apiRequest("POST", "/api/verify-otp", data);
       return await res.json();
     },
-    onSuccess: (user: User) => {
-      queryClient.setQueryData(["/api/user"], user);
+    onSuccess: () => {
+      // Don't set user data after registration, just show toast
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       toast({
         title: "Registration successful",
-        description: "Your account has been verified. Welcome!",
+        description: "Your account has been verified. Please log in with your credentials.",
       });
     },
     onError: (error: Error) => {
