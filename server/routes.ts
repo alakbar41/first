@@ -233,7 +233,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Candidate not found" });
       }
       
-      // Check if candidate is part of any election
+      // Check if candidate is part of any election as a main candidate
       const candidateElections = await storage.getCandidateElections(id);
       if (candidateElections.length > 0) {
         return res.status(400).json({ 
@@ -242,9 +242,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // Also check if candidate is used as a running mate in any election
+      const allElectionCandidates = await storage.getAllElectionCandidates();
+      const isRunningMate = allElectionCandidates.some(ec => ec.runningMateId === id);
+      
+      if (isRunningMate) {
+        return res.status(400).json({ 
+          message: "Cannot delete candidate that is used as a vice president in an election. Remove the candidate from all elections first.",
+          inElections: true
+        });
+      }
+      
       await storage.deleteCandidate(id);
+      
+      // Reset candidate IDs sequentially
+      await storage.resetCandidateIds();
+      
       res.status(200).json({ message: "Candidate deleted successfully" });
     } catch (error) {
+      console.error("Error deleting candidate:", error);
       res.status(500).json({ message: "Failed to delete candidate" });
     }
   });

@@ -43,10 +43,12 @@ export interface IStorage {
   updateCandidate(id: number, candidate: Partial<InsertCandidate>): Promise<Candidate>;
   updateCandidateStatus(id: number, status: string): Promise<void>;
   deleteCandidate(id: number): Promise<void>;
+  resetCandidateIds(): Promise<void>;
   
   // Election-Candidate methods
   getElectionCandidates(electionId: number): Promise<ElectionCandidate[]>;
   getCandidateElections(candidateId: number): Promise<ElectionCandidate[]>;
+  getAllElectionCandidates(): Promise<ElectionCandidate[]>;
   addCandidateToElection(electionCandidate: InsertElectionCandidate): Promise<ElectionCandidate>;
   removeCandidateFromElection(electionId: number, candidateId: number): Promise<void>;
 }

@@ -87,6 +87,11 @@ export function AddCandidatesToElectionDialog({
     }
   }) || [];
   
+  // Separate candidates by position for better organization
+  const presidentCandidates = availableCandidates.filter(c => c.position === "President");
+  const vpCandidates = availableCandidates.filter(c => c.position === "Vice President");
+  const senatorCandidates = availableCandidates.filter(c => c.position === "Senator");
+  
   // Form setup
   const form = useForm<FormValues>({
     resolver: zodResolver(
@@ -195,71 +200,84 @@ export function AddCandidatesToElectionDialog({
         
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <FormField
-              control={form.control}
-              name="candidateId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    {isPresidentVP 
-                      ? "Select Candidate"
-                      : "Select Senator"}
-                  </FormLabel>
-                  <FormControl>
-                    <Select
-                      disabled={isFormDisabled}
-                      onValueChange={(value) => field.onChange(parseInt(value))}
-                      value={field.value?.toString()}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder={
-                          isPresidentVP && selectedCandidate?.position === "Vice President" 
-                            ? "Select a vice president" 
-                            : isPresidentVP 
-                              ? "Select a president" 
-                              : "Select a senator"
-                        } />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableCandidates.map((candidate) => (
-                          <SelectItem key={candidate.id} value={candidate.id.toString()}>
-                            {renderCandidateAvatar(candidate)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            {isPresidentVP && (
+            {isPresidentVP ? (
+              <>
+                <FormField
+                  control={form.control}
+                  name="candidateId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Select President</FormLabel>
+                      <FormControl>
+                        <Select
+                          disabled={isFormDisabled}
+                          onValueChange={(value) => field.onChange(parseInt(value))}
+                          value={field.value?.toString()}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a president" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {presidentCandidates.map((candidate) => (
+                              <SelectItem key={candidate.id} value={candidate.id.toString()}>
+                                {renderCandidateAvatar(candidate)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="runningMateId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Select Vice President</FormLabel>
+                      <FormControl>
+                        <Select
+                          disabled={!selectedCandidateId || isFormDisabled || vpCandidates.length === 0}
+                          onValueChange={(value) => field.onChange(parseInt(value))}
+                          value={field.value?.toString()}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a vice president" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {vpCandidates.map((candidate) => (
+                              <SelectItem key={candidate.id} value={candidate.id.toString()}>
+                                {renderCandidateAvatar(candidate)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </>
+            ) : (
               <FormField
                 control={form.control}
-                name="runningMateId"
+                name="candidateId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>
-                      {selectedCandidate?.position === "President" 
-                        ? "Select Vice President" 
-                        : "Select President"}
-                    </FormLabel>
+                    <FormLabel>Select Senator</FormLabel>
                     <FormControl>
                       <Select
-                        disabled={!selectedCandidateId || isFormDisabled || filteredRunningMates.length === 0}
+                        disabled={isFormDisabled}
                         onValueChange={(value) => field.onChange(parseInt(value))}
                         value={field.value?.toString()}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder={
-                            selectedCandidate?.position === "President" 
-                              ? "Select a vice president" 
-                              : "Select a president"
-                          } />
+                          <SelectValue placeholder="Select a senator" />
                         </SelectTrigger>
                         <SelectContent>
-                          {filteredRunningMates.map((candidate) => (
+                          {senatorCandidates.map((candidate) => (
                             <SelectItem key={candidate.id} value={candidate.id.toString()}>
                               {renderCandidateAvatar(candidate)}
                             </SelectItem>
