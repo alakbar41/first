@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { FACULTIES, CANDIDATE_POSITIONS, InsertCandidate, Candidate } from "@shared/schema";
+import { FACULTY_CODES, CANDIDATE_POSITIONS, InsertCandidate, Candidate, getFacultyName } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -38,7 +38,7 @@ import { UserRound } from "lucide-react";
 const formSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
   studentId: z.string().min(1, "Student ID is required"),
-  faculty: z.enum(FACULTIES as unknown as [string, ...string[]]),
+  faculty: z.enum(FACULTY_CODES as unknown as [string, ...string[]]),
   position: z.enum(CANDIDATE_POSITIONS as unknown as [string, ...string[]]),
   pictureUrl: z.string().optional(),
 });
@@ -229,9 +229,9 @@ export function EditCandidateDialog({ open, onOpenChange, candidate }: EditCandi
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {FACULTIES.map((faculty) => (
-                        <SelectItem key={faculty} value={faculty}>
-                          {faculty}
+                      {FACULTY_CODES.map((code) => (
+                        <SelectItem key={code} value={code}>
+                          {getFacultyName(code)}
                         </SelectItem>
                       ))}
                     </SelectContent>

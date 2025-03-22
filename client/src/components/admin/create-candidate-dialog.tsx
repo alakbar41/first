@@ -75,7 +75,7 @@ export function CreateCandidateDialog({ open, onOpenChange }: CreateCandidateDia
       form.reset({
         fullName: "",
         studentId: "",
-        faculty: "School of IT and Engineering",
+        faculty: "SITE",
         position: "President",
         pictureUrl: "",
       });

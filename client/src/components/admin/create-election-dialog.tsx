@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FACULTY_CODES, getFacultyName } from "@shared/schema";
 
 interface CreateElectionDialogProps {
   open: boolean;
@@ -72,12 +73,13 @@ export function CreateElectionDialog({ open, onOpenChange }: CreateElectionDialo
     { id: "senator", label: "Senator" },
   ];
 
+  // Generate eligibility options from faculty codes
   const eligibilityOptions = [
     { id: "all", label: "All Students" },
-    { id: "SITE", label: "SITE Students" },
-    { id: "SPA", label: "SPA Students" },
-    { id: "SB", label: "SB Students" },
-    { id: "SESD", label: "SESD Students" },
+    ...FACULTY_CODES.map(code => ({ 
+      id: code, 
+      label: `${getFacultyName(code)} Students` 
+    })),
   ];
 
   const hourOptions = Array.from({length: 24}, (_, i) => {
