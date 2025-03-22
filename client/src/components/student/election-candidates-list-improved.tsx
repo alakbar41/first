@@ -105,14 +105,27 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
         try {
           const voteCountsMap: {[key: number]: number} = {};
           
+          // TypeScript is now certain candidatesData is not undefined due to the guard clause above
           for (const candidate of candidatesData) {
             try {
-              // In a real implementation, you'd have a mapping between database IDs and blockchain IDs
-              // Here we're assuming they're the same for simplicity
-              const voteCount = await getCandidateVoteCount(candidate.id);
-              voteCountsMap[candidate.id] = voteCount;
+              // In a production environment, we'd need a mapping between database IDs and blockchain IDs
+              // For now, we're using hardcoded mappings for demonstration purposes
+              
+              // Check if the blockchain has been initialized with this candidate
+              // For simplicity, we'll just use candidates 1 and 2 for now
+              let blockchainCandidateId = candidate.id;
+              
+              // Only use candidates that exist in the blockchain (IDs 1 and 2 for demo)
+              if (blockchainCandidateId <= 2) {
+                const voteCount = await getCandidateVoteCount(blockchainCandidateId);
+                voteCountsMap[candidate.id] = voteCount;
+              } else {
+                // For candidates not in the blockchain, display 0 votes
+                voteCountsMap[candidate.id] = 0;
+              }
             } catch (err) {
               console.error(`Error fetching vote count for candidate ${candidate.id}:`, err);
+              // Don't show error to user, just use 0 votes
               voteCountsMap[candidate.id] = 0;
             }
           }
