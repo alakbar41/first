@@ -223,26 +223,35 @@ export function ElectionDetailView({ election }: ElectionDetailViewProps) {
         </CardContent>
       </Card>
 
-      {/* Status Messages */}
-      {new Date(election.startDate) > new Date() && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-blue-800 flex items-center">
-          <Info className="w-5 h-5 mr-2" />
-          <div>
-            <p className="font-medium">This election has not started yet</p>
-            <p className="text-sm">Voting will be available once the election starts on {formatDate(election.startDate)}</p>
-          </div>
-        </div>
-      )}
-      
-      {new Date(election.endDate) < new Date() && (
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-gray-800 flex items-center">
-          <Info className="w-5 h-5 mr-2" />
-          <div>
-            <p className="font-medium">This election has ended</p>
-            <p className="text-sm">Voting closed on {formatDate(election.endDate)}</p>
-          </div>
-        </div>
-      )}
+      {/* Status Messages - Only show a single message based on election status */}
+      {(() => {
+        const now = new Date();
+        const startDate = new Date(election.startDate);
+        const endDate = new Date(election.endDate);
+        
+        if (now < startDate) {
+          return (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-blue-800 flex items-center">
+              <Info className="w-5 h-5 mr-2" />
+              <div>
+                <p className="font-medium">This election has not started yet</p>
+                <p className="text-sm">Voting will be available once the election starts on {formatDate(election.startDate)}</p>
+              </div>
+            </div>
+          );
+        } else if (now > endDate) {
+          return (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-gray-800 flex items-center">
+              <Info className="w-5 h-5 mr-2" />
+              <div>
+                <p className="font-medium">This election has ended</p>
+                <p className="text-sm">Voting closed on {formatDate(election.endDate)}</p>
+              </div>
+            </div>
+          );
+        }
+        return null;
+      })()}
 
       {/* Candidates Section */}
       <div>

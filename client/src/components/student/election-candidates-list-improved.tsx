@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Candidate, Election, ElectionCandidate } from "@shared/schema";
 import { Button } from "@/components/ui/button";
-import { UserCircle, Award, Check, Info, Clock, Calendar } from "lucide-react";
+import { UserCircle, Award, Check, Info, Clock, Calendar, AlertTriangle } from "lucide-react";
 import { getFacultyName } from "@shared/schema";
 import { useState } from "react";
 import {
@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 
 interface ElectionCandidatesListProps {
   election: Election;
@@ -24,6 +25,7 @@ interface CandidateWithVotes extends Candidate {
 
 export function ElectionCandidatesList({ election }: ElectionCandidatesListProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   
   // Check if the election is active (for enabling/disabling voting)
   const isElectionActive = () => {
@@ -130,8 +132,49 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
     regularCandidates = combinedCandidates;
   }
   
+  // Function to check if user is eligible to vote in this election
+  const isUserEligible = () => {
+    if (!user) return false;
+    
+    // For President/VP elections, all students are eligible
+    if (isPresidentVPElection) return true;
+    
+    // For Senator elections, check if student's faculty matches the election's eligibleFaculties
+    if (election.position === "Senator") {
+      // If eligibleFaculties includes "all", all students can vote
+      if (election.eligibleFaculties.includes("all")) return true;
+      
+      // Otherwise, student's faculty must be in the eligibleFaculties list
+      return election.eligibleFaculties.includes(user.faculty);
+    }
+    
+    return true; // Default to true for other election types
+  };
+  
   // Add a voting simulation function
   const castVote = async (candidateId: number) => {
+    // Check faculty eligibility for Senator elections
+    if (!isUserEligible()) {
+      toast({
+        title: "Not Eligible to Vote",
+        description: `This election is only for students from ${election.eligibleFaculties.map(f => getFacultyName(f)).join(", ")}. You are from ${getFacultyName(user?.faculty || "")}.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Check if user has already voted in this election
+    const hasVoted = Object.keys(votedCandidates).length > 0;
+    
+    if (hasVoted) {
+      toast({
+        title: "Already Voted",
+        description: "You have already cast your vote in this election. Each student can only vote once per election.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setIsVoting(prev => ({ ...prev, [candidateId]: true }));
     
     try {
@@ -143,14 +186,14 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
       setVotedCandidates(prev => ({ ...prev, [candidateId]: true }));
       
       toast({
-        title: "Vote Recorded Successfully",
-        description: "Thank you for participating in the election. Your vote has been securely recorded.",
+        title: "Blockchain Voting Coming Soon",
+        description: "The voting functionality will be implemented with blockchain integration in the future. Your test vote has been recorded for this demo.",
         variant: "default",
       });
     } catch (error) {
       toast({
-        title: "Voting Failed",
-        description: "There was an error recording your vote. Please try again.",
+        title: "Voting Error",
+        description: "There was an error processing your vote. Please try again later.",
         variant: "destructive",
       });
     } finally {
@@ -327,7 +370,7 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
         </div>
       ) : (
         // Regular candidates list for Senator elections or remaining candidates
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4">
           {regularCandidates.map(candidate => {
             const isVoted = votedCandidates[candidate.id];
             const isProcessingVote = isVoting[candidate.id];
