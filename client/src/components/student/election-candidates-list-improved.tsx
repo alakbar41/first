@@ -105,28 +105,43 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
     const presidents = combinedCandidates.filter(c => c.position === "President");
     const vps = combinedCandidates.filter(c => c.position === "Vice President");
     
-    // For each president, find a matching VP (based on ticket pairs in the DB)
+    // Get the actual election-candidate entries to find running mate relationships
+    const electionCandidateEntries = electionCandidates || [];
+    
+    // For each president, find a matching VP based on the runningMateId in the election-candidate entries
     presidents.forEach(president => {
-      // Find VP for this president (in a real implementation, this would use runningMateId)
-      // For now, just pair them sequentially
-      const vp = vps.length > 0 ? vps[0] : undefined;
+      // Find the corresponding election-candidate entry for this president
+      const presidentEntry = electionCandidateEntries.find(ec => ec.candidateId === president.id);
       
-      if (vp) {
+      // Find the VP who is registered as a running mate for this president
+      let runningMate: CandidateWithVotes | undefined = undefined;
+      
+      if (presidentEntry && presidentEntry.runningMateId) {
+        // Look for the VP candidate with matching ID
+        runningMate = vps.find(vp => vp.id === presidentEntry.runningMateId);
+      } else if (vps.length > 0) {
+        // Fallback to the first available VP if no explicit relationship is found
+        runningMate = vps[0];
+        // Remove this VP from the available pool
+        vps.splice(0, 1);
+      }
+      
+      if (runningMate) {
+        // Create president-VP pair
         presidentVPPairs.push({
           ...president,
-          runningMate: vp
+          runningMate
         });
-        
-        // Remove this VP from the pool so they're not used again
-        vps.splice(0, 1);
       } else {
         // If no VP available, just show the president
         presidentVPPairs.push(president);
       }
     });
     
-    // If any VPs are left, show them separately
-    regularCandidates = vps;
+    // Any VP candidates not assigned as running mates should be shown separately
+    regularCandidates = vps.filter(vp => 
+      !presidentVPPairs.some(pair => pair.runningMate && pair.runningMate.id === vp.id)
+    );
   } else {
     // For senator elections, just show all candidates normally
     regularCandidates = combinedCandidates;

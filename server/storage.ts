@@ -89,6 +89,14 @@ export class MemStorage implements IStorage {
       faculty: 'ADMIN',
       isAdmin: true
     });
+    
+    // Add permanent student account
+    this.createUser({
+      email: 'balakbarli14184@ada.edu.az',
+      password: '$2b$10$8gvO.0jc/UF0I7NHDJwGyO/Frs76qPNlwXNsCeJHsjv.h2.IlCMSK', // 'Salam123@'
+      faculty: 'SITE',
+      isAdmin: false
+    });
   }
 
   async getUser(id: number): Promise<User | undefined> {
