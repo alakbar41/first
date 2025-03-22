@@ -95,8 +95,13 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
   
   // Second effect - Load vote counts for candidates from blockchain
   useEffect(() => {
+    // Only run if we have candidates data to prevent accessing it before initialization
+    if (!candidatesData || candidatesData.length === 0) {
+      return; // Early return if no candidates data yet
+    }
+    
     async function loadVoteCounts() {
-      if (isInitialized && election && candidatesData && candidatesData.length > 0) {
+      if (isInitialized && election) {
         try {
           const voteCountsMap: {[key: number]: number} = {};
           
