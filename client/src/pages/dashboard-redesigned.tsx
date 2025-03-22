@@ -6,8 +6,10 @@ import { Election } from "@shared/schema";
 import { ElectionDetailView } from "@/components/student/election-detail-view";
 import { ElectionCard } from "@/components/student/election-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -15,6 +17,7 @@ export default function Dashboard() {
   const [, navigate] = useLocation();
   const [currentElectionId, setCurrentElectionId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState("all");
+  const [selectedElection, setSelectedElection] = useState<Election | null>(null);
 
   // Fetch all elections
   const { data: elections, isLoading } = useQuery<Election[]>({
@@ -82,28 +85,27 @@ export default function Dashboard() {
   const filteredCompletedElections = filterElectionsByFaculty(completedElections);
   const filteredAllElections = [...filteredActiveElections, ...filteredUpcomingElections, ...filteredCompletedElections];
 
-  // Calculate the currently selected election
-  const selectedElection = currentElectionId 
-    ? elections?.find(e => e.id === currentElectionId)
-    : filteredActiveElections[0] || filteredUpcomingElections[0] || filteredCompletedElections[0];
+  // Update the selected election when currentElectionId changes
+  useEffect(() => {
+    if (currentElectionId && elections) {
+      const election = elections.find(e => e.id === currentElectionId);
+      if (election) {
+        setSelectedElection(election);
+      }
+    } else {
+      setSelectedElection(null);
+    }
+  }, [currentElectionId, elections]);
 
   // Handle election selection
   const handleElectionClick = (electionId: number) => {
     setCurrentElectionId(electionId);
   };
 
-  // Function to filter elections based on active tab
-  const getFilteredElections = () => {
-    switch (activeTab) {
-      case "active":
-        return filteredActiveElections;
-      case "upcoming":
-        return filteredUpcomingElections;
-      case "completed":
-        return filteredCompletedElections;
-      default:
-        return filteredAllElections;
-    }
+  // Handle back button click
+  const handleBackClick = () => {
+    setCurrentElectionId(null);
+    setSelectedElection(null);
   };
 
   return (
@@ -139,47 +141,60 @@ export default function Dashboard() {
               <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-700"></div>
             </div>
           ) : elections && elections.length > 0 ? (
-            <Tabs 
-              defaultValue="all" 
-              className="w-full"
-              onValueChange={(value) => setActiveTab(value)}
-            >
-              {/* Top navigation bar */}
-              <div className="bg-white p-4 rounded-lg shadow-sm mb-6">
-                <TabsList className="w-full grid grid-cols-4">
-                  <TabsTrigger value="all">
-                    All
-                    <span className="ml-1 px-1.5 py-0.5 text-xs bg-gray-100 text-gray-800 rounded-full">
-                      {filteredAllElections.length}
-                    </span>
-                  </TabsTrigger>
-                  <TabsTrigger value="active">
-                    Active
-                    <span className="ml-1 px-1.5 py-0.5 text-xs bg-green-100 text-green-800 rounded-full">
-                      {filteredActiveElections.length}
-                    </span>
-                  </TabsTrigger>
-                  <TabsTrigger value="upcoming">
-                    Upcoming
-                    <span className="ml-1 px-1.5 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-full">
-                      {filteredUpcomingElections.length}
-                    </span>
-                  </TabsTrigger>
-                  <TabsTrigger value="completed">
-                    Past
-                    <span className="ml-1 px-1.5 py-0.5 text-xs bg-gray-100 text-gray-800 rounded-full">
-                      {filteredCompletedElections.length}
-                    </span>
-                  </TabsTrigger>
-                </TabsList>
-              </div>
-
-              <div className="grid grid-cols-1 gap-6">
-                {/* Election content area - shows either list of elections or details of selected election */}
-                {selectedElection ? (
+            <>
+              {selectedElection ? (
+                <>
+                  {/* Back button when viewing election details */}
+                  <Button 
+                    variant="outline" 
+                    className="mb-4 flex items-center" 
+                    onClick={handleBackClick}
+                  >
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back to Elections
+                  </Button>
+                  
+                  {/* Election detail view */}
                   <ElectionDetailView election={selectedElection} />
-                ) : (
-                  <>
+                </>
+              ) : (
+                /* Elections list view with tabs */
+                <Tabs 
+                  defaultValue="all" 
+                  className="w-full"
+                  onValueChange={(value) => setActiveTab(value)}
+                >
+                  {/* Top navigation bar */}
+                  <div className="bg-white p-4 rounded-lg shadow-sm mb-6">
+                    <TabsList className="w-full grid grid-cols-4">
+                      <TabsTrigger value="all">
+                        All
+                        <span className="ml-1 px-1.5 py-0.5 text-xs bg-gray-100 text-gray-800 rounded-full">
+                          {filteredAllElections.length}
+                        </span>
+                      </TabsTrigger>
+                      <TabsTrigger value="active">
+                        Active
+                        <span className="ml-1 px-1.5 py-0.5 text-xs bg-green-100 text-green-800 rounded-full">
+                          {filteredActiveElections.length}
+                        </span>
+                      </TabsTrigger>
+                      <TabsTrigger value="upcoming">
+                        Upcoming
+                        <span className="ml-1 px-1.5 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-full">
+                          {filteredUpcomingElections.length}
+                        </span>
+                      </TabsTrigger>
+                      <TabsTrigger value="completed">
+                        Past
+                        <span className="ml-1 px-1.5 py-0.5 text-xs bg-gray-100 text-gray-800 rounded-full">
+                          {filteredCompletedElections.length}
+                        </span>
+                      </TabsTrigger>
+                    </TabsList>
+                  </div>
+  
+                  <div className="grid grid-cols-1 gap-6">
                     {/* All elections tab */}
                     <TabsContent value="all" className="mt-0 space-y-4">
                       {filteredAllElections.length === 0 ? (
@@ -193,7 +208,7 @@ export default function Dashboard() {
                               key={election.id}
                               election={election}
                               onClick={handleElectionClick}
-                              isSelected={selectedElection?.id === election.id}
+                              isSelected={false}
                             />
                           ))}
                         </div>
@@ -213,7 +228,7 @@ export default function Dashboard() {
                               key={election.id}
                               election={election}
                               onClick={handleElectionClick}
-                              isSelected={selectedElection?.id === election.id}
+                              isSelected={false}
                             />
                           ))}
                         </div>
@@ -233,7 +248,7 @@ export default function Dashboard() {
                               key={election.id}
                               election={election}
                               onClick={handleElectionClick}
-                              isSelected={selectedElection?.id === election.id}
+                              isSelected={false}
                             />
                           ))}
                         </div>
@@ -253,16 +268,16 @@ export default function Dashboard() {
                               key={election.id}
                               election={election}
                               onClick={handleElectionClick}
-                              isSelected={selectedElection?.id === election.id}
+                              isSelected={false}
                             />
                           ))}
                         </div>
                       )}
                     </TabsContent>
-                  </>
-                )}
-              </div>
-            </Tabs>
+                  </div>
+                </Tabs>
+              )}
+            </>
           ) : (
             <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-8 text-center">
               <p className="text-gray-500">No elections have been created yet.</p>
