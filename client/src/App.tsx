@@ -12,6 +12,7 @@ import AdminDashboard from "@/pages/admin-dashboard";
 import AdminCandidates from "@/pages/admin-candidates";
 import { ProtectedRoute, AdminProtectedRoute } from "./lib/protected-route";
 import { AuthProvider } from "./hooks/use-auth";
+import { Web3Provider } from "./hooks/use-web3";
 
 function Router() {
   return (
@@ -42,8 +43,10 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <Router />
-        <Toaster />
+        <Web3Provider>
+          <Router />
+          <Toaster />
+        </Web3Provider>
       </AuthProvider>
     </QueryClientProvider>
   );
