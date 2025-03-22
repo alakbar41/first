@@ -99,7 +99,11 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
 
   // Group candidates by position for President/VP elections
   const candidatesByPosition: Record<string, CandidateWithVotes[]> = {};
-  if (election.positions.includes("President") && election.positions.includes("Vice President")) {
+  
+  // Check if this is a President/VP election
+  const isPresidentVPElection = election.position === "President/VP";
+  
+  if (isPresidentVPElection) {
     combinedCandidates.forEach(candidate => {
       if (!candidatesByPosition[candidate.position]) {
         candidatesByPosition[candidate.position] = [];
@@ -108,20 +112,14 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
     });
   }
 
-  // Check if this is a President/VP election with paired candidates
-  const isPresidentVPElection = election.positions.includes("President") && 
-                               election.positions.includes("Vice President") &&
-                               Object.keys(candidatesByPosition).length > 0;
-
   return (
     <div className="space-y-6">
       {isPresidentVPElection ? (
         // President/VP paired display
         <div className="grid grid-cols-1 gap-6">
           {candidatesByPosition["President"]?.map(president => {
-            const runningMate = candidatesByPosition["Vice President"]?.find(
-              vp => vp.runningMateId === president.id
-            );
+            // For now, just use the first VP as a running mate (would be better with proper schema)
+            const runningMate = candidatesByPosition["Vice President"]?.[0];
             if (!runningMate) return null;
             
             const ticketVoted = votedCandidates[president.id] || votedCandidates[runningMate.id];

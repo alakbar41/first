@@ -22,7 +22,7 @@ export default function Results() {
       if (!response.ok) throw new Error("Failed to fetch elections");
       const elections = await response.json();
       return elections.filter((election: Election) => 
-        new Date(election.endTime) < new Date()
+        new Date(election.endDate) < new Date()
       );
     },
   });
