@@ -134,19 +134,13 @@ export function CandidatesTable({ candidates, onEdit, onDelete }: CandidatesTabl
               <TableCell>{getFacultyName(candidate.faculty)}</TableCell>
               <TableCell>{candidate.position}</TableCell>
               <TableCell>
-                <div className="flex items-center space-x-2">
-                  {renderStatusBadge(candidate.status)}
-                  {loadingElectionStatus[candidate.id] ? (
-                    <Badge className="bg-gray-100 text-gray-800 border border-gray-200">
-                      <span className="animate-pulse">Checking...</span>
-                    </Badge>
-                  ) : candidatesInElections[candidate.id] ? (
-                    <Badge className="bg-amber-100 text-amber-800 border border-amber-200">
-                      <AlertCircle className="h-3 w-3 mr-1" />
-                      In Election
-                    </Badge>
-                  ) : null}
-                </div>
+                {loadingElectionStatus[candidate.id] ? (
+                  <Badge className="bg-gray-100 text-gray-800 border border-gray-200">
+                    <span className="animate-pulse">Checking status...</span>
+                  </Badge>
+                ) : (
+                  renderStatusBadge(candidate.status, candidatesInElections[candidate.id] || false)
+                )}
               </TableCell>
               <TableCell className="text-right">
                 <DropdownMenu>
