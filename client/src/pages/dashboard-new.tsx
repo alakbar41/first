@@ -182,7 +182,7 @@ export default function Dashboard() {
                                 <div>
                                   <p className="font-medium text-gray-800">{election.name}</p>
                                   <p className="text-sm text-gray-500">
-                                    {election.positions.join(", ")}
+                                    {election.position}
                                   </p>
                                 </div>
                                 {getStatusBadge(election)}
@@ -212,7 +212,7 @@ export default function Dashboard() {
                                 <div>
                                   <p className="font-medium text-gray-800">{election.name}</p>
                                   <p className="text-sm text-gray-500">
-                                    {election.positions.join(", ")}
+                                    {election.position}
                                   </p>
                                 </div>
                                 {getStatusBadge(election)}
@@ -242,7 +242,7 @@ export default function Dashboard() {
                                 <div>
                                   <p className="font-medium text-gray-800">{election.name}</p>
                                   <p className="text-sm text-gray-500">
-                                    {election.positions.join(", ")}
+                                    {election.position}
                                   </p>
                                 </div>
                                 {getStatusBadge(election)}
@@ -288,7 +288,7 @@ export default function Dashboard() {
                             <div>
                               <p className="text-sm font-medium text-gray-500">Start Time</p>
                               <p className="text-sm text-gray-800">
-                                {formatDate(selectedElection.startTime)}
+                                {formatDate(selectedElection.startDate)}
                               </p>
                             </div>
                           </div>
@@ -298,7 +298,7 @@ export default function Dashboard() {
                             <div>
                               <p className="text-sm font-medium text-gray-500">End Time</p>
                               <p className="text-sm text-gray-800">
-                                {formatDate(selectedElection.endTime)}
+                                {formatDate(selectedElection.endDate)}
                               </p>
                             </div>
                           </div>
@@ -323,15 +323,15 @@ export default function Dashboard() {
                       </h3>
                       
                       {/* Only show vote UI for active elections */}
-                      {new Date(selectedElection.startTime) <= new Date() && 
-                       new Date(selectedElection.endTime) >= new Date() ? (
+                      {new Date(selectedElection.startDate) <= new Date() && 
+                       new Date(selectedElection.endDate) >= new Date() ? (
                         <ElectionCandidatesList election={selectedElection} />
-                      ) : new Date(selectedElection.startTime) > new Date() ? (
+                      ) : new Date(selectedElection.startDate) > new Date() ? (
                         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-blue-800 flex items-center">
                           <InfoIcon className="w-5 h-5 mr-2" />
                           <div>
                             <p className="font-medium">This election has not started yet</p>
-                            <p className="text-sm">Voting will be available once the election starts on {formatDate(selectedElection.startTime)}</p>
+                            <p className="text-sm">Voting will be available once the election starts on {formatDate(selectedElection.startDate)}</p>
                           </div>
                         </div>
                       ) : (
@@ -339,7 +339,7 @@ export default function Dashboard() {
                           <InfoIcon className="w-5 h-5 mr-2" />
                           <div>
                             <p className="font-medium">This election has ended</p>
-                            <p className="text-sm">Voting closed on {formatDate(selectedElection.endTime)}</p>
+                            <p className="text-sm">Voting closed on {formatDate(selectedElection.endDate)}</p>
                           </div>
                         </div>
                       )}
