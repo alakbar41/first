@@ -13,6 +13,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
+import { ElectionCandidatesList } from "./election-candidates-list-improved";
 
 interface ElectionDetailViewProps {
   election: Election;
