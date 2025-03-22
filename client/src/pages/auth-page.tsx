@@ -45,9 +45,13 @@ export default function AuthPage() {
     });
   };
 
-  // Redirect to dashboard if already logged in
+  // Redirect to appropriate dashboard if already logged in
   if (!isLoading && user) {
-    return <Redirect to="/" />;
+    if (user.isAdmin) {
+      return <Redirect to="/admin" />;
+    } else {
+      return <Redirect to="/" />;
+    }
   }
 
   return (

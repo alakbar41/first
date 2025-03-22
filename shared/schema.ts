@@ -37,6 +37,7 @@ export const pendingUsers = pgTable("pending_users", {
   otp: text("otp").notNull(),
   createdAt: timestamp("created_at").notNull(),
   isAdmin: boolean("is_admin").default(false).notNull(),
+  type: text("type").notNull().default("registration"), // "registration" or "reset"
 });
 
 export const elections = pgTable("elections", {

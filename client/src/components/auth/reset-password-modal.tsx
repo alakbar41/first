@@ -69,12 +69,17 @@ export function ResetPasswordModal({ open, onOpenChange }: ResetPasswordModalPro
   // Handle requesting a reset code
   const handleRequestReset = async (data: Step1Data) => {
     setEmail(data.email);
-    await resetPasswordSendOtpMutation.mutate({ 
-      email: data.email 
-    });
-    
-    // Move to reset step
-    setStep("reset");
+    try {
+      await resetPasswordSendOtpMutation.mutateAsync({ 
+        email: data.email 
+      });
+      
+      // Only move to reset step if API call was successful
+      setStep("reset");
+    } catch (error) {
+      // Error is already handled by the mutation
+      console.error("Failed to send reset OTP:", error);
+    }
   };
 
   // Handle reset password submission

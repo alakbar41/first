@@ -490,13 +490,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Generate OTP
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
-      await storage.updatePendingUserOtp(email, otp);
+      
+      // Check if pending user exists
+      const pendingUser = await storage.getPendingUserByEmail(email);
+      if (pendingUser) {
+        // Update existing pending user with new OTP
+        await storage.updatePendingUserOtp(email, otp);
+      } else {
+        // Create a new pending user for password reset with minimum required fields
+        await storage.createPendingUser({
+          email,
+          otp,
+          type: "reset",
+          password: "temporary", // This will be replaced when reset is complete
+          faculty: "none", // Not relevant for password reset
+          createdAt: new Date()
+        });
+      }
       
       // Send OTP to email
       await mailer.sendOtp(email, otp);
       
       res.status(200).json({ message: "OTP sent to email for password reset" });
     } catch (error) {
+      console.error("Password reset error:", error);
       res.status(500).json({ message: "Failed to initiate password reset" });
     }
   });
