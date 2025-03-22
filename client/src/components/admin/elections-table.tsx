@@ -1,6 +1,6 @@
 import { format } from "date-fns";
 import { MoreHorizontal, Edit, Trash, UserPlus, Users } from "lucide-react";
-import { Election } from "@shared/schema";
+import { Election, getFacultyName } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -99,7 +99,7 @@ export function ElectionsTable({ elections, onEdit, onDelete, onAddCandidates, o
                           variant="secondary" 
                           className="bg-purple-50 text-purple-800 border border-purple-100"
                         >
-                          {faculty}
+                          {getFacultyName(faculty)}
                         </Badge>
                       ))
                     )}

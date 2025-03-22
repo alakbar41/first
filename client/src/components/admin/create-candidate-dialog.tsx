@@ -31,7 +31,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2, Upload } from "lucide-react";
-import { FACULTIES, CANDIDATE_POSITIONS, insertCandidateSchema } from "@shared/schema";
+import { FACULTY_CODES, FACULTY_ABBREVIATIONS, CANDIDATE_POSITIONS, insertCandidateSchema, getFacultyName } from "@shared/schema";
 
 // Extend the candidate schema for the form
 const formSchema = insertCandidateSchema.extend({
@@ -55,7 +55,7 @@ export function CreateCandidateDialog({ open, onOpenChange }: CreateCandidateDia
     defaultValues: {
       fullName: "",
       studentId: "",
-      faculty: "School of IT and Engineering",
+      faculty: "SITE",
       position: "President",
       pictureUrl: "",
     },
@@ -218,9 +218,9 @@ export function CreateCandidateDialog({ open, onOpenChange }: CreateCandidateDia
                           <SelectValue placeholder="Select faculty" />
                         </SelectTrigger>
                         <SelectContent>
-                          {FACULTIES.map((faculty) => (
-                            <SelectItem key={faculty} value={faculty}>
-                              {faculty}
+                          {FACULTY_CODES.map((code) => (
+                            <SelectItem key={code} value={code}>
+                              {getFacultyName(code)}
                             </SelectItem>
                           ))}
                         </SelectContent>

@@ -1,4 +1,4 @@
-import { Candidate } from "@shared/schema";
+import { Candidate, getFacultyName } from "@shared/schema";
 import {
   Table,
   TableBody,
@@ -89,7 +89,7 @@ export function CandidatesTable({ candidates, onEdit, onDelete }: CandidatesTabl
               </TableCell>
               <TableCell className="font-medium">{candidate.fullName}</TableCell>
               <TableCell>{candidate.studentId}</TableCell>
-              <TableCell>{candidate.faculty}</TableCell>
+              <TableCell>{getFacultyName(candidate.faculty)}</TableCell>
               <TableCell>{candidate.position}</TableCell>
               <TableCell>{renderStatusBadge(candidate.status)}</TableCell>
               <TableCell className="text-right">
