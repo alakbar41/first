@@ -182,7 +182,43 @@ export class MemStorage implements IStorage {
   }
   
   async deleteElection(id: number): Promise<void> {
+    // First, identify all affected candidates in this election
+    const electionCandidates = await this.getElectionCandidates(id);
+    
+    // Track candidates and running mates affected by this deletion
+    const affectedCandidateIds = new Set<number>();
+    for (const ec of electionCandidates) {
+      affectedCandidateIds.add(ec.candidateId);
+      if (ec.runningMateId) {
+        affectedCandidateIds.add(ec.runningMateId);
+      }
+    }
+    
+    // Delete each election-candidate relationship
+    for (const ec of electionCandidates) {
+      this.electionCandidates.delete(ec.id);
+    }
+    
+    // Then delete the election itself
     this.elections.delete(id);
+    
+    // Now check each affected candidate to see if they're still in any elections
+    for (const candidateId of affectedCandidateIds) {
+      // Check if candidate is in any elections as either a main candidate or running mate
+      const isInOtherElections = Array.from(this.electionCandidates.values()).some(
+        ec => ec.candidateId === candidateId || ec.runningMateId === candidateId
+      );
+      
+      // If not in any elections, update status to inactive
+      if (!isInOtherElections) {
+        const candidate = this.candidates.get(candidateId);
+        if (candidate) {
+          candidate.status = "inactive";
+          candidate.updatedAt = new Date();
+          this.candidates.set(candidateId, candidate);
+        }
+      }
+    }
   }
   
   async updateElection(id: number, election: Partial<InsertElection>): Promise<Election> {

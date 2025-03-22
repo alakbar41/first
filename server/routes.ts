@@ -223,38 +223,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Candidate not found" });
       }
       
-      // Check if candidate is a main candidate in any election
-      const candidateElections = await storage.getCandidateElections(id);
-      
-      // Also check if candidate is used as a running mate in any election
+      // Get all election candidates first to filter properly
       const allElectionCandidates = await storage.getAllElectionCandidates();
-      const runningMateElectionIds = allElectionCandidates
-        .filter(ec => ec.runningMateId === id)
-        .map(ec => ec.electionId);
+      
+      // Check if candidate is a main candidate or running mate in any election
+      const involvedIn = allElectionCandidates.filter(
+        ec => ec.candidateId === id || ec.runningMateId === id
+      );
       
       // If not in any election (neither as main nor running mate)
-      if (candidateElections.length === 0 && runningMateElectionIds.length === 0) {
+      if (involvedIn.length === 0) {
         return res.json({ inElections: false, elections: [] });
       }
       
-      // Get unique election IDs from both sources
-      const uniqueElectionIds = new Set([
-        ...candidateElections.map(ce => ce.electionId),
-        ...runningMateElectionIds
-      ]);
-      
-      // Get full election details
-      const elections = await Promise.all(
-        Array.from(uniqueElectionIds).map(async (electionId) => {
-          return await storage.getElection(electionId);
-        })
+      // Get unique election IDs
+      const uniqueElectionIds = new Set(
+        involvedIn.map(ec => ec.electionId)
       );
       
-      res.json({ 
-        inElections: true, 
-        elections: elections.filter(e => e !== undefined) 
-      });
+      // Get full election details and verify they exist
+      const electionPromises = Array.from(uniqueElectionIds).map(
+        async (electionId) => await storage.getElection(electionId)
+      );
+      
+      const elections = (await Promise.all(electionPromises))
+        .filter(e => e !== undefined) as Election[];
+      
+      // If no valid elections found (all referenced elections were deleted)
+      if (elections.length === 0) {
+        // Update candidate status since they are not in any valid elections
+        if (candidate.status === "active") {
+          await storage.updateCandidateStatus(id, "inactive");
+        }
+        return res.json({ inElections: false, elections: [] });
+      }
+      
+      res.json({ inElections: true, elections });
     } catch (error) {
+      console.error("Error checking candidate elections:", error);
       res.status(500).json({ message: "Failed to check candidate elections" });
     }
   });
