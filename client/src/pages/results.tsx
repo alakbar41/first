@@ -3,13 +3,12 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { StudentSidebar } from "@/components/student/student-sidebar";
 import { Candidate, Election, ElectionCandidate, getFacultyName } from "@shared/schema";
-import { ChartBarIcon, ListOrderedIcon, Award, UserCircle, Trophy, CheckCircle2 } from "lucide-react";
+import { ChartBarIcon, ListOrderedIcon, Award, UserCircle, Trophy } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState, useMemo } from "react";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import React from "react";
 
 // Interface for candidate with votes
 interface CandidateWithVotes extends Candidate {
@@ -120,7 +119,7 @@ export default function Results() {
   const isPresidentVPElection = selectedElection?.position === "President/VP";
   
   const candidatePairs = useMemo(() => {
-    if (!isPresidentVPElection || !candidatesWithVotes) return [];
+    if (!isPresidentVPElection || !candidatesWithVotes.length) return [];
     
     const presidents = candidatesWithVotes.filter(c => c.position === "President");
     const vps = candidatesWithVotes.filter(c => c.position === "Vice President");
@@ -202,7 +201,7 @@ export default function Results() {
                       
                       <div className="h-80 bg-white rounded-md border border-gray-200 p-4">
                         {candidatesWithVotes && candidatesWithVotes.length > 0 ? (
-                          isPresidentVPElection ? (
+                          isPresidentVPElection && candidatePairs.length > 0 ? (
                             // President/VP election results visualization
                             <div className="h-full flex flex-col justify-center space-y-6">
                               {candidatePairs.map((candidate, index) => (
@@ -361,7 +360,7 @@ export default function Results() {
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
                             {candidatesWithVotes && candidatesWithVotes.length > 0 ? (
-                              isPresidentVPElection ? (
+                              isPresidentVPElection && candidatePairs.length > 0 ? (
                                 // Display President/VP pairs
                                 candidatePairs.map((candidate, index) => (
                                   <tr key={candidate.id} className={index === 0 ? "bg-purple-50" : ""}>
