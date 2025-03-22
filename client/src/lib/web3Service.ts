@@ -1,10 +1,5 @@
 import { ethers } from 'ethers';
-
-// We'll handle the contract ABI dynamically once it's compiled
-// For now, use a placeholder until the contract is compiled and deployed
-const CONTRACT_ABI: any[] = [
-  // This will be replaced with the actual ABI after compilation
-];
+import { CONTRACT_ABI } from './contract-abi';
 
 // Constants
 const POLYGON_AMOY_RPC_URL = 'https://rpc-amoy.polygon.technology';
