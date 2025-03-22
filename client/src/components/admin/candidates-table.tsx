@@ -19,12 +19,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useState, useEffect } from "react";
 import { apiRequest } from "@/lib/queryClient";
-import { 
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 interface CandidatesTableProps {
   candidates: Candidate[];
@@ -135,7 +129,21 @@ export function CandidatesTable({ candidates, onEdit, onDelete }: CandidatesTabl
               <TableCell>{candidate.studentId}</TableCell>
               <TableCell>{getFacultyName(candidate.faculty)}</TableCell>
               <TableCell>{candidate.position}</TableCell>
-              <TableCell>{renderStatusBadge(candidate.status)}</TableCell>
+              <TableCell>
+                <div className="flex items-center space-x-2">
+                  {renderStatusBadge(candidate.status)}
+                  {loadingElectionStatus[candidate.id] ? (
+                    <Badge className="bg-gray-100 text-gray-800 border border-gray-200">
+                      <span className="animate-pulse">Checking...</span>
+                    </Badge>
+                  ) : candidatesInElections[candidate.id] ? (
+                    <Badge className="bg-amber-100 text-amber-800 border border-amber-200">
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      In Election
+                    </Badge>
+                  ) : null}
+                </div>
+              </TableCell>
               <TableCell className="text-right">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -155,20 +163,15 @@ export function CandidatesTable({ candidates, onEdit, onDelete }: CandidatesTabl
                       Edit
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    {candidatesInElections[candidate.id] ? (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div className="flex items-center px-2 py-1.5 text-gray-400 cursor-not-allowed">
-                              <AlertCircle className="mr-2 h-4 w-4" />
-                              <span>Delete (Locked)</span>
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent side="left">
-                            <p className="text-xs max-w-[200px]">{electionTooltips[candidate.id]}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                    {loadingElectionStatus[candidate.id] ? (
+                      <div className="flex items-center px-2 py-1.5 text-gray-400 cursor-wait">
+                        <span className="animate-pulse">Checking...</span>
+                      </div>
+                    ) : candidatesInElections[candidate.id] ? (
+                      <div className="flex items-center px-2 py-1.5 text-gray-400 cursor-not-allowed">
+                        <AlertCircle className="mr-2 h-4 w-4" />
+                        <span>Delete (In Election)</span>
+                      </div>
                     ) : (
                       <DropdownMenuItem 
                         onClick={() => onDelete && onDelete(candidate.id)}
