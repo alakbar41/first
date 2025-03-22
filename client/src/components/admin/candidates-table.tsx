@@ -72,7 +72,11 @@ export function CandidatesTable({ candidates, onEdit, onDelete }: CandidatesTabl
   }
 
   // Function to render status badge with appropriate color
-  const renderStatusBadge = (status: string) => {
+  const renderStatusBadge = (status: string, isInElection: boolean) => {
+    if (isInElection) {
+      return <Badge className="bg-green-500 text-white hover:bg-green-600">Active (In Election)</Badge>;
+    }
+    
     switch (status.toLowerCase()) {
       case 'active':
         return <Badge className="bg-green-500 text-white hover:bg-green-600">Active</Badge>;

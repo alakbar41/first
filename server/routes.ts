@@ -191,7 +191,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Check if a candidate is in any election
+  // Check if a candidate is in any election (either as main candidate or running mate)
   app.get("/api/candidates/:id/in-elections", isAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -201,17 +201,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Candidate not found" });
       }
       
+      // Check if candidate is a main candidate in any election
       const candidateElections = await storage.getCandidateElections(id);
       
-      if (candidateElections.length === 0) {
+      // Also check if candidate is used as a running mate in any election
+      const allElectionCandidates = await storage.getAllElectionCandidates();
+      const runningMateElectionIds = allElectionCandidates
+        .filter(ec => ec.runningMateId === id)
+        .map(ec => ec.electionId);
+      
+      // If not in any election (neither as main nor running mate)
+      if (candidateElections.length === 0 && runningMateElectionIds.length === 0) {
         return res.json({ inElections: false, elections: [] });
       }
       
+      // Get unique election IDs from both sources
+      const uniqueElectionIds = new Set([
+        ...candidateElections.map(ce => ce.electionId),
+        ...runningMateElectionIds
+      ]);
+      
       // Get full election details
       const elections = await Promise.all(
-        candidateElections.map(async (ce) => {
-          const election = await storage.getElection(ce.electionId);
-          return election;
+        Array.from(uniqueElectionIds).map(async (electionId) => {
+          return await storage.getElection(electionId);
         })
       );
       
