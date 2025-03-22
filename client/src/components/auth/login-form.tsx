@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -8,7 +8,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Eye, EyeOff, Mail, Lock, AlertCircle } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, AlertCircle, Clock } from "lucide-react";
 
 const formSchema = z.object({
   email: z.string().email("Invalid email address").refine(
@@ -23,6 +23,9 @@ export default function LoginForm() {
   const { loginMutation } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState("");
+  const [lockoutTime, setLockoutTime] = useState<number | null>(null);
+  const [timeRemaining, setTimeRemaining] = useState(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -32,8 +35,46 @@ export default function LoginForm() {
       userType: "student"
     },
   });
+  
+  // Handle countdown timer for login attempts
+  useEffect(() => {
+    if (lockoutTime) {
+      const updateTimer = () => {
+        const now = Math.floor(Date.now() / 1000);
+        const remaining = Math.max(0, lockoutTime - now);
+        
+        setTimeRemaining(remaining);
+        
+        if (remaining <= 0) {
+          setLockoutTime(null);
+          if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+          }
+        }
+      };
+      
+      // Initial update
+      updateTimer();
+      
+      // Set up interval
+      timerRef.current = setInterval(updateTimer, 1000);
+      
+      // Clean up
+      return () => {
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+          timerRef.current = null;
+        }
+      };
+    }
+  }, [lockoutTime]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (lockoutTime) {
+      return; // Don't submit if locked out
+    }
+    
     setLoginError("");
     try {
       await loginMutation.mutateAsync({
@@ -41,8 +82,32 @@ export default function LoginForm() {
         password: values.password,
         isAdmin: values.userType === "admin"
       });
-    } catch (error) {
-      if (error instanceof Error) {
+    } catch (error: any) {
+      // Check if it's a rate limiting error (429 Too Many Requests)
+      if (error.message?.includes("Too many failed login attempts")) {
+        // Try to extract retry time from error message
+        const retryMatch = error.message.match(/try again (in|after) (\d+)/i);
+        const secondsMatch = error.message.match(/(\d+) seconds/i);
+        const minutesMatch = error.message.match(/(\d+) minutes/i);
+        
+        let retryAfterSeconds = 300; // Default to 5 minutes (300 seconds)
+        
+        if (error.retryAfter) {
+          // If API returns retryAfter directly
+          retryAfterSeconds = error.retryAfter;
+        } else if (secondsMatch && secondsMatch[1]) {
+          retryAfterSeconds = parseInt(secondsMatch[1], 10);
+        } else if (minutesMatch && minutesMatch[1]) {
+          retryAfterSeconds = parseInt(minutesMatch[1], 10) * 60;
+        } else if (retryMatch && retryMatch[2]) {
+          retryAfterSeconds = parseInt(retryMatch[2], 10);
+        }
+        
+        // Set lockout time
+        const now = Math.floor(Date.now() / 1000);
+        setLockoutTime(now + retryAfterSeconds);
+        setLoginError("Too many failed login attempts. Please try again later.");
+      } else if (error instanceof Error) {
         setLoginError(error.message);
       } else {
         setLoginError("An unknown error occurred. Please try again.");
@@ -68,13 +133,13 @@ export default function LoginForm() {
               >
                 <FormItem className="flex items-center space-x-2">
                   <FormControl>
-                    <RadioGroupItem value="student" id="student" />
+                    <RadioGroupItem value="student" id="student" disabled={lockoutTime !== null && timeRemaining > 0} />
                   </FormControl>
                   <FormLabel htmlFor="student" className="text-gray-700">Student</FormLabel>
                 </FormItem>
                 <FormItem className="flex items-center space-x-2">
                   <FormControl>
-                    <RadioGroupItem value="admin" id="admin" />
+                    <RadioGroupItem value="admin" id="admin" disabled={lockoutTime !== null && timeRemaining > 0} />
                   </FormControl>
                   <FormLabel htmlFor="admin" className="text-gray-700">Admin</FormLabel>
                 </FormItem>
@@ -97,6 +162,7 @@ export default function LoginForm() {
                     placeholder="yourname@ada.edu.az"
                     className="pl-10"
                     type="email"
+                    disabled={lockoutTime !== null && timeRemaining > 0}
                     {...field}
                   />
                 </FormControl>
@@ -120,6 +186,7 @@ export default function LoginForm() {
                     placeholder="Enter your password"
                     className="pl-10 pr-10"
                     type={showPassword ? "text" : "password"}
+                    disabled={lockoutTime !== null && timeRemaining > 0}
                     {...field}
                   />
                 </FormControl>
@@ -150,11 +217,24 @@ export default function LoginForm() {
           </Alert>
         )}
         
+        {/* Lockout Timer */}
+        {lockoutTime && timeRemaining > 0 && (
+          <Alert className="mt-4 bg-amber-50 border-amber-200">
+            <Clock className="h-4 w-4 text-amber-600" />
+            <AlertDescription className="text-amber-700">
+              <span className="font-medium">Account temporarily locked.</span> Too many failed attempts.
+              <div className="mt-1 text-sm">
+                Please try again in: {Math.floor(timeRemaining / 60)}:{(timeRemaining % 60).toString().padStart(2, '0')}
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+        
         {/* Submit Button */}
         <Button 
           type="submit" 
           className="w-full bg-[#005A9C] hover:bg-[#004A80]"
-          disabled={loginMutation.isPending}
+          disabled={loginMutation.isPending || (lockoutTime !== null && timeRemaining > 0)}
         >
           {loginMutation.isPending ? (
             <span className="flex items-center justify-center">
