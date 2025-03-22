@@ -106,7 +106,10 @@ export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
 });
 
-export const insertPendingUserSchema = createInsertSchema(pendingUsers);
+export const insertPendingUserSchema = createInsertSchema(pendingUsers)
+  .extend({
+    type: z.enum(["registration", "reset"]).default("registration")
+  });
 
 export const insertElectionSchema = createInsertSchema(elections)
   .omit({

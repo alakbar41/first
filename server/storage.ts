@@ -124,6 +124,7 @@ export class MemStorage implements IStorage {
       password: user.password,
       faculty: user.faculty,
       otp: user.otp,
+      type: user.type || 'registration',
       createdAt: user.createdAt instanceof Date ? user.createdAt : new Date(user.createdAt),
       isAdmin: user.isAdmin ?? false
     };
@@ -347,6 +348,49 @@ export class MemStorage implements IStorage {
     return newElectionCandidate;
   }
   
+  async getAllElectionCandidates(): Promise<ElectionCandidate[]> {
+    return Array.from(this.electionCandidates.values());
+  }
+  
+  async resetCandidateIds(): Promise<void> {
+    // Get all candidates sorted by ID
+    const sortedCandidates = Array.from(this.candidates.values())
+      .sort((a, b) => a.id - b.id);
+    
+    // Create a new map for the reorganized candidates
+    const newCandidatesMap = new Map<number, Candidate>();
+    
+    // Reassign IDs sequentially
+    let newId = 1;
+    for (const candidate of sortedCandidates) {
+      const updatedCandidate = { ...candidate, id: newId };
+      newCandidatesMap.set(newId, updatedCandidate);
+      
+      // Update the candidate's ID in all election-candidate relationships
+      const relatedElectionCandidates = Array.from(this.electionCandidates.values())
+        .filter(ec => ec.candidateId === candidate.id || ec.runningMateId === candidate.id);
+      
+      for (const ec of relatedElectionCandidates) {
+        if (ec.candidateId === candidate.id) {
+          ec.candidateId = newId;
+        }
+        if (ec.runningMateId === candidate.id) {
+          ec.runningMateId = newId;
+        }
+        
+        this.electionCandidates.set(ec.id, ec);
+      }
+      
+      newId++;
+    }
+    
+    // Replace the old map with the new one
+    this.candidates = newCandidatesMap;
+    
+    // Update current ID counter
+    this.currentCandidateId = newId;
+  }
+
   async removeCandidateFromElection(electionId: number, candidateId: number): Promise<void> {
     // Find the election-candidate entry
     const entry = Array.from(this.electionCandidates.values()).find(
