@@ -233,10 +233,7 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
 
   return (
     <div className="space-y-6">
-      {/* Status message */}
-      <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-        {getElectionStatusMessage()}
-      </div>
+      {/* We removed the status message here as it's already shown in the parent component */}
       
       {isPresidentVPElection && presidentVPPairs.length > 0 ? (
         // President/VP paired display
@@ -358,7 +355,7 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                         <>Voting not available</>
                       ) : (
                         <>
-                          Vote for this Ticket
+                          Vote for {president.fullName} {runningMate ? `& ${runningMate.fullName}` : ''}
                         </>
                       )}
                     </Button>
