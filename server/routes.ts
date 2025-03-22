@@ -78,6 +78,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Update an election (full update)
+  app.patch("/api/elections/:id", isAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid election ID" });
+      }
+      
+      const election = await storage.getElection(id);
+      if (!election) {
+        return res.status(404).json({ message: "Election not found" });
+      }
+      
+      const updatedElection = await storage.updateElection(id, req.body);
+      res.json(updatedElection);
+    } catch (error) {
+      console.error("Error updating election:", error);
+      res.status(500).json({ message: "Failed to update election" });
+    }
+  });
+  
+  // Update just the status of an election
   app.patch("/api/elections/:id/status", isAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
