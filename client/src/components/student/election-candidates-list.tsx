@@ -248,13 +248,17 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                     <Button 
                       disabled={ticketVoting || !isElectionActive()}
                       onClick={() => handleVote(president.id)} 
-                      className="bg-gradient-to-r from-purple-700 to-purple-600 hover:from-purple-800 hover:to-purple-700 shadow-md"
+                      className={`${isElectionActive() 
+                        ? "bg-gradient-to-r from-purple-700 to-purple-600 hover:from-purple-800 hover:to-purple-700 shadow-md" 
+                        : "bg-gray-300 text-gray-600 cursor-not-allowed"}`}
                     >
                       {ticketVoting ? (
                         <>
                           <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
                           Processing vote...
                         </>
+                      ) : !isElectionActive() ? (
+                        <>Voting not available</>
                       ) : (
                         <>
                           Vote for this Ticket
@@ -334,14 +338,18 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                       ) : (
                         <Button
                           onClick={() => handleVote(candidate.id)}
-                          disabled={isProcessingVote}
-                          className="w-full bg-gradient-to-r from-purple-700 to-purple-600 hover:from-purple-800 hover:to-purple-700 shadow-md"
+                          disabled={isProcessingVote || !isElectionActive()}
+                          className={`w-full ${isElectionActive() 
+                            ? "bg-gradient-to-r from-purple-700 to-purple-600 hover:from-purple-800 hover:to-purple-700 shadow-md" 
+                            : "bg-gray-300 text-gray-600 cursor-not-allowed"}`}
                         >
                           {isProcessingVote ? (
                             <>
                               <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
                               Processing vote...
                             </>
+                          ) : !isElectionActive() ? (
+                            <>Voting not available</>
                           ) : (
                             <>Vote for {candidate.fullName}</>
                           )}
