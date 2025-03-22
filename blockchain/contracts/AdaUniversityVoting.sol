@@ -2,20 +2,22 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/utils/Pausable.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 
 /**
  * @title AdaUniversityVoting
- * @dev Smart contract for the ADA University Voting System
- * Handles both Senator elections and President/VP elections
+ * @dev Smart contract for managing university elections on blockchain
  */
-contract AdaUniversityVoting is Ownable, ReentrancyGuard, Pausable {
-    // Enums
+contract AdaUniversityVoting is Ownable {
+    using Strings for uint256;
+    
+    // Election types
     enum ElectionType { Senator, PresidentVP }
+    
+    // Election statuses
     enum ElectionStatus { Pending, Active, Completed, Cancelled }
-
-    // Structs
+    
+    // Election structure
     struct Election {
         uint256 id;
         string name;
@@ -23,505 +25,362 @@ contract AdaUniversityVoting is Ownable, ReentrancyGuard, Pausable {
         ElectionStatus status;
         uint256 startTime;
         uint256 endTime;
-        string eligibleFaculties; // Comma-separated list of faculty codes
+        string eligibleFaculties; // Comma-separated faculty codes
         uint256 totalVotesCast;
         bool resultsFinalized;
     }
-
+    
+    // Candidate structure
     struct Candidate {
         uint256 id;
         string studentId;
         string faculty;
         uint256 voteCount;
     }
-
+    
+    // President/VP ticket structure
     struct PresidentVPTicket {
-        uint256 ticketId;     // Generated hash of president and VP IDs
-        uint256 presidentId;
-        uint256 vpId;
+        uint256 ticketId;
+        uint256 presidentId; // References candidateId
+        uint256 vpId;        // References candidateId
         uint256 voteCount;
     }
-
-    // Storage
+    
+    // Storage variables
+    uint256 private nextElectionId = 1;
+    uint256 private nextCandidateId = 1;
+    uint256 private nextTicketId = 1;
+    
+    // Main data structures
     mapping(uint256 => Election) public elections;
     mapping(uint256 => Candidate) public candidates;
     mapping(uint256 => PresidentVPTicket) public presidentVPTickets;
     
-    // Mapping from election ID to candidate IDs in that election
-    mapping(uint256 => uint256[]) public electionCandidates;
-    
-    // Mapping from election ID to president/VP tickets in that election
-    mapping(uint256 => uint256[]) public electionTickets;
-    
-    // Mapping to track if a voter has participated in an election
-    // election ID => voter address => has voted
-    mapping(uint256 => mapping(address => bool)) public hasVoted;
-    
-    // Election counter
-    uint256 public electionCount;
-    
-    // Candidate counter
-    uint256 public candidateCount;
-    
-    // Ticket counter
-    uint256 public ticketCount;
+    // Relations between entities
+    mapping(uint256 => uint256[]) private electionCandidates; // electionId => candidateIds
+    mapping(uint256 => uint256[]) private electionTickets; // electionId => ticketIds
+    mapping(uint256 => mapping(address => bool)) private hasVoted; // electionId => voter => hasVoted
     
     // Events
-    event ElectionCreated(uint256 indexed electionId, string name, ElectionType electionType);
-    event ElectionStatusChanged(uint256 indexed electionId, ElectionStatus status);
-    event CandidateAdded(uint256 indexed candidateId, string studentId, string faculty);
-    event CandidateAddedToElection(uint256 indexed electionId, uint256 indexed candidateId);
+    event ElectionCreated(uint256 indexed electionId, string name, uint8 electionType);
+    event ElectionStatusChanged(uint256 indexed electionId, uint8 status);
+    event CandidateRegistered(uint256 indexed candidateId, string studentId, string faculty);
     event TicketCreated(uint256 indexed ticketId, uint256 presidentId, uint256 vpId);
-    event TicketAddedToElection(uint256 indexed electionId, uint256 indexed ticketId);
     event VoteCast(uint256 indexed electionId, address indexed voter);
-    event ElectionResultsFinalized(uint256 indexed electionId);
-
+    event ResultsFinalized(uint256 indexed electionId);
+    
     /**
-     * @dev Constructor sets the contract owner
+     * @dev Constructor sets contract deployer as the owner
      */
-    constructor() Ownable(msg.sender) {
-        // Initialize counters
-        electionCount = 0;
-        candidateCount = 0;
-        ticketCount = 0;
-    }
-
+    constructor() Ownable(msg.sender) {}
+    
+    // Modifiers
+    
     /**
-     * @dev Modifier to check if an election exists
-     * @param _electionId The ID of the election
+     * @dev Ensures an election exists
      */
-    modifier electionExists(uint256 _electionId) {
-        require(_electionId > 0 && _electionId <= electionCount, "Election does not exist");
+    modifier electionExists(uint256 electionId) {
+        require(elections[electionId].id == electionId, "Election does not exist");
         _;
     }
-
+    
     /**
-     * @dev Modifier to check if an election is active
-     * @param _electionId The ID of the election
+     * @dev Ensures an election is active
      */
-    modifier electionIsActive(uint256 _electionId) {
-        require(elections[_electionId].status == ElectionStatus.Active, "Election is not active");
-        require(block.timestamp >= elections[_electionId].startTime, "Election has not started yet");
-        require(block.timestamp <= elections[_electionId].endTime, "Election has ended");
+    modifier electionActive(uint256 electionId) {
+        require(
+            elections[electionId].status == ElectionStatus.Active,
+            "Election is not active"
+        );
         _;
     }
-
+    
     /**
-     * @dev Modifier to check if a candidate exists
-     * @param _candidateId The ID of the candidate
+     * @dev Ensures an election is not finalized
      */
-    modifier candidateExists(uint256 _candidateId) {
-        require(_candidateId > 0 && _candidateId <= candidateCount, "Candidate does not exist");
+    modifier resultsNotFinalized(uint256 electionId) {
+        require(
+            !elections[electionId].resultsFinalized,
+            "Results are already finalized"
+        );
         _;
     }
-
+    
     /**
-     * @dev Modifier to check if a ticket exists
-     * @param _ticketId The ID of the ticket
+     * @dev Ensures voter has not voted in this election
      */
-    modifier ticketExists(uint256 _ticketId) {
-        require(_ticketId > 0 && _ticketId <= ticketCount, "Ticket does not exist");
+    modifier hasNotVoted(uint256 electionId) {
+        require(!hasVoted[electionId][msg.sender], "Already voted in this election");
         _;
     }
-
+    
     /**
-     * @dev Modifier to check if a voter has already voted in an election
-     * @param _electionId The ID of the election
+     * @dev Ensures a candidate exists
      */
-    modifier hasNotVoted(uint256 _electionId) {
-        require(!hasVoted[_electionId][msg.sender], "You have already voted in this election");
+    modifier candidateExists(uint256 candidateId) {
+        require(candidates[candidateId].id == candidateId, "Candidate does not exist");
         _;
     }
-
+    
+    /**
+     * @dev Ensures a ticket exists
+     */
+    modifier ticketExists(uint256 ticketId) {
+        require(presidentVPTickets[ticketId].ticketId == ticketId, "Ticket does not exist");
+        _;
+    }
+    
+    // Election Management Functions
+    
     /**
      * @dev Create a new election
-     * @param _name Name of the election
-     * @param _electionType Type of the election (Senator or PresidentVP)
-     * @param _startTime Start time of the election (unix timestamp)
-     * @param _endTime End time of the election (unix timestamp)
-     * @param _eligibleFaculties Comma-separated list of eligible faculty codes
-     * @return The ID of the newly created election
      */
     function createElection(
-        string memory _name,
-        ElectionType _electionType,
-        uint256 _startTime,
-        uint256 _endTime,
-        string memory _eligibleFaculties
-    ) public onlyOwner whenNotPaused returns (uint256) {
-        require(_startTime > block.timestamp, "Start time must be in the future");
-        require(_endTime > _startTime, "End time must be after start time");
+        string memory name,
+        uint8 electionType,
+        uint256 startTime,
+        uint256 endTime,
+        string memory eligibleFaculties
+    ) external onlyOwner returns (uint256) {
+        require(startTime < endTime, "End time must be after start time");
+        require(endTime > block.timestamp, "End time must be in the future");
         
-        electionCount++;
+        uint256 electionId = nextElectionId++;
         
-        elections[electionCount] = Election({
-            id: electionCount,
-            name: _name,
-            electionType: _electionType,
+        elections[electionId] = Election({
+            id: electionId,
+            name: name,
+            electionType: ElectionType(electionType),
             status: ElectionStatus.Pending,
-            startTime: _startTime,
-            endTime: _endTime,
-            eligibleFaculties: _eligibleFaculties,
+            startTime: startTime,
+            endTime: endTime,
+            eligibleFaculties: eligibleFaculties,
             totalVotesCast: 0,
             resultsFinalized: false
         });
         
-        emit ElectionCreated(electionCount, _name, _electionType);
+        emit ElectionCreated(electionId, name, electionType);
         
-        return electionCount;
+        return electionId;
     }
-
+    
     /**
-     * @dev Update the status of an election
-     * @param _electionId The ID of the election
-     * @param _status The new status to set
+     * @dev Update an election's status
      */
-    function updateElectionStatus(uint256 _electionId, ElectionStatus _status) 
-        public 
+    function updateElectionStatus(uint256 electionId, uint8 status) 
+        external 
         onlyOwner 
-        electionExists(_electionId) 
-        whenNotPaused 
+        electionExists(electionId) 
     {
-        require(_status != elections[_electionId].status, "New status must be different");
-        
-        // If finalizing, make sure election has ended
-        if (_status == ElectionStatus.Completed) {
-            require(block.timestamp > elections[_electionId].endTime, "Election has not ended yet");
-        }
-        
-        elections[_electionId].status = _status;
-        
-        emit ElectionStatusChanged(_electionId, _status);
+        elections[electionId].status = ElectionStatus(status);
+        emit ElectionStatusChanged(electionId, status);
     }
-
+    
     /**
-     * @dev Add a new candidate
-     * @param _studentId University student ID of the candidate
-     * @param _faculty Faculty code of the candidate
-     * @return The ID of the newly created candidate
+     * @dev Finalize the results of an election
      */
-    function addCandidate(string memory _studentId, string memory _faculty) 
-        public 
+    function finalizeResults(uint256 electionId) 
+        external 
         onlyOwner 
-        whenNotPaused 
-        returns (uint256) 
+        electionExists(electionId)
+        resultsNotFinalized(electionId)
     {
-        candidateCount++;
-        
-        candidates[candidateCount] = Candidate({
-            id: candidateCount,
-            studentId: _studentId,
-            faculty: _faculty,
-            voteCount: 0
-        });
-        
-        emit CandidateAdded(candidateCount, _studentId, _faculty);
-        
-        return candidateCount;
-    }
-
-    /**
-     * @dev Add a candidate to an election
-     * @param _electionId The ID of the election
-     * @param _candidateId The ID of the candidate
-     */
-    function addCandidateToElection(uint256 _electionId, uint256 _candidateId) 
-        public 
-        onlyOwner 
-        electionExists(_electionId) 
-        candidateExists(_candidateId) 
-        whenNotPaused 
-    {
-        // Check if election is still in Pending or Active status
+        // Ensure election is completed
         require(
-            elections[_electionId].status == ElectionStatus.Pending || 
-            elections[_electionId].status == ElectionStatus.Active, 
-            "Election must be pending or active"
+            elections[electionId].status == ElectionStatus.Completed,
+            "Election must be completed to finalize results"
         );
         
-        // Check if candidate is already in this election
-        bool candidateAlreadyAdded = false;
-        for (uint i = 0; i < electionCandidates[_electionId].length; i++) {
-            if (electionCandidates[_electionId][i] == _candidateId) {
-                candidateAlreadyAdded = true;
-                break;
-            }
-        }
-        require(!candidateAlreadyAdded, "Candidate already added to this election");
-        
-        // Add candidate to the election
-        electionCandidates[_electionId].push(_candidateId);
-        
-        emit CandidateAddedToElection(_electionId, _candidateId);
+        elections[electionId].resultsFinalized = true;
+        emit ResultsFinalized(electionId);
     }
-
+    
+    // Candidate Management Functions
+    
     /**
-     * @dev Create a President/VP ticket
-     * @param _presidentId The ID of the President candidate
-     * @param _vpId The ID of the Vice President candidate
-     * @return The ID of the newly created ticket
+     * @dev Register a new candidate
      */
-    function createPresidentVPTicket(uint256 _presidentId, uint256 _vpId) 
-        public 
-        onlyOwner 
-        candidateExists(_presidentId) 
-        candidateExists(_vpId) 
-        whenNotPaused 
-        returns (uint256) 
-    {
-        require(_presidentId != _vpId, "President and VP cannot be the same person");
+    function registerCandidate(
+        string memory studentId,
+        string memory faculty
+    ) external onlyOwner returns (uint256) {
+        uint256 candidateId = nextCandidateId++;
         
-        ticketCount++;
-        
-        // Generate a unique ticket ID based on the two candidate IDs
-        uint256 uniqueTicketId = uint256(keccak256(abi.encodePacked(_presidentId, _vpId)));
-        
-        presidentVPTickets[ticketCount] = PresidentVPTicket({
-            ticketId: uniqueTicketId,
-            presidentId: _presidentId,
-            vpId: _vpId,
+        candidates[candidateId] = Candidate({
+            id: candidateId,
+            studentId: studentId,
+            faculty: faculty,
             voteCount: 0
         });
         
-        emit TicketCreated(ticketCount, _presidentId, _vpId);
+        emit CandidateRegistered(candidateId, studentId, faculty);
         
-        return ticketCount;
+        return candidateId;
     }
-
+    
     /**
-     * @dev Add a President/VP ticket to an election
-     * @param _electionId The ID of the election
-     * @param _ticketId The ID of the ticket
+     * @dev Add a candidate to an election
      */
-    function addTicketToElection(uint256 _electionId, uint256 _ticketId) 
-        public 
+    function addCandidateToElection(uint256 electionId, uint256 candidateId) 
+        external 
         onlyOwner 
-        electionExists(_electionId) 
-        ticketExists(_ticketId)
-        whenNotPaused 
+        electionExists(electionId)
+        candidateExists(candidateId)
+    {
+        // Ensure election is not active or completed
+        require(
+            elections[electionId].status == ElectionStatus.Pending,
+            "Cannot add candidates to active or completed elections"
+        );
+        
+        // Add candidate to election
+        electionCandidates[electionId].push(candidateId);
+    }
+    
+    /**
+     * @dev Create a President/VP ticket
+     */
+    function createPresidentVPTicket(
+        uint256 electionId,
+        uint256 presidentId,
+        uint256 vpId
+    ) 
+        external 
+        onlyOwner 
+        electionExists(electionId)
+        candidateExists(presidentId)
+        candidateExists(vpId)
     {
         // Ensure election is of type PresidentVP
         require(
-            elections[_electionId].electionType == ElectionType.PresidentVP, 
+            elections[electionId].electionType == ElectionType.PresidentVP,
             "Election must be of type PresidentVP"
         );
         
-        // Check if election is still in Pending or Active status
+        // Ensure election is not active or completed
         require(
-            elections[_electionId].status == ElectionStatus.Pending || 
-            elections[_electionId].status == ElectionStatus.Active, 
-            "Election must be pending or active"
+            elections[electionId].status == ElectionStatus.Pending,
+            "Cannot create tickets for active or completed elections"
         );
         
-        // Check if ticket is already in this election
-        bool ticketAlreadyAdded = false;
-        for (uint i = 0; i < electionTickets[_electionId].length; i++) {
-            if (electionTickets[_electionId][i] == _ticketId) {
-                ticketAlreadyAdded = true;
-                break;
-            }
-        }
-        require(!ticketAlreadyAdded, "Ticket already added to this election");
+        // Ensure president and VP are different candidates
+        require(presidentId != vpId, "President and VP must be different candidates");
         
-        // Add ticket to the election
-        electionTickets[_electionId].push(_ticketId);
+        uint256 ticketId = nextTicketId++;
         
-        emit TicketAddedToElection(_electionId, _ticketId);
+        presidentVPTickets[ticketId] = PresidentVPTicket({
+            ticketId: ticketId,
+            presidentId: presidentId,
+            vpId: vpId,
+            voteCount: 0
+        });
+        
+        // Add ticket to election
+        electionTickets[electionId].push(ticketId);
+        
+        emit TicketCreated(ticketId, presidentId, vpId);
     }
-
+    
+    // Voting Functions
+    
     /**
-     * @dev Cast a vote for a candidate in a Senator election
-     * @param _electionId The ID of the election
-     * @param _candidateId The ID of the candidate
+     * @dev Vote for a senator candidate
      */
-    function voteForSenator(uint256 _electionId, uint256 _candidateId) 
-        public 
-        electionExists(_electionId)
-        candidateExists(_candidateId)
-        electionIsActive(_electionId)
-        hasNotVoted(_electionId)
-        whenNotPaused
-        nonReentrant
+    function voteForSenator(uint256 electionId, uint256 candidateId) 
+        external 
+        electionExists(electionId)
+        electionActive(electionId)
+        candidateExists(candidateId)
+        hasNotVoted(electionId)
+        returns (bool)
     {
         // Ensure election is of type Senator
         require(
-            elections[_electionId].electionType == ElectionType.Senator, 
+            elections[electionId].electionType == ElectionType.Senator,
             "Election must be of type Senator"
         );
         
         // Ensure candidate is part of this election
-        bool candidateInElection = false;
-        for (uint i = 0; i < electionCandidates[_electionId].length; i++) {
-            if (electionCandidates[_electionId][i] == _candidateId) {
-                candidateInElection = true;
+        bool isCandidateInElection = false;
+        uint256[] memory candidateIds = electionCandidates[electionId];
+        for (uint256 i = 0; i < candidateIds.length; i++) {
+            if (candidateIds[i] == candidateId) {
+                isCandidateInElection = true;
                 break;
             }
         }
-        require(candidateInElection, "Candidate is not part of this election");
+        require(isCandidateInElection, "Candidate is not part of this election");
         
         // Record the vote
-        candidates[_candidateId].voteCount++;
-        elections[_electionId].totalVotesCast++;
+        candidates[candidateId].voteCount++;
         
-        // Mark voter as having voted in this election
-        hasVoted[_electionId][msg.sender] = true;
+        // Mark voter as having voted
+        hasVoted[electionId][msg.sender] = true;
         
-        emit VoteCast(_electionId, msg.sender);
+        // Update total votes
+        elections[electionId].totalVotesCast++;
+        
+        emit VoteCast(electionId, msg.sender);
+        
+        return true;
     }
-
+    
     /**
-     * @dev Cast a vote for a President/VP ticket
-     * @param _electionId The ID of the election
-     * @param _ticketId The ID of the ticket
+     * @dev Vote for a President/VP ticket
      */
-    function voteForPresidentVP(uint256 _electionId, uint256 _ticketId) 
-        public 
-        electionExists(_electionId)
-        ticketExists(_ticketId)
-        electionIsActive(_electionId)
-        hasNotVoted(_electionId)
-        whenNotPaused
-        nonReentrant
+    function voteForPresidentVP(uint256 electionId, uint256 ticketId) 
+        external 
+        electionExists(electionId)
+        electionActive(electionId)
+        ticketExists(ticketId)
+        hasNotVoted(electionId)
+        returns (bool)
     {
         // Ensure election is of type PresidentVP
         require(
-            elections[_electionId].electionType == ElectionType.PresidentVP, 
+            elections[electionId].electionType == ElectionType.PresidentVP,
             "Election must be of type PresidentVP"
         );
         
         // Ensure ticket is part of this election
-        bool ticketInElection = false;
-        for (uint i = 0; i < electionTickets[_electionId].length; i++) {
-            if (electionTickets[_electionId][i] == _ticketId) {
-                ticketInElection = true;
+        bool isTicketInElection = false;
+        uint256[] memory ticketIds = electionTickets[electionId];
+        for (uint256 i = 0; i < ticketIds.length; i++) {
+            if (ticketIds[i] == ticketId) {
+                isTicketInElection = true;
                 break;
             }
         }
-        require(ticketInElection, "Ticket is not part of this election");
+        require(isTicketInElection, "Ticket is not part of this election");
         
         // Record the vote
-        presidentVPTickets[_ticketId].voteCount++;
-        elections[_electionId].totalVotesCast++;
+        presidentVPTickets[ticketId].voteCount++;
         
-        // Mark voter as having voted in this election
-        hasVoted[_electionId][msg.sender] = true;
+        // Mark voter as having voted
+        hasVoted[electionId][msg.sender] = true;
         
-        emit VoteCast(_electionId, msg.sender);
+        // Update total votes
+        elections[electionId].totalVotesCast++;
+        
+        emit VoteCast(electionId, msg.sender);
+        
+        return true;
     }
-
+    
+    // View Functions
+    
     /**
-     * @dev Finalize the results of an election
-     * @param _electionId The ID of the election
+     * @dev Get election details
      */
-    function finalizeElectionResults(uint256 _electionId) 
-        public 
-        onlyOwner 
-        electionExists(_electionId) 
-        whenNotPaused 
-    {
-        // Ensure election has ended
-        require(block.timestamp > elections[_electionId].endTime, "Election has not ended yet");
-        
-        // Ensure election is in active or completed status
-        require(
-            elections[_electionId].status == ElectionStatus.Active || 
-            elections[_electionId].status == ElectionStatus.Completed, 
-            "Election must be active or completed"
-        );
-        
-        // Ensure results haven't already been finalized
-        require(!elections[_electionId].resultsFinalized, "Results already finalized");
-        
-        // Set election status to completed if it's not already
-        if (elections[_electionId].status != ElectionStatus.Completed) {
-            elections[_electionId].status = ElectionStatus.Completed;
-            emit ElectionStatusChanged(_electionId, ElectionStatus.Completed);
-        }
-        
-        // Mark results as finalized
-        elections[_electionId].resultsFinalized = true;
-        
-        emit ElectionResultsFinalized(_electionId);
-    }
-
-    /**
-     * @dev Get candidates for a specific election
-     * @param _electionId The ID of the election
-     * @return Array of candidate IDs
-     */
-    function getElectionCandidates(uint256 _electionId) 
-        public 
+    function getElectionDetails(uint256 electionId) 
+        external 
         view 
-        electionExists(_electionId) 
-        returns (uint256[] memory) 
-    {
-        return electionCandidates[_electionId];
-    }
-
-    /**
-     * @dev Get tickets for a specific election
-     * @param _electionId The ID of the election
-     * @return Array of ticket IDs
-     */
-    function getElectionTickets(uint256 _electionId) 
-        public 
-        view 
-        electionExists(_electionId) 
-        returns (uint256[] memory) 
-    {
-        return electionTickets[_electionId];
-    }
-
-    /**
-     * @dev Get vote count for a specific candidate
-     * @param _candidateId The ID of the candidate
-     * @return Number of votes
-     */
-    function getCandidateVoteCount(uint256 _candidateId) 
-        public 
-        view 
-        candidateExists(_candidateId) 
-        returns (uint256) 
-    {
-        return candidates[_candidateId].voteCount;
-    }
-
-    /**
-     * @dev Get vote count for a specific ticket
-     * @param _ticketId The ID of the ticket
-     * @return Number of votes
-     */
-    function getTicketVoteCount(uint256 _ticketId) 
-        public 
-        view 
-        ticketExists(_ticketId) 
-        returns (uint256) 
-    {
-        return presidentVPTickets[_ticketId].voteCount;
-    }
-
-    /**
-     * @dev Get the details of an election
-     * @param _electionId The ID of the election
-     * @return id ID of the election
-     * @return name Name of the election
-     * @return electionType Type of the election
-     * @return status Status of the election
-     * @return startTime Start time of the election
-     * @return endTime End time of the election
-     * @return eligibleFaculties Eligible faculties for the election
-     * @return totalVotesCast Total votes cast in the election
-     * @return resultsFinalized Whether results have been finalized
-     */
-    function getElectionDetails(uint256 _electionId) 
-        public 
-        view 
-        electionExists(_electionId) 
+        electionExists(electionId) 
         returns (
             uint256 id,
             string memory name,
-            ElectionType electionType,
-            ElectionStatus status,
+            uint8 electionType,
+            uint8 status,
             uint256 startTime,
             uint256 endTime,
             string memory eligibleFaculties,
@@ -529,12 +388,12 @@ contract AdaUniversityVoting is Ownable, ReentrancyGuard, Pausable {
             bool resultsFinalized
         ) 
     {
-        Election memory election = elections[_electionId];
+        Election storage election = elections[electionId];
         return (
             election.id,
             election.name,
-            election.electionType,
-            election.status,
+            uint8(election.electionType),
+            uint8(election.status),
             election.startTime,
             election.endTime,
             election.eligibleFaculties,
@@ -542,33 +401,64 @@ contract AdaUniversityVoting is Ownable, ReentrancyGuard, Pausable {
             election.resultsFinalized
         );
     }
-
+    
     /**
-     * @dev Check if a voter has already voted in an election
-     * @param _electionId The ID of the election
-     * @param _voter The address of the voter
-     * @return Whether the voter has voted
+     * @dev Get list of candidates for an election
      */
-    function checkIfVoted(uint256 _electionId, address _voter) 
-        public 
+    function getElectionCandidates(uint256 electionId) 
+        external 
         view 
-        electionExists(_electionId) 
+        electionExists(electionId) 
+        returns (uint256[] memory) 
+    {
+        return electionCandidates[electionId];
+    }
+    
+    /**
+     * @dev Get list of tickets for an election
+     */
+    function getElectionTickets(uint256 electionId) 
+        external 
+        view 
+        electionExists(electionId) 
+        returns (uint256[] memory) 
+    {
+        return electionTickets[electionId];
+    }
+    
+    /**
+     * @dev Get candidate vote count
+     */
+    function getCandidateVoteCount(uint256 candidateId) 
+        external 
+        view 
+        candidateExists(candidateId) 
+        returns (uint256) 
+    {
+        return candidates[candidateId].voteCount;
+    }
+    
+    /**
+     * @dev Get ticket vote count
+     */
+    function getTicketVoteCount(uint256 ticketId) 
+        external 
+        view 
+        ticketExists(ticketId) 
+        returns (uint256) 
+    {
+        return presidentVPTickets[ticketId].voteCount;
+    }
+    
+    /**
+     * @dev Check if an address has voted in an election
+     */
+    function checkIfVoted(uint256 electionId, address voter) 
+        external 
+        view 
+        electionExists(electionId) 
         returns (bool) 
     {
-        return hasVoted[_electionId][_voter];
-    }
-
-    /**
-     * @dev Pause the contract
-     */
-    function pause() public onlyOwner {
-        _pause();
-    }
-
-    /**
-     * @dev Unpause the contract
-     */
-    function unpause() public onlyOwner {
-        _unpause();
+        return hasVoted[electionId][voter];
     }
 }
