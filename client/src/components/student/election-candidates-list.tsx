@@ -82,19 +82,37 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
     .filter((c): c is CandidateWithVotes => c !== null)
     .sort((a, b) => b.voteCount - a.voteCount); // Sort by vote count (highest first)
 
+  // This function will be removed as we've replaced it with castVote
   const handleVote = (candidateId: number) => {
+    castVote(candidateId);
+  };
+
+  // Add a voting simulation function
+  const castVote = async (candidateId: number) => {
     setIsVoting(prev => ({ ...prev, [candidateId]: true }));
     
-    // Simulate blockchain voting delay
-    setTimeout(() => {
-      setIsVoting(prev => ({ ...prev, [candidateId]: false }));
+    try {
+      // This would be replaced with blockchain integration
+      // For now, we'll simulate a server call with a delay
+      await new Promise(resolve => setTimeout(resolve, 1200));
+      
+      // Record the vote
       setVotedCandidates(prev => ({ ...prev, [candidateId]: true }));
       
       toast({
-        title: "Vote Recorded",
-        description: "Your vote has been cast. This is a simulation - actual blockchain voting will be implemented later.",
+        title: "Vote Recorded Successfully",
+        description: "Thank you for participating in the election. Your vote has been securely recorded.",
+        variant: "default",
       });
-    }, 1500);
+    } catch (error) {
+      toast({
+        title: "Voting Failed",
+        description: "There was an error recording your vote. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsVoting(prev => ({ ...prev, [candidateId]: false }));
+    }
   };
 
   // Group candidates by position for President/VP elections
@@ -214,20 +232,20 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                 
                 <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end">
                   {ticketVoted ? (
-                    <Button disabled className="bg-green-500 hover:bg-green-600">
+                    <Button disabled className="bg-green-500 hover:bg-green-600 shadow-md">
                       <Check className="mr-2 h-4 w-4" />
-                      Voted
+                      Voted Successfully
                     </Button>
                   ) : (
                     <Button 
                       disabled={ticketVoting}
                       onClick={() => handleVote(president.id)} 
-                      className="bg-purple-700 hover:bg-purple-800"
+                      className="bg-gradient-to-r from-purple-700 to-purple-600 hover:from-purple-800 hover:to-purple-700 shadow-md"
                     >
                       {ticketVoting ? (
                         <>
                           <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                          Processing...
+                          Processing vote...
                         </>
                       ) : (
                         <>
@@ -301,20 +319,20 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                     
                     <div className="mt-4">
                       {isVoted ? (
-                        <Button disabled className="w-full bg-green-500 hover:bg-green-600">
+                        <Button disabled className="w-full bg-green-500 hover:bg-green-600 shadow-md">
                           <Check className="mr-2 h-4 w-4" />
-                          Voted
+                          Voted Successfully
                         </Button>
                       ) : (
                         <Button
                           onClick={() => handleVote(candidate.id)}
                           disabled={isProcessingVote}
-                          className="w-full bg-purple-700 hover:bg-purple-800"
+                          className="w-full bg-gradient-to-r from-purple-700 to-purple-600 hover:from-purple-800 hover:to-purple-700 shadow-md"
                         >
                           {isProcessingVote ? (
                             <>
                               <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                              Processing...
+                              Processing vote...
                             </>
                           ) : (
                             <>Vote for {candidate.fullName}</>

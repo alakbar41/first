@@ -117,8 +117,22 @@ export default function Dashboard() {
       
       {/* Main content */}
       <main className="flex-1 overflow-y-auto">
-        <div className="px-6 py-4 bg-white border-b border-gray-200">
-          <h1 className="text-xl font-semibold text-gray-800">Elections Dashboard</h1>
+        <div className="px-6 py-4 bg-white border-b border-gray-200 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-800 to-purple-600 bg-clip-text text-transparent">
+                Elections Dashboard
+              </h1>
+              <p className="text-gray-500 text-sm mt-1">
+                View and participate in current and upcoming university elections
+              </p>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Badge className="bg-purple-100 text-purple-700 border border-purple-200 shadow-sm">
+                {user.faculty ? `${user.faculty} Student` : 'Student'}
+              </Badge>
+            </div>
+          </div>
         </div>
         
         <div className="p-6">
