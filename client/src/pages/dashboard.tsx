@@ -48,27 +48,27 @@ export default function Dashboard() {
   // Filter elections based on status
   const activeElections = elections?.filter(election => 
     // Current time is between start and end time
-    new Date(election.startTime) <= new Date() && new Date(election.endTime) >= new Date()
+    new Date(election.startDate) <= new Date() && new Date(election.endDate) >= new Date()
   ) || [];
   
   const upcomingElections = elections?.filter(election => 
     // Start time is in the future
-    new Date(election.startTime) > new Date()
+    new Date(election.startDate) > new Date()
   ) || [];
   
   const pastElections = elections?.filter(election => 
     // End time is in the past
-    new Date(election.endTime) < new Date()
+    new Date(election.endDate) < new Date()
   ) || [];
 
   const getStatusBadge = (election: Election) => {
     const now = new Date();
-    const startTime = new Date(election.startTime);
-    const endTime = new Date(election.endTime);
+    const startDate = new Date(election.startDate);
+    const endDate = new Date(election.endDate);
     
-    if (now < startTime) {
+    if (now < startDate) {
       return <Badge className="bg-blue-500">Upcoming</Badge>;
-    } else if (now > endTime) {
+    } else if (now > endDate) {
       return <Badge className="bg-gray-500">Ended</Badge>;
     } else {
       return <Badge className="bg-green-500">Active</Badge>;
@@ -90,8 +90,8 @@ export default function Dashboard() {
   const filterElectionsByFaculty = (elections: Election[]) => {
     return elections.map(election => {
       // If this is a Senator election, only show if it matches user's faculty
-      if (election.positions.includes("Senator") && election.positions.length === 1) {
-        if (election.facultyScope === user.faculty || election.facultyScope === "all") {
+      if (election.position === "Senator") {
+        if (election.eligibleFaculties.includes(user.faculty) || election.eligibleFaculties.includes("all")) {
           return election;
         }
         return null;
