@@ -1,8 +1,8 @@
 import { Election } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { CalendarIcon, Clock, Users, Info, Vote } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { CalendarIcon, Clock, Users } from "lucide-react";
+import { getFacultyName } from "@shared/schema";
 
 interface ElectionCardProps {
   election: Election;
@@ -30,33 +30,40 @@ export function ElectionCard({ election, onClick, isSelected }: ElectionCardProp
     const endDate = new Date(election.endDate);
 
     if (now < startDate) {
-      return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Upcoming</Badge>;
+      return <Badge className="absolute top-3 right-3 bg-blue-100 text-blue-800 border-blue-200">Upcoming</Badge>;
     } else if (now > endDate) {
-      return <Badge className="bg-gray-100 text-gray-800 border-gray-200">Completed</Badge>;
+      return <Badge className="absolute top-3 right-3 bg-gray-100 text-gray-800 border-gray-200">Completed</Badge>;
     } else {
-      return <Badge className="bg-green-100 text-green-800 border-green-200">Active</Badge>;
+      return <Badge className="absolute top-3 right-3 bg-green-100 text-green-800 border-green-200">Active</Badge>;
+    }
+  };
+
+  // Get status for election
+  const getElectionStatus = () => {
+    const now = new Date();
+    const startDate = new Date(election.startDate);
+    const endDate = new Date(election.endDate);
+
+    if (now < startDate) {
+      return "upcoming";
+    } else if (now > endDate) {
+      return "completed";
+    } else {
+      return "active";
     }
   };
 
   // Get card style based on status and selection
   const getCardStyle = () => {
-    const now = new Date();
-    const startDate = new Date(election.startDate);
-    const endDate = new Date(election.endDate);
+    const status = getElectionStatus();
     
-    let baseStyle = "cursor-pointer transform transition-all duration-200 hover:scale-105 ";
+    let baseStyle = "cursor-pointer transform transition-all duration-200 hover:scale-105 relative overflow-hidden ";
     
     if (isSelected) {
       return baseStyle + "ring-2 ring-purple-500 shadow-lg";
     }
     
-    if (now < startDate) {
-      return baseStyle + "border-blue-200";
-    } else if (now > endDate) {
-      return baseStyle + "border-gray-200 opacity-75";
-    } else {
-      return baseStyle + "border-green-200";
-    }
+    return baseStyle + "shadow-sm";
   };
 
   return (
@@ -64,38 +71,46 @@ export function ElectionCard({ election, onClick, isSelected }: ElectionCardProp
       className={getCardStyle()}
       onClick={() => onClick(election.id)}
     >
-      <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
-        <h3 className="text-md font-medium">{election.name}</h3>
+      {/* Purple header with election name and position */}
+      <div className="bg-purple-600 text-white p-6 relative">
+        <h3 className="text-xl font-bold">{election.name}</h3>
+        <p className="mt-1 opacity-90">{election.position}</p>
         {getStatusBadge()}
-      </CardHeader>
+      </div>
       
-      <CardContent className="p-4 pt-2">
-        <div className="text-sm text-gray-700 space-y-2">
-          <div className="flex items-center">
-            <Users className="h-4 w-4 mr-2 text-gray-500" />
-            <span>{election.position}</span>
+      <CardContent className="p-6 grid grid-cols-3 gap-4">
+        <div className="flex items-center space-x-3">
+          <div className="p-2 bg-purple-100 text-purple-700 rounded-full">
+            <Users className="h-5 w-5" />
           </div>
-          
-          <div className="flex items-center">
-            <CalendarIcon className="h-4 w-4 mr-2 text-gray-500" />
-            <span>Starts: {formatDate(election.startDate)}</span>
+          <div>
+            <p className="text-sm font-medium text-gray-500">Eligible Faculties</p>
+            <p className="text-sm font-medium">
+              {election.eligibleFaculties.includes("all") 
+                ? "All Faculties" 
+                : election.eligibleFaculties.map(f => getFacultyName(f)).join(", ")}
+            </p>
           </div>
-          
-          <div className="flex items-center">
-            <Clock className="h-4 w-4 mr-2 text-gray-500" />
-            <span>Ends: {formatDate(election.endDate)}</span>
+        </div>
+        
+        <div className="flex items-center space-x-3">
+          <div className="p-2 bg-purple-100 text-purple-700 rounded-full">
+            <CalendarIcon className="h-5 w-5" />
           </div>
-          
-          <Button 
-            variant="outline" 
-            className="w-full mt-2 bg-gradient-to-r from-purple-700 to-purple-600 text-white hover:from-purple-800 hover:to-purple-700"
-            onClick={(e) => {
-              e.stopPropagation();
-              onClick(election.id);
-            }}
-          >
-            View Candidates
-          </Button>
+          <div>
+            <p className="text-sm font-medium text-gray-500">Start Date</p>
+            <p className="text-sm font-medium">{formatDate(election.startDate)}</p>
+          </div>
+        </div>
+        
+        <div className="flex items-center space-x-3">
+          <div className="p-2 bg-purple-100 text-purple-700 rounded-full">
+            <Clock className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-500">End Date</p>
+            <p className="text-sm font-medium">{formatDate(election.endDate)}</p>
+          </div>
         </div>
       </CardContent>
     </Card>

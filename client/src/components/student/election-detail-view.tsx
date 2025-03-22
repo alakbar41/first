@@ -126,22 +126,19 @@ export function ElectionDetailView({ election }: ElectionDetailViewProps) {
     setIsVoting(prev => ({ ...prev, [candidateId]: true }));
     
     try {
-      // This would be replaced with blockchain integration
-      // For now, we'll simulate a server call with a delay
+      // This will be replaced with actual blockchain integration
       await new Promise(resolve => setTimeout(resolve, 1200));
       
-      // Record the vote
-      setVotedCandidates(prev => ({ ...prev, [candidateId]: true }));
-      
+      // Show message about future blockchain implementation
       toast({
-        title: "Vote Recorded Successfully",
-        description: "Thank you for participating in the election. Your vote has been securely recorded.",
+        title: "Blockchain Voting Coming Soon",
+        description: "The voting logic will be implemented with blockchain integration in the future. Thank you for testing!",
         variant: "default",
       });
     } catch (error) {
       toast({
-        title: "Voting Failed",
-        description: "There was an error recording your vote. Please try again.",
+        title: "Voting Logic Not Implemented",
+        description: "The blockchain-based voting system is still under development.",
         variant: "destructive",
       });
     } finally {
