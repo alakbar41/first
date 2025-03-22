@@ -201,11 +201,9 @@ export function AddCandidatesToElectionDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    {isPresidentVP && selectedCandidate?.position === "Vice President" 
-                      ? "Select Vice President" 
-                      : isPresidentVP 
-                        ? "Select President" 
-                        : "Select Senator"}
+                    {isPresidentVP 
+                      ? "Select Candidate"
+                      : "Select Senator"}
                   </FormLabel>
                   <FormControl>
                     <Select

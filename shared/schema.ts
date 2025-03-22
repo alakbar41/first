@@ -128,7 +128,9 @@ export const insertCandidateSchema = createInsertSchema(candidates)
   })
   .extend({
     fullName: z.string().min(3, "Full name is required"),
-    studentId: z.string().min(1, "Student ID is required"),
+    studentId: z.string()
+      .regex(/^\d{9}$/, "Student ID must be exactly 9 digits")
+      .refine(val => /^\d+$/.test(val), "Student ID must contain only numbers"),
     faculty: z.string(), // Accept full faculty name or code
     position: z.enum(CANDIDATE_POSITIONS),
     pictureUrl: z.string().optional().default(""),
