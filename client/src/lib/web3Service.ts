@@ -8,7 +8,7 @@ const CONTRACT_ABI: any[] = [
 
 // Constants
 const POLYGON_AMOY_RPC_URL = 'https://rpc-amoy.polygon.technology';
-const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || '';
+const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || '0x52F608AF1F45661E9294B11B2013d34C9566bAB6';
 
 // Contract enums
 export enum ElectionType {
