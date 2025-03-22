@@ -10,7 +10,7 @@ import Results from "@/pages/results";
 import Guidelines from "@/pages/guidelines";
 import AdminDashboard from "@/pages/admin-dashboard";
 import AdminCandidates from "@/pages/admin-candidates";
-import { ProtectedRoute } from "./lib/protected-route";
+import { ProtectedRoute, AdminProtectedRoute } from "./lib/protected-route";
 import { AuthProvider } from "./hooks/use-auth";
 
 function Router() {
@@ -21,12 +21,12 @@ function Router() {
       <ProtectedRoute path="/results" component={Results} />
       <ProtectedRoute path="/guidelines" component={Guidelines} />
       
-      {/* Admin routes */}
-      <ProtectedRoute path="/admin" component={AdminDashboard} />
-      <ProtectedRoute path="/admin/elections" component={AdminDashboard} />
-      <ProtectedRoute path="/admin/candidates" component={AdminCandidates} />
-      <ProtectedRoute path="/admin/voters" component={AdminDashboard} />
-      <ProtectedRoute path="/admin/settings" component={AdminDashboard} />
+      {/* Admin routes - using AdminProtectedRoute to ensure admin validation */}
+      <AdminProtectedRoute path="/admin" component={AdminDashboard} />
+      <AdminProtectedRoute path="/admin/elections" component={AdminDashboard} />
+      <AdminProtectedRoute path="/admin/candidates" component={AdminCandidates} />
+      <AdminProtectedRoute path="/admin/voters" component={AdminDashboard} />
+      <AdminProtectedRoute path="/admin/settings" component={AdminDashboard} />
       
       {/* Auth routes */}
       <Route path="/auth" component={AuthPage} />
