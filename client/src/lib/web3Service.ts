@@ -337,8 +337,8 @@ class Web3Service {
         throw new Error('Contract not initialized');
       }
 
-      // Listen for VoteCast events
-      this.contract.on('VoteCast', (electionId, voter) => {
+      // Listen for VoteCast events - explicitly type the parameters
+      this.contract.on('VoteCast', function(electionId: any, voter: string) {
         callback(Number(electionId), voter);
       });
     } catch (error) {
