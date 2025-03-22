@@ -141,7 +141,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const resetPasswordSendOtpMutation = useMutation({
     mutationFn: async (data: SendOtpData) => {
       const res = await apiRequest("POST", "/api/reset-password", data);
-      await res.json();
+      const result = await res.json();
+      return result;
     },
     onSuccess: () => {
       toast({
