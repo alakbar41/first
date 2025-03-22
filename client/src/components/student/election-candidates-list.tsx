@@ -23,6 +23,14 @@ interface CandidateWithVotes extends Candidate {
 
 export function ElectionCandidatesList({ election }: ElectionCandidatesListProps) {
   const { toast } = useToast();
+  
+  // Check if the election is active (for enabling/disabling voting)
+  const isElectionActive = () => {
+    const now = new Date();
+    const startDate = new Date(election.startDate);
+    const endDate = new Date(election.endDate);
+    return now >= startDate && now <= endDate;
+  };
   const [votedCandidates, setVotedCandidates] = useState<{[key: number]: boolean}>({});
   const [isVoting, setIsVoting] = useState<{[key: number]: boolean}>({});
   
@@ -238,7 +246,7 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                     </Button>
                   ) : (
                     <Button 
-                      disabled={ticketVoting}
+                      disabled={ticketVoting || !isElectionActive()}
                       onClick={() => handleVote(president.id)} 
                       className="bg-gradient-to-r from-purple-700 to-purple-600 hover:from-purple-800 hover:to-purple-700 shadow-md"
                     >

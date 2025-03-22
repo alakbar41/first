@@ -336,19 +336,21 @@ export default function Dashboard() {
                         Candidates
                       </h3>
                       
-                      {/* Only show vote UI for active elections */}
-                      {new Date(selectedElection.startDate) <= new Date() && 
-                       new Date(selectedElection.endDate) >= new Date() ? (
-                        <ElectionCandidatesList election={selectedElection} />
-                      ) : new Date(selectedElection.startDate) > new Date() ? (
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-blue-800 flex items-center">
+                      {/* Show candidates for all elections, but only enable voting UI for active elections */}
+                      <ElectionCandidatesList election={selectedElection} />
+                      
+                      {/* Show appropriate status messages */}
+                      {new Date(selectedElection.startDate) > new Date() && (
+                        <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4 text-blue-800 flex items-center">
                           <InfoIcon className="w-5 h-5 mr-2" />
                           <div>
                             <p className="font-medium">This election has not started yet</p>
                             <p className="text-sm">Voting will be available once the election starts on {formatDate(selectedElection.startDate)}</p>
                           </div>
                         </div>
-                      ) : (
+                      )}
+                      
+                      {new Date(selectedElection.endDate) < new Date() && (
                         <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-gray-800 flex items-center">
                           <InfoIcon className="w-5 h-5 mr-2" />
                           <div>

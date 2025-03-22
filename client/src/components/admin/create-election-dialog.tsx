@@ -286,7 +286,12 @@ export function CreateElectionDialog({ open, onOpenChange }: CreateElectionDialo
                     selected={startDate}
                     onSelect={setStartDate}
                     initialFocus
-                    disabled={(date) => date < new Date()} // Prevent selecting dates in the past
+                    disabled={(date) => {
+                      // Allow today and future dates
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      return date < today;
+                    }}
                   />
                 </PopoverContent>
               </Popover>
@@ -340,7 +345,19 @@ export function CreateElectionDialog({ open, onOpenChange }: CreateElectionDialo
                     selected={endDate}
                     onSelect={setEndDate}
                     initialFocus
-                    disabled={(date) => startDate ? date < startDate : date < new Date()}
+                    disabled={(date) => {
+                      // If a start date is selected, only allow dates on or after the start date
+                      if (startDate) {
+                        const startDay = new Date(startDate);
+                        startDay.setHours(0, 0, 0, 0);
+                        return date < startDay;
+                      }
+                      
+                      // Otherwise, allow today and future dates
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      return date < today;
+                    }}
                   />
                 </PopoverContent>
               </Popover>
