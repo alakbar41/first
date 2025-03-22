@@ -2,6 +2,7 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth.js";
+import bcrypt from "bcrypt";
 import { 
   insertElectionSchema, 
   insertCandidateSchema, 
@@ -22,6 +23,12 @@ function isAdmin(req: Request, res: Response, next: Function) {
   }
   
   next();
+}
+
+// Password hashing function
+async function hashPassword(password: string): Promise<string> {
+  const SALT_ROUNDS = 10;
+  return await bcrypt.hash(password, SALT_ROUNDS);
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -537,8 +544,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid OTP" });
       }
       
-      // Update password
-      await storage.updateUserPassword(email, newPassword);
+      // Hash the new password before saving
+      const hashedPassword = await hashPassword(newPassword);
+      
+      // Update password with the hashed version
+      await storage.updateUserPassword(email, hashedPassword);
       
       // Remove pending user
       await storage.deletePendingUser(email);
