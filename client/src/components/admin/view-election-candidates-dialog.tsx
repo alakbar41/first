@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
-import { Election, Candidate } from "@shared/schema";
+import { Election, Candidate, getFacultyName } from "@shared/schema";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { UserRound, Trash2 } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
@@ -151,7 +151,7 @@ export function ViewElectionCandidatesDialog({
                             </div>
                           </div>
                         ) : (
-                          <span>{ec.candidate?.faculty}</span>
+                          <span>{getFacultyName(ec.candidate?.faculty)}</span>
                         )}
                       </td>
                       

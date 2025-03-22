@@ -8,7 +8,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Election, Candidate } from "@shared/schema";
+import { Election, Candidate, getFacultyName } from "@shared/schema";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { UserRound } from "lucide-react";
 
@@ -150,7 +150,10 @@ export function AddCandidatesToElectionDialog({
           </AvatarFallback>
         )}
       </Avatar>
-      <span>{candidate.fullName} - {candidate.position}</span>
+      <div className="flex flex-col">
+        <span className="font-medium">{candidate.fullName}</span>
+        <span className="text-xs text-gray-500">{candidate.position} - {getFacultyName(candidate.faculty)}</span>
+      </div>
     </div>
   );
   
