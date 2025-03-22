@@ -56,44 +56,6 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
   const [hasVotedInElection, setHasVotedInElection] = useState(false);
   const [blockchainVoteCounts, setBlockchainVoteCounts] = useState<{[key: number]: number}>({});
   
-  // Check if the user has already voted in this election and load vote counts from blockchain
-  useEffect(() => {
-    async function loadBlockchainData() {
-      if (isInitialized && election) {
-        try {
-          // Check if user has voted
-          if (isWalletConnected) {
-            const hasVoted = await checkIfVoted(election.id);
-            setHasVotedInElection(hasVoted);
-          }
-          
-          // Load vote counts for all candidates
-          if (candidatesData && candidatesData.length > 0) {
-            const voteCountsMap: {[key: number]: number} = {};
-            
-            for (const candidate of candidatesData) {
-              try {
-                // In a real implementation, you'd have a mapping between database IDs and blockchain IDs
-                // Here we're assuming they're the same for simplicity
-                const voteCount = await getCandidateVoteCount(candidate.id);
-                voteCountsMap[candidate.id] = voteCount;
-              } catch (err) {
-                console.error(`Error fetching vote count for candidate ${candidate.id}:`, err);
-                voteCountsMap[candidate.id] = 0;
-              }
-            }
-            
-            setBlockchainVoteCounts(voteCountsMap);
-          }
-        } catch (error) {
-          console.error("Error loading blockchain data:", error);
-        }
-      }
-    }
-    
-    loadBlockchainData();
-  }, [isInitialized, isWalletConnected, election, candidatesData, checkIfVoted, getCandidateVoteCount]);
-  
   // Fetch candidates for this election
   const { data: electionCandidates, isLoading: isLoadingElectionCandidates } = useQuery<ElectionCandidate[]>({
     queryKey: [`/api/elections/${election.id}/candidates`],
@@ -114,6 +76,51 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
     },
     enabled: !!electionCandidates,
   });
+
+  // First effect - Check if the user has already voted in this election
+  useEffect(() => {
+    async function checkVotingStatus() {
+      if (isInitialized && isWalletConnected && election) {
+        try {
+          const hasVoted = await checkIfVoted(election.id);
+          setHasVotedInElection(hasVoted);
+        } catch (error) {
+          console.error("Error checking voting status:", error);
+        }
+      }
+    }
+    
+    checkVotingStatus();
+  }, [isInitialized, isWalletConnected, election, checkIfVoted]);
+  
+  // Second effect - Load vote counts for candidates from blockchain
+  useEffect(() => {
+    async function loadVoteCounts() {
+      if (isInitialized && election && candidatesData && candidatesData.length > 0) {
+        try {
+          const voteCountsMap: {[key: number]: number} = {};
+          
+          for (const candidate of candidatesData) {
+            try {
+              // In a real implementation, you'd have a mapping between database IDs and blockchain IDs
+              // Here we're assuming they're the same for simplicity
+              const voteCount = await getCandidateVoteCount(candidate.id);
+              voteCountsMap[candidate.id] = voteCount;
+            } catch (err) {
+              console.error(`Error fetching vote count for candidate ${candidate.id}:`, err);
+              voteCountsMap[candidate.id] = 0;
+            }
+          }
+          
+          setBlockchainVoteCounts(voteCountsMap);
+        } catch (error) {
+          console.error("Error loading blockchain data:", error);
+        }
+      }
+    }
+    
+    loadVoteCounts();
+  }, [isInitialized, election, candidatesData, getCandidateVoteCount]);
 
   const isLoading = isLoadingElectionCandidates || isLoadingCandidates;
 
