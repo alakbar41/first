@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth-page";
 import RegisterPage from "@/pages/register-page";
-import Dashboard from "@/pages/dashboard";
+import Dashboard from "@/pages/dashboard-redesigned"; // Using the redesigned dashboard
 import Results from "@/pages/results";
 import Guidelines from "@/pages/guidelines";
 import AdminDashboard from "@/pages/admin-dashboard";

@@ -12,8 +12,9 @@ interface ElectionCardProps {
 
 export function ElectionCard({ election, onClick, isSelected }: ElectionCardProps) {
   // Helper function to format dates
-  function formatDate(dateString: string) {
-    return new Date(dateString).toLocaleDateString('en-US', { 
+  function formatDate(dateString: string | Date) {
+    const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+    return date.toLocaleDateString('en-US', { 
       year: 'numeric', 
       month: 'short', 
       day: 'numeric',
