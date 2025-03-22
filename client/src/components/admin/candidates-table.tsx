@@ -8,7 +8,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash2, UserCircle } from "lucide-react";
+import { Edit, Trash2, UserCircle, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { 
   DropdownMenu, 
@@ -17,6 +17,14 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
+import { useState, useEffect } from "react";
+import { apiRequest } from "@/lib/queryClient";
+import { 
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface CandidatesTableProps {
   candidates: Candidate[];
@@ -25,6 +33,42 @@ interface CandidatesTableProps {
 }
 
 export function CandidatesTable({ candidates, onEdit, onDelete }: CandidatesTableProps) {
+  const [candidatesInElections, setCandidatesInElections] = useState<{[id: number]: boolean}>({});
+  const [loadingElectionStatus, setLoadingElectionStatus] = useState<{[id: number]: boolean}>({});
+  const [electionTooltips, setElectionTooltips] = useState<{[id: number]: string}>({});
+  
+  // Check if candidates are in elections
+  useEffect(() => {
+    const checkCandidatesInElections = async () => {
+      const results: {[id: number]: boolean} = {};
+      const tooltips: {[id: number]: string} = {};
+      
+      for (const candidate of candidates) {
+        try {
+          setLoadingElectionStatus(prev => ({ ...prev, [candidate.id]: true }));
+          const res = await apiRequest("GET", `/api/candidates/${candidate.id}/in-elections`);
+          const data = await res.json();
+          
+          results[candidate.id] = data.inElections;
+          
+          if (data.inElections && data.elections && data.elections.length > 0) {
+            const electionNames = data.elections.map((e: any) => e.name).join(", ");
+            tooltips[candidate.id] = `In elections: ${electionNames}`;
+          }
+        } catch (error) {
+          console.error(`Error checking election status for candidate ${candidate.id}:`, error);
+        } finally {
+          setLoadingElectionStatus(prev => ({ ...prev, [candidate.id]: false }));
+        }
+      }
+      
+      setCandidatesInElections(results);
+      setElectionTooltips(tooltips);
+    };
+    
+    checkCandidatesInElections();
+  }, [candidates]);
+
   if (candidates.length === 0) {
     return (
       <div className="p-8 text-center bg-white rounded-md border">
@@ -111,13 +155,29 @@ export function CandidatesTable({ candidates, onEdit, onDelete }: CandidatesTabl
                       Edit
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem 
-                      onClick={() => onDelete && onDelete(candidate.id)}
-                      className="text-red-600 cursor-pointer focus:text-red-600 focus:bg-red-50"
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Delete
-                    </DropdownMenuItem>
+                    {candidatesInElections[candidate.id] ? (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="flex items-center px-2 py-1.5 text-gray-400 cursor-not-allowed">
+                              <AlertCircle className="mr-2 h-4 w-4" />
+                              <span>Delete (Locked)</span>
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent side="left">
+                            <p className="text-xs max-w-[200px]">{electionTooltips[candidate.id]}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    ) : (
+                      <DropdownMenuItem 
+                        onClick={() => onDelete && onDelete(candidate.id)}
+                        className="text-red-600 cursor-pointer focus:text-red-600 focus:bg-red-50"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                      </DropdownMenuItem>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </TableCell>
