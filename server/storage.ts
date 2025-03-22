@@ -186,13 +186,18 @@ export class MemStorage implements IStorage {
     const electionCandidates = await this.getElectionCandidates(id);
     
     // Track candidates and running mates affected by this deletion
-    const affectedCandidateIds = new Set<number>();
+    const affectedCandidateIds: number[] = [];
     for (const ec of electionCandidates) {
-      affectedCandidateIds.add(ec.candidateId);
-      if (ec.runningMateId) {
-        affectedCandidateIds.add(ec.runningMateId);
+      if (!affectedCandidateIds.includes(ec.candidateId)) {
+        affectedCandidateIds.push(ec.candidateId);
+      }
+      
+      if (ec.runningMateId && !affectedCandidateIds.includes(ec.runningMateId)) {
+        affectedCandidateIds.push(ec.runningMateId);
       }
     }
+    
+    console.log(`Deleting election ${id}, affecting candidates:`, affectedCandidateIds);
     
     // Delete each election-candidate relationship
     for (const ec of electionCandidates) {
@@ -212,7 +217,8 @@ export class MemStorage implements IStorage {
       // If not in any elections, update status to inactive
       if (!isInOtherElections) {
         const candidate = this.candidates.get(candidateId);
-        if (candidate) {
+        if (candidate && candidate.status === "active") {
+          console.log(`Updating candidate ${candidateId} status to inactive`);
           candidate.status = "inactive";
           candidate.updatedAt = new Date();
           this.candidates.set(candidateId, candidate);

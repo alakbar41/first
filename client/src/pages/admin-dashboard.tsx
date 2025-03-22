@@ -53,7 +53,21 @@ export default function AdminDashboard() {
         title: "Success",
         description: "Election deleted successfully",
       });
+      // Invalidate both elections and candidates data to refresh statuses
       queryClient.invalidateQueries({ queryKey: ["/api/elections"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/candidates"] });
+      
+      // Force refresh of candidate status checks
+      // This will clear any cached "in-election" status results
+      setTimeout(() => {
+        const candidateStatusPath = /^\/api\/candidates\/\d+\/in-elections$/;
+        queryClient.invalidateQueries({ 
+          predicate: (query) => {
+            const queryKey = Array.isArray(query.queryKey) ? query.queryKey[0] : query.queryKey;
+            return typeof queryKey === 'string' && candidateStatusPath.test(queryKey);
+          }
+        });
+      }, 300);
     },
     onError: (error: Error) => {
       toast({

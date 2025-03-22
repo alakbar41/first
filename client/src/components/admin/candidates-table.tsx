@@ -33,13 +33,30 @@ export function CandidatesTable({ candidates, onEdit, onDelete }: CandidatesTabl
   
   // Check if candidates are in elections
   useEffect(() => {
+    // Create a map to track if we already have status info for a candidate
+    // to prevent unnecessary API calls
+    const checkedCandidates = new Map<number, boolean>();
+    
     const checkCandidatesInElections = async () => {
       const results: {[id: number]: boolean} = {};
       const tooltips: {[id: number]: string} = {};
       
+      // Reset loading states for all candidates
+      const loadingStates: {[id: number]: boolean} = {};
+      candidates.forEach(candidate => {
+        loadingStates[candidate.id] = true;
+      });
+      setLoadingElectionStatus(loadingStates);
+      
       for (const candidate of candidates) {
         try {
-          setLoadingElectionStatus(prev => ({ ...prev, [candidate.id]: true }));
+          // Skip inactive candidates - they're definitely not in elections
+          if (candidate.status === "inactive") {
+            results[candidate.id] = false;
+            loadingStates[candidate.id] = false;
+            continue;
+          }
+          
           const res = await apiRequest("GET", `/api/candidates/${candidate.id}/in-elections`);
           const data = await res.json();
           
@@ -49,13 +66,20 @@ export function CandidatesTable({ candidates, onEdit, onDelete }: CandidatesTabl
             const electionNames = data.elections.map((e: any) => e.name).join(", ");
             tooltips[candidate.id] = `In elections: ${electionNames}`;
           }
+          
+          // If candidate status is active but not in elections, this is inconsistent
+          // It likely means an election was just deleted
+          if (candidate.status === "active" && !data.inElections) {
+            console.log(`Candidate ${candidate.id} has active status but is not in any elections`);
+          }
         } catch (error) {
           console.error(`Error checking election status for candidate ${candidate.id}:`, error);
         } finally {
-          setLoadingElectionStatus(prev => ({ ...prev, [candidate.id]: false }));
+          loadingStates[candidate.id] = false;
         }
       }
       
+      setLoadingElectionStatus(loadingStates);
       setCandidatesInElections(results);
       setElectionTooltips(tooltips);
     };

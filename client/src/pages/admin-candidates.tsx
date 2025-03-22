@@ -29,6 +29,30 @@ export default function AdminCandidates() {
   const [positionFilter, setPositionFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
+  // Fetch elections to monitor changes
+  // This query is only used to trigger a refresh of candidates when elections change
+  useQuery({
+    queryKey: ["/api/elections"],
+    queryFn: async () => {
+      const response = await fetch("/api/elections");
+      if (!response.ok) throw new Error("Failed to fetch elections");
+      return response.json();
+    },
+    // When elections change, invalidate the candidates cache to ensure status is updated
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/candidates"] });
+      
+      // Also clear cached candidate status checks
+      const candidateStatusPath = /^\/api\/candidates\/\d+\/in-elections$/;
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const queryKey = Array.isArray(query.queryKey) ? query.queryKey[0] : query.queryKey;
+          return typeof queryKey === 'string' && candidateStatusPath.test(queryKey);
+        }
+      });
+    }
+  });
+  
   // Fetch candidates
   const { data: candidates, isLoading } = useQuery<Candidate[]>({
     queryKey: ["/api/candidates"],
