@@ -81,8 +81,7 @@ export function setupAuth(app) {
   });
 
   // Rate limiting functions
-  function rateLimit(ip, actionMap, maxAttempts, resetTime) {
-    const key = ip;
+  function rateLimit(key, actionMap, maxAttempts, resetTime) {
     const now = Date.now();
     
     const record = actionMap.get(key) || { count: 0, resetAt: now + resetTime };
@@ -100,7 +99,8 @@ export function setupAuth(app) {
     return {
       limited: record.count > maxAttempts,
       remainingAttempts: Math.max(0, maxAttempts - record.count),
-      resetAt: record.resetAt
+      resetAt: record.resetAt,
+      secondsRemaining: Math.ceil((record.resetAt - now) / 1000)
     };
   }
 
@@ -155,15 +155,20 @@ export function setupAuth(app) {
   app.post("/api/send-otp", async (req, res) => {
     try {
       const { email } = req.body;
-      const ip = req.ip;
+      
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+      
+      const key = email.toLowerCase(); // Normalize the email
       
       // Apply rate limiting
-      const limit = rateLimit(ip, otpRequests, 3, 60 * 1000); // 3 attempts per minute
+      const limit = rateLimit(key, otpRequests, 3, 60 * 1000); // 3 attempts per minute
       
       if (limit.limited) {
         return res.status(429).json({ 
-          message: "Too many OTP requests. Please try again later.",
-          retryAfter: Math.ceil((limit.resetAt - Date.now()) / 1000)
+          message: `Too many OTP requests. Please try again in ${limit.secondsRemaining} seconds.`,
+          retryAfter: limit.secondsRemaining
         });
       }
       
@@ -238,15 +243,22 @@ export function setupAuth(app) {
   });
 
   app.post("/api/login", (req, res, next) => {
-    const ip = req.ip;
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+    
+    // Use email as the rate limiting key instead of IP
+    const key = email.toLowerCase(); // Normalize the email for consistent keys
     
     // Apply rate limiting
-    const limit = rateLimit(ip, loginAttempts, 5, 5 * 60 * 1000); // 5 attempts per 5 minutes
+    const limit = rateLimit(key, loginAttempts, 5, 5 * 60 * 1000); // 5 attempts per 5 minutes
     
     if (limit.limited) {
       return res.status(429).json({ 
-        message: "Too many failed login attempts. Please try again later.",
-        retryAfter: Math.ceil((limit.resetAt - Date.now()) / 1000)
+        message: `Too many failed login attempts for this account. Please try again in ${Math.floor(limit.secondsRemaining / 60)} minutes and ${limit.secondsRemaining % 60} seconds.`,
+        retryAfter: limit.secondsRemaining
       });
     }
     
@@ -258,7 +270,7 @@ export function setupAuth(app) {
       
       if (!user) {
         // Increment failed attempts count
-        rateLimit(ip, loginAttempts, 5, 5 * 60 * 1000);
+        rateLimit(key, loginAttempts, 5, 5 * 60 * 1000);
         return res.status(401).json({ message: info?.message || "Invalid login credentials" });
       }
       
@@ -267,7 +279,7 @@ export function setupAuth(app) {
       
       if (isAdmin !== undefined && isAdmin !== user.isAdmin) {
         // User is trying to login with wrong account type
-        rateLimit(ip, loginAttempts, 5, 5 * 60 * 1000);
+        rateLimit(key, loginAttempts, 5, 5 * 60 * 1000);
         return res.status(401).json({ message: "Invalid login credentials" });
       }
       
@@ -278,7 +290,7 @@ export function setupAuth(app) {
         }
         
         // Reset login attempts on successful login
-        loginAttempts.delete(ip);
+        loginAttempts.delete(key);
         
         return res.status(200).json(user);
       });
