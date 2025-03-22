@@ -5,16 +5,44 @@ import { z } from "zod";
 // Constants for dropdown options
 export const FACULTY_ABBREVIATIONS = {
   "SITE": "School of IT and Engineering",
-  "BSCS": "School of Business",
-  "SPIA": "School of Public and International Affairs",
-  "SEDU": "School of Education"
+  "SB": "School of Business", // Changed from BSCS to SB
+  "SPIA": "School of Public and International Affairs", 
+  "SESD": "School of Education and Social Development" // Changed from SEDU to SESD
 } as const;
 
 // Array of faculty abbreviations for dropdowns
-export const FACULTY_CODES = ["SITE", "BSCS", "SPIA", "SEDU"] as const;
+export const FACULTY_CODES = ["SITE", "SB", "SPIA", "SESD"] as const;
 
 // Array of full faculty names
 export const FACULTIES = Object.values(FACULTY_ABBREVIATIONS) as readonly string[];
+
+// Function to get faculty code from full name or vice versa
+export function getFacultyCode(facultyName: string): string {
+  // First check if it's already a code
+  if (FACULTY_CODES.includes(facultyName as any)) {
+    return facultyName;
+  }
+  
+  // Convert from full name to code
+  const entry = Object.entries(FACULTY_ABBREVIATIONS).find(([_, name]) => name === facultyName);
+  return entry ? entry[0] : facultyName;
+}
+
+// Function to get faculty full name from code
+export function getFacultyName(facultyCode: string): string {
+  // First check if it's a code
+  if (FACULTY_CODES.includes(facultyCode as any)) {
+    return FACULTY_ABBREVIATIONS[facultyCode as keyof typeof FACULTY_ABBREVIATIONS];
+  }
+  
+  // If it's already a full name, return it
+  if (FACULTIES.includes(facultyCode)) {
+    return facultyCode;
+  }
+  
+  // If we can't find a match, return the original
+  return facultyCode;
+}
 
 export const CANDIDATE_POSITIONS = [
   "President",
@@ -99,6 +127,8 @@ export const insertCandidateSchema = createInsertSchema(candidates)
     status: true, // Status is automatically set based on elections
   })
   .extend({
+    fullName: z.string().min(3, "Full name is required"),
+    studentId: z.string().min(1, "Student ID is required"),
     faculty: z.string(), // Accept full faculty name or code
     position: z.enum(CANDIDATE_POSITIONS),
     pictureUrl: z.string().optional().default(""),
