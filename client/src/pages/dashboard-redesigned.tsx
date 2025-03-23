@@ -1,6 +1,6 @@
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { StudentSidebar } from "@/components/student/student-sidebar";
 import { Election } from "@shared/schema";
 import { ElectionDetailView } from "@/components/student/election-detail-view";
@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, LogOut as LogOutIcon } from "lucide-react";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -109,33 +109,50 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Sidebar */}
-      <StudentSidebar user={user} />
+    <div className="flex flex-col md:flex-row h-screen bg-gray-50">
+      {/* Sidebar - hidden on mobile */}
+      <div className="hidden md:block">
+        <StudentSidebar user={user} />
+      </div>
       
       {/* Main content */}
       <main className="flex-1 overflow-y-auto pb-6">
-        <div className="px-6 py-4 bg-white border-b border-gray-200 shadow-sm">
-          <div className="flex items-center justify-between">
+        <div className="px-4 sm:px-6 py-4 bg-white border-b border-gray-200 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-800 to-purple-600 bg-clip-text text-transparent">
+              <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-purple-800 to-purple-600 bg-clip-text text-transparent">
                 ADA Elections
               </h1>
-              <p className="text-gray-500 text-sm mt-1">
+              <p className="text-gray-500 text-xs sm:text-sm mt-1">
                 View and participate in current and upcoming university elections
               </p>
             </div>
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-gray-500">Logged in as:</span>
-              <span className="text-sm font-medium text-purple-700">
+            <div className="flex items-center space-x-2 mt-2 sm:mt-0">
+              <span className="text-xs sm:text-sm text-gray-500">Logged in as:</span>
+              <span className="text-xs sm:text-sm font-medium text-purple-700 truncate max-w-[150px]">
                 {user.email}
               </span>
             </div>
           </div>
         </div>
         
+        {/* Mobile navigation bar */}
+        <div className="md:hidden bg-white border-b border-gray-200 px-4 py-2">
+          <div className="flex justify-between items-center">
+            <Link href="/" className="text-purple-700 font-medium px-3 py-2">Elections</Link>
+            <Link href="/results" className="text-gray-600 px-3 py-2">Results</Link>
+            <Link href="/guidelines" className="text-gray-600 px-3 py-2">Guidelines</Link>
+            <button 
+              onClick={handleLogout} 
+              className="text-gray-600 px-3 py-2"
+            >
+              <LogOutIcon className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+        
         {/* Main content area with navigation tabs at the top */}
-        <div className="p-6">
+        <div className="p-3 sm:p-6">
           {isLoading ? (
             <div className="flex justify-center items-center h-64">
               <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-700"></div>
