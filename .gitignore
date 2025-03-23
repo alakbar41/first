@@ -1,6 +1,83 @@
+# Dependencies
 node_modules
+/.pnp
+.pnp.js
+
+# Build files
 dist
-.DS_Store
+build
 server/public
+
+# Environment variables and secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*.local
+
+# Replit specific
+.replit
+replit.nix
+.config
+.upm
+.breakpoints
+.replitenv
+.gitattributes
+.github/
+.cache/
+.prettier*
+*-lock.json
+*.lock
+.git
+.vercel
+.local
+.npmrc
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs
+*.log
+
+# Testing
+/coverage
+
+# Database
+*.sqlite
+*.db
+*.db-journal
+
+# IDE and editors
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+.project
+.classpath
+.settings/
+*.sublime-workspace
+*.sublime-project
+
+# Misc
 vite.config.ts.*
 *.tar.gz
+.history/
+.directory
+Thumbs.db
+
+# Blockchain artifacts and cache
+/artifacts
+/cache
+
+# Client-side caches
+.next/
+.nuxt/
+.vuepress/dist
+.serverless/
+.fusion/
+out/
+.docz/
+.yarn/
