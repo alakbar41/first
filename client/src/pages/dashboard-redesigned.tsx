@@ -123,13 +123,20 @@ export default function Dashboard() {
       <main className="flex-1 overflow-y-auto pb-6">
         <div className="px-4 sm:px-6 py-4 bg-white border-b border-gray-200 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-purple-800 to-purple-600 bg-clip-text text-transparent">
-                ADA Elections
-              </h1>
-              <p className="text-gray-500 text-xs sm:text-sm mt-1">
-                View and participate in current and upcoming university elections
-              </p>
+            <div className="flex items-center">
+              <img 
+                src="/assets/ada-logo.svg" 
+                alt="ADA University Logo" 
+                className="w-10 h-10 mr-3 hidden sm:block"
+              />
+              <div>
+                <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-purple-800 to-purple-600 bg-clip-text text-transparent">
+                  ADA Elections
+                </h1>
+                <p className="text-gray-500 text-xs sm:text-sm mt-1">
+                  View and participate in current and upcoming university elections
+                </p>
+              </div>
             </div>
             <div className="flex items-center space-x-2 mt-2 sm:mt-0">
               <span className="text-xs sm:text-sm text-gray-500">Logged in as:</span>
@@ -137,6 +144,20 @@ export default function Dashboard() {
                 {user.email}
               </span>
             </div>
+          </div>
+        </div>
+        
+        {/* Mobile logo and title */}
+        <div className="md:hidden bg-white border-b border-gray-200 px-4 py-3">
+          <div className="flex items-center">
+            <img 
+              src="/assets/ada-logo.svg" 
+              alt="ADA University Logo" 
+              className="w-8 h-8 mr-2"
+            />
+            <h2 className="text-base font-semibold bg-gradient-to-r from-purple-800 to-purple-600 bg-clip-text text-transparent">
+              ADA Elections
+            </h2>
           </div>
         </div>
         

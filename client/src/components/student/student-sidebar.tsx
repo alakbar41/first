@@ -55,10 +55,12 @@ export function StudentSidebar({ user }: SidebarProps) {
       {/* Logo and title */}
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center">
-          <div className="w-10 h-10 bg-purple-700 rounded-lg flex items-center justify-center shadow-md">
-            <VoteIcon className="text-white w-5 h-5" />
-          </div>
-          <h1 className="ml-3 text-xl font-bold bg-gradient-to-r from-purple-800 to-purple-600 bg-clip-text text-transparent">
+          <img 
+            src="/assets/ada-logo.svg" 
+            alt="ADA University Logo" 
+            className="w-10 h-10 mr-3"
+          />
+          <h1 className="text-xl font-bold bg-gradient-to-r from-purple-800 to-purple-600 bg-clip-text text-transparent">
             ADA Vote
           </h1>
         </div>
@@ -93,8 +95,8 @@ export function StudentSidebar({ user }: SidebarProps) {
           </p>
           
           <nav className="space-y-1">
-            <Link href="/">
-              <a className={`flex items-center px-4 py-2.5 rounded-lg ${
+            <Link to="/">
+              <span className={`flex items-center px-4 py-2.5 rounded-lg cursor-pointer ${
                 isActive('/') 
                   ? 'bg-purple-100 text-purple-800 font-medium shadow-sm' 
                   : 'text-gray-700 hover:bg-gray-100'
@@ -104,11 +106,11 @@ export function StudentSidebar({ user }: SidebarProps) {
                 {isActive('/') && (
                   <div className="ml-auto w-1.5 h-6 rounded-full bg-purple-600" />
                 )}
-              </a>
+              </span>
             </Link>
             
-            <Link href="/results">
-              <a className={`flex items-center px-4 py-2.5 rounded-lg ${
+            <Link to="/results">
+              <span className={`flex items-center px-4 py-2.5 rounded-lg cursor-pointer ${
                 isActive('/results') 
                   ? 'bg-purple-100 text-purple-800 font-medium shadow-sm' 
                   : 'text-gray-700 hover:bg-gray-100'
@@ -118,11 +120,11 @@ export function StudentSidebar({ user }: SidebarProps) {
                 {isActive('/results') && (
                   <div className="ml-auto w-1.5 h-6 rounded-full bg-purple-600" />
                 )}
-              </a>
+              </span>
             </Link>
             
-            <Link href="/guidelines">
-              <a className={`flex items-center px-4 py-2.5 rounded-lg ${
+            <Link to="/guidelines">
+              <span className={`flex items-center px-4 py-2.5 rounded-lg cursor-pointer ${
                 isActive('/guidelines') 
                   ? 'bg-purple-100 text-purple-800 font-medium shadow-sm' 
                   : 'text-gray-700 hover:bg-gray-100'
@@ -132,7 +134,7 @@ export function StudentSidebar({ user }: SidebarProps) {
                 {isActive('/guidelines') && (
                   <div className="ml-auto w-1.5 h-6 rounded-full bg-purple-600" />
                 )}
-              </a>
+              </span>
             </Link>
           </nav>
           
