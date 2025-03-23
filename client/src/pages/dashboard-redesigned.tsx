@@ -143,14 +143,14 @@ export default function Dashboard() {
         {/* Mobile navigation bar */}
         <div className="md:hidden bg-white border-b border-gray-200 px-4 py-2">
           <div className="flex justify-between items-center">
-            <Link href="/">
-              <a className="text-purple-700 font-medium px-3 py-2">Elections</a>
+            <Link to="/">
+              <span className="text-purple-700 font-medium px-3 py-2 cursor-pointer">Elections</span>
             </Link>
-            <Link href="/results">
-              <a className="text-gray-600 px-3 py-2">Results</a>
+            <Link to="/results">
+              <span className="text-gray-600 px-3 py-2 cursor-pointer">Results</span>
             </Link>
-            <Link href="/guidelines">
-              <a className="text-gray-600 px-3 py-2">Guidelines</a>
+            <Link to="/guidelines">
+              <span className="text-gray-600 px-3 py-2 cursor-pointer">Guidelines</span>
             </Link>
             <button 
               onClick={handleLogout} 
