@@ -12,12 +12,16 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, LogOut as LogOutIcon } from "lucide-react";
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, logoutMutation } = useAuth();
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const [currentElectionId, setCurrentElectionId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState("all");
   const [selectedElection, setSelectedElection] = useState<Election | null>(null);
+  
+  const handleLogout = () => {
+    logoutMutation.mutate();
+  };
 
   // Fetch all elections
   const { data: elections, isLoading } = useQuery<Election[]>({
@@ -139,9 +143,15 @@ export default function Dashboard() {
         {/* Mobile navigation bar */}
         <div className="md:hidden bg-white border-b border-gray-200 px-4 py-2">
           <div className="flex justify-between items-center">
-            <Link href="/" className="text-purple-700 font-medium px-3 py-2">Elections</Link>
-            <Link href="/results" className="text-gray-600 px-3 py-2">Results</Link>
-            <Link href="/guidelines" className="text-gray-600 px-3 py-2">Guidelines</Link>
+            <Link href="/">
+              <a className="text-purple-700 font-medium px-3 py-2">Elections</a>
+            </Link>
+            <Link href="/results">
+              <a className="text-gray-600 px-3 py-2">Results</a>
+            </Link>
+            <Link href="/guidelines">
+              <a className="text-gray-600 px-3 py-2">Guidelines</a>
+            </Link>
             <button 
               onClick={handleLogout} 
               className="text-gray-600 px-3 py-2"
