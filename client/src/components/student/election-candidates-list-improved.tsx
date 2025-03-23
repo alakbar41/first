@@ -105,8 +105,9 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
         try {
           const voteCountsMap: {[key: number]: number} = {};
           
-          // TypeScript is now certain candidatesData is not undefined due to the guard clause above
-          for (const candidate of candidatesData) {
+          // Process each candidate in the candidatesData array
+          // We've already checked that candidatesData exists and has length > 0
+          (candidatesData || []).forEach(async (candidate) => {
             try {
               // In a production environment, we'd need a mapping between database IDs and blockchain IDs
               // For now, we're using hardcoded mappings for demonstration purposes
@@ -117,18 +118,23 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
               
               // Only use candidates that exist in the blockchain (IDs 1 and 2 for demo)
               if (blockchainCandidateId <= 2) {
-                const voteCount = await getCandidateVoteCount(blockchainCandidateId);
-                voteCountsMap[candidate.id] = voteCount;
+                try {
+                  const voteCount = await getCandidateVoteCount(blockchainCandidateId);
+                  voteCountsMap[candidate.id] = voteCount;
+                } catch (error) {
+                  console.error(`Error getting vote count for candidate ${candidate.id}:`, error);
+                  voteCountsMap[candidate.id] = 0;
+                }
               } else {
                 // For candidates not in the blockchain, display 0 votes
                 voteCountsMap[candidate.id] = 0;
               }
             } catch (err) {
-              console.error(`Error fetching vote count for candidate ${candidate.id}:`, err);
+              console.error(`Error processing candidate ${candidate.id}:`, err);
               // Don't show error to user, just use 0 votes
               voteCountsMap[candidate.id] = 0;
             }
-          }
+          });
           
           setBlockchainVoteCounts(voteCountsMap);
         } catch (error) {
@@ -345,19 +351,19 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                 key={`ticket-${president.id}-${runningMate?.id || 'no-vp'}`}
                 className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden"
               >
-                <div className="px-6 py-4 bg-purple-50 border-b border-gray-200">
-                  <h3 className="text-lg font-semibold text-purple-800 flex items-center">
-                    <Award className="w-5 h-5 mr-2" />
-                    Presidential Ticket
+                <div className="px-4 sm:px-6 py-3 sm:py-4 bg-purple-50 border-b border-gray-200">
+                  <h3 className="text-base sm:text-lg font-semibold text-purple-800 flex items-center">
+                    <Award className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
+                    <span className="truncate">Presidential Ticket</span>
                     <span className="ml-auto">
-                      <Badge variant="outline" className="text-purple-700 bg-purple-50 border-purple-200">
+                      <Badge variant="outline" className="text-purple-700 bg-purple-50 border-purple-200 text-xs sm:text-sm whitespace-nowrap">
                         {president.voteCount + (runningMate?.voteCount || 0)} votes
                       </Badge>
                     </span>
                   </h3>
                 </div>
                 
-                <div className="p-4 grid md:grid-cols-2 gap-4">
+                <div className="p-3 sm:p-4 grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                   {/* President */}
                   <div className="flex items-start space-x-4">
                     {president.pictureUrl ? (
@@ -429,30 +435,30 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                   )}
                 </div>
                 
-                <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
+                <div className="px-3 sm:px-6 py-3 sm:py-4 bg-gray-50 border-t border-gray-200">
                   <div className="flex flex-col space-y-3">
                     {/* Display combined ticket vote count */}
                     <div className="flex justify-center">
-                      <Badge variant="outline" className="text-purple-700 bg-purple-50 border-purple-200 text-base py-1 px-3">
+                      <Badge variant="outline" className="text-purple-700 bg-purple-50 border-purple-200 text-xs sm:text-base py-1 px-2 sm:px-3">
                         <span className="font-semibold">{president.voteCount + (runningMate?.voteCount || 0)}</span> votes for this ticket
                       </Badge>
                     </div>
                     
-                    <div className="flex justify-end">
+                    <div className="flex justify-center sm:justify-end">
                       {hasVotedInElection ? (
-                        <Button disabled className="bg-green-500 hover:bg-green-600 shadow-md">
-                          <Check className="mr-2 h-4 w-4" />
+                        <Button disabled className="w-full sm:w-auto bg-green-500 hover:bg-green-600 shadow-md text-xs sm:text-sm">
+                          <Check className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                           Voted Successfully
                         </Button>
                       ) : !isWalletConnected ? (
-                        <ConnectWalletButton />
+                        <ConnectWalletButton className="w-full sm:w-auto" />
                       ) : (
                         <VoteForTicketButton
                           electionId={election.id}
                           ticketId={president.id} // Using president ID as the ticket ID
                           disabled={!isElectionActive() || !isUserEligible()}
                           onVoteSuccess={handleVoteSuccess}
-                          className="bg-gradient-to-r from-purple-700 to-purple-600 hover:from-purple-800 hover:to-purple-700 shadow-md"
+                          className="w-full sm:w-auto bg-gradient-to-r from-purple-700 to-purple-600 hover:from-purple-800 hover:to-purple-700 shadow-md"
                         />
                       )}
                     </div>
@@ -474,9 +480,9 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                 key={candidate.id}
                 className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden"
               >
-                <div className="flex items-start p-4">
+                <div className="flex flex-col sm:flex-row items-center sm:items-start p-3 sm:p-4">
                   {candidate.pictureUrl ? (
-                    <div className="w-16 h-16 rounded-full overflow-hidden flex-shrink-0 mr-4">
+                    <div className="w-16 h-16 rounded-full overflow-hidden flex-shrink-0 mb-3 sm:mb-0 sm:mr-4">
                       <img 
                         src={candidate.pictureUrl} 
                         alt={candidate.fullName} 
@@ -492,18 +498,18 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                       />
                     </div>
                   ) : (
-                    <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0 mr-4">
+                    <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0 mb-3 sm:mb-0 sm:mr-4">
                       <UserCircle className="text-gray-400 w-10 h-10" />
                     </div>
                   )}
                   
-                  <div className="flex-1">
-                    <div className="flex justify-between items-start">
+                  <div className="flex-1 w-full text-center sm:text-left">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start">
                       <h4 className="font-medium text-gray-900">{candidate.fullName}</h4>
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger>
-                            <Badge variant="outline" className="text-purple-700 bg-purple-50 border-purple-200">
+                            <Badge variant="outline" className="hidden sm:inline-flex mt-1 sm:mt-0 text-purple-700 bg-purple-50 border-purple-200 text-xs">
                               {candidate.voteCount} votes
                             </Badge>
                           </TooltipTrigger>
@@ -521,6 +527,13 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                     </div>
                     
                     <div className="mt-4 space-y-3">
+                      {/* Display blockchain vote count for mobile */}
+                      <div className="sm:hidden flex justify-center">
+                        <Badge variant="outline" className="text-purple-700 bg-purple-50 border-purple-200 text-xs px-2 py-1">
+                          {candidate.voteCount} votes
+                        </Badge>
+                      </div>
+                      
                       {/* Display blockchain vote count */}
                       <CandidateVoteCount 
                         candidateId={candidate.id} 
@@ -529,13 +542,13 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                       />
                     
                       {hasVotedInElection ? (
-                        <Button disabled className="w-full bg-green-500 hover:bg-green-600 shadow-md">
-                          <Check className="mr-2 h-4 w-4" />
+                        <Button disabled className="w-full bg-green-500 hover:bg-green-600 shadow-md text-xs sm:text-sm">
+                          <Check className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                           Voted Successfully
                         </Button>
                       ) : !isWalletConnected ? (
                         <ConnectWalletButton 
-                          className="w-full"
+                          className="w-full text-xs sm:text-sm"
                         />
                       ) : (
                         <VoteForSenatorButton
@@ -543,7 +556,7 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                           candidateId={candidate.id}
                           disabled={!isElectionActive() || !isUserEligible()}
                           onVoteSuccess={handleVoteSuccess}
-                          className="w-full"
+                          className="w-full text-xs sm:text-sm"
                         />
                       )}
                     </div>
