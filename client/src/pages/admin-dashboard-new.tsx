@@ -14,6 +14,7 @@ import { CreateElectionDialog } from "@/components/admin/create-election-dialog"
 import { EditElectionDialog } from "@/components/admin/edit-election-dialog";
 import { AddCandidatesToElectionDialog } from "@/components/admin/add-candidates-to-election-dialog";
 import { ViewElectionCandidatesDialog } from "@/components/admin/view-election-candidates-dialog";
+import { BlockchainSyncButton } from "@/components/admin/blockchain-sync-button";
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -165,13 +166,21 @@ export default function AdminDashboard() {
                 )}
               </div>
               
-              <Button 
-                onClick={() => setIsCreateElectionOpen(true)}
-                className="flex items-center rounded-md bg-purple-700 px-4 py-2 text-sm font-medium text-white hover:bg-purple-800"
-              >
-                <Plus className="mr-1 h-4 w-4" />
-                Add Election
-              </Button>
+              <div className="flex gap-2">
+                <BlockchainSyncButton 
+                  variant="outline" 
+                  size="default"
+                  className="bg-white hover:bg-gray-100"
+                />
+                
+                <Button 
+                  onClick={() => setIsCreateElectionOpen(true)}
+                  className="flex items-center rounded-md bg-purple-700 px-4 py-2 text-sm font-medium text-white hover:bg-purple-800"
+                >
+                  <Plus className="mr-1 h-4 w-4" />
+                  Add Election
+                </Button>
+              </div>
             </div>
             
             {/* Filters row */}

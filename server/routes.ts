@@ -538,6 +538,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Get all election-candidate relationships (for admin blockchain sync)
+  app.get("/api/election-candidates", isAdmin, async (req, res) => {
+    try {
+      const electionCandidates = await storage.getAllElectionCandidates();
+      res.json(electionCandidates);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch all election candidates" });
+    }
+  });
+  
   // Password Reset Routes
   app.post("/api/reset-password", async (req, res) => {
     try {

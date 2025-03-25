@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useWeb3, ElectionType } from "@/hooks/use-web3";
-import { Loader2, CloudSync } from "lucide-react";
+import { Loader2, Cloud, ServerCog } from "lucide-react";
 import { Election } from "@shared/schema";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -238,7 +238,7 @@ export function BlockchainSyncButton({
         {isSyncing ? (
           <Loader2 className="h-4 w-4 animate-spin" />
         ) : (
-          <CloudSync className="h-4 w-4" />
+          <ServerCog className="h-4 w-4" />
         )}
         Sync with Blockchain
       </Button>
@@ -334,7 +334,7 @@ export function BlockchainSyncButton({
                   Close
                 </Button>
                 <Button onClick={handleSync}>
-                  <CloudSync className="mr-2 h-4 w-4" />
+                  <ServerCog className="mr-2 h-4 w-4" />
                   Sync Now
                 </Button>
               </>
