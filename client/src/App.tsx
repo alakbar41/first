@@ -8,7 +8,7 @@ import RegisterPage from "@/pages/register-page";
 import Dashboard from "@/pages/dashboard-redesigned"; // Using the redesigned dashboard
 import Results from "@/pages/results";
 import Guidelines from "@/pages/guidelines";
-import AdminDashboard from "@/pages/admin-dashboard";
+import AdminDashboard from "@/pages/admin-dashboard-new";
 import AdminCandidates from "@/pages/admin-candidates";
 import { ProtectedRoute, AdminProtectedRoute } from "./lib/protected-route";
 import { AuthProvider } from "./hooks/use-auth";
