@@ -5,10 +5,13 @@ import { users, pendingUsers, elections, candidates, electionCandidates,
   type Candidate, type InsertCandidate,
   type ElectionCandidate, type InsertElectionCandidate
 } from "@shared/schema";
+import { db } from "./db";
+import { eq, and, asc } from "drizzle-orm";
 import session from "express-session";
-import createMemoryStore from "memorystore";
+import connectPg from "connect-pg-simple";
+import { pool } from "./db";
 
-const MemoryStore = createMemoryStore(session);
+const PostgresSessionStore = connectPg(session);
 
 // modify the interface with any CRUD methods
 // you might need
@@ -487,4 +490,364 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export class DatabaseStorage implements IStorage {
+  sessionStore: session.Store;
+
+  constructor() {
+    this.sessionStore = new PostgresSessionStore({
+      pool,
+      createTableIfMissing: true,
+    });
+    
+    // Initialize default users if they don't exist
+    this.initializeDefaultUsers();
+  }
+
+  private async initializeDefaultUsers() {
+    try {
+      // Check if admin user exists
+      const adminUser = await this.getUserByEmail('admin@ada.edu.az');
+      if (!adminUser) {
+        console.log("Creating default admin user");
+        await this.createUser({
+          email: 'admin@ada.edu.az',
+          password: '$2b$10$pxB6DROWxUGrMa5nrgr9JOcP62WMJ0gQyWYm7VIxyOgaRADqg1BmS', // 'Admin123@'
+          faculty: 'ADMIN',
+          isAdmin: true
+        });
+      }
+      
+      // Check if student user exists
+      const studentUser = await this.getUserByEmail('balakbarli14184@ada.edu.az');
+      if (!studentUser) {
+        console.log("Creating default student user");
+        await this.createUser({
+          email: 'balakbarli14184@ada.edu.az',
+          password: '$2b$10$8gvO.0jc/UF0I7NHDJwGyO/Frs76qPNlwXNsCeJHsjv.h2.IlCMSK', // 'Salam123@'
+          faculty: 'SITE',
+          isAdmin: false
+        });
+      }
+    } catch (err) {
+      console.error("Error initializing default users:", err);
+    }
+  }
+
+  // User methods
+  async getUser(id: number): Promise<User | undefined> {
+    const result = await db.select().from(users).where(eq(users.id, id));
+    return result[0];
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const result = await db.select().from(users).where(eq(users.email, email));
+    return result[0];
+  }
+
+  async createUser(user: InsertUser): Promise<User> {
+    const result = await db.insert(users).values(user).returning();
+    return result[0];
+  }
+
+  async updateUserPassword(email: string, newPassword: string): Promise<void> {
+    await db.update(users)
+      .set({ password: newPassword })
+      .where(eq(users.email, email));
+  }
+
+  // Pending user methods
+  async getPendingUserByEmail(email: string): Promise<PendingUser | undefined> {
+    const result = await db.select().from(pendingUsers).where(eq(pendingUsers.email, email));
+    return result[0];
+  }
+
+  async createPendingUser(user: InsertPendingUser): Promise<PendingUser> {
+    // If a pending user with this email already exists, delete it first
+    const existingUser = await this.getPendingUserByEmail(user.email);
+    if (existingUser) {
+      await this.deletePendingUser(user.email);
+    }
+    
+    const result = await db.insert(pendingUsers).values(user).returning();
+    return result[0];
+  }
+
+  async updatePendingUserOtp(email: string, otp: string): Promise<void> {
+    await db.update(pendingUsers)
+      .set({ 
+        otp: otp,
+        createdAt: new Date()
+      })
+      .where(eq(pendingUsers.email, email));
+  }
+
+  async deletePendingUser(email: string): Promise<void> {
+    await db.delete(pendingUsers).where(eq(pendingUsers.email, email));
+  }
+
+  // Election methods
+  async getElections(): Promise<Election[]> {
+    return await db.select().from(elections).orderBy(asc(elections.id));
+  }
+
+  async getElection(id: number): Promise<Election | undefined> {
+    const result = await db.select().from(elections).where(eq(elections.id, id));
+    return result[0];
+  }
+
+  async createElection(election: InsertElection): Promise<Election> {
+    const result = await db.insert(elections).values({
+      ...election,
+      createdAt: new Date()
+    }).returning();
+    return result[0];
+  }
+
+  async updateElectionStatus(id: number, status: string): Promise<void> {
+    await db.update(elections)
+      .set({ status })
+      .where(eq(elections.id, id));
+  }
+
+  async deleteElection(id: number): Promise<void> {
+    // First, get all affected election-candidate relationships
+    const electionCandidatesList = await this.getElectionCandidates(id);
+    
+    // Collect all affected candidate IDs
+    const affectedCandidateIds: number[] = [];
+    electionCandidatesList.forEach(ec => {
+      if (!affectedCandidateIds.includes(ec.candidateId)) {
+        affectedCandidateIds.push(ec.candidateId);
+      }
+      
+      if (ec.runningMateId && ec.runningMateId > 0 && !affectedCandidateIds.includes(ec.runningMateId)) {
+        affectedCandidateIds.push(ec.runningMateId);
+      }
+    });
+    
+    // Delete all election-candidate relationships for this election
+    await db.delete(electionCandidates).where(eq(electionCandidates.electionId, id));
+    
+    // Delete the election
+    await db.delete(elections).where(eq(elections.id, id));
+    
+    // Update affected candidates' status if they're not in any other elections
+    for (const candidateId of affectedCandidateIds) {
+      // Check if candidate is still in any elections
+      const remainingRelationships = await db.select()
+        .from(electionCandidates)
+        .where(
+          eq(electionCandidates.candidateId, candidateId)
+        );
+        
+      if (remainingRelationships.length === 0) {
+        // Also check if they're a running mate in any elections
+        const asRunningMate = await db.select()
+          .from(electionCandidates)
+          .where(
+            eq(electionCandidates.runningMateId, candidateId)
+          );
+          
+        if (asRunningMate.length === 0) {
+          // If not in any elections, update status to inactive
+          await this.updateCandidateStatus(candidateId, "inactive");
+        }
+      }
+    }
+  }
+
+  async updateElection(id: number, election: Partial<InsertElection>): Promise<Election> {
+    const updated = await db.update(elections)
+      .set({
+        ...election,
+        startDate: election.startDate instanceof Date ? election.startDate : new Date(election.startDate as string),
+        endDate: election.endDate instanceof Date ? election.endDate : new Date(election.endDate as string),
+      })
+      .where(eq(elections.id, id))
+      .returning();
+      
+    if (!updated.length) {
+      throw new Error(`Election with id ${id} not found`);
+    }
+    
+    return updated[0];
+  }
+
+  // Candidate methods
+  async getCandidates(): Promise<Candidate[]> {
+    return await db.select().from(candidates).orderBy(asc(candidates.id));
+  }
+
+  async getCandidate(id: number): Promise<Candidate | undefined> {
+    const result = await db.select().from(candidates).where(eq(candidates.id, id));
+    return result[0];
+  }
+
+  async getCandidateByStudentId(studentId: string): Promise<Candidate | undefined> {
+    const result = await db.select().from(candidates).where(eq(candidates.studentId, studentId));
+    return result[0];
+  }
+
+  async createCandidate(candidate: InsertCandidate): Promise<Candidate> {
+    const now = new Date();
+    const result = await db.insert(candidates).values({
+      fullName: candidate.fullName,
+      studentId: candidate.studentId,
+      faculty: candidate.faculty,
+      position: candidate.position,
+      status: "inactive", // Default status is inactive until added to an election
+      pictureUrl: candidate.pictureUrl || "",
+      createdAt: now,
+      updatedAt: now
+    }).returning();
+    return result[0];
+  }
+
+  async updateCandidate(id: number, candidate: Partial<InsertCandidate>): Promise<Candidate> {
+    const existingCandidate = await this.getCandidate(id);
+    
+    if (!existingCandidate) {
+      throw new Error(`Candidate with id ${id} not found`);
+    }
+    
+    const updated = await db.update(candidates)
+      .set({
+        ...candidate,
+        pictureUrl: candidate.pictureUrl || existingCandidate.pictureUrl,
+        updatedAt: new Date()
+      })
+      .where(eq(candidates.id, id))
+      .returning();
+      
+    return updated[0];
+  }
+
+  async updateCandidateStatus(id: number, status: string): Promise<void> {
+    await db.update(candidates)
+      .set({ 
+        status, 
+        updatedAt: new Date() 
+      })
+      .where(eq(candidates.id, id));
+  }
+
+  async deleteCandidate(id: number): Promise<void> {
+    await db.delete(candidates).where(eq(candidates.id, id));
+  }
+
+  async resetCandidateIds(): Promise<void> {
+    // This is a database-level operation not needed in PostgreSQL 
+    // as IDs are auto-incremented by the database
+    // This method is kept for compatibility with the interface
+  }
+
+  // Election-Candidate methods
+  async getElectionCandidates(electionId: number): Promise<ElectionCandidate[]> {
+    return await db.select()
+      .from(electionCandidates)
+      .where(eq(electionCandidates.electionId, electionId));
+  }
+
+  async getCandidateElections(candidateId: number): Promise<ElectionCandidate[]> {
+    return await db.select()
+      .from(electionCandidates)
+      .where(eq(electionCandidates.candidateId, candidateId));
+  }
+
+  async getAllElectionCandidates(): Promise<ElectionCandidate[]> {
+    return await db.select().from(electionCandidates);
+  }
+
+  async addCandidateToElection(electionCandidate: InsertElectionCandidate): Promise<ElectionCandidate> {
+    // First check if this relationship already exists to avoid duplicates
+    const existing = await db.select()
+      .from(electionCandidates)
+      .where(and(
+        eq(electionCandidates.electionId, electionCandidate.electionId),
+        eq(electionCandidates.candidateId, electionCandidate.candidateId)
+      ));
+      
+    if (existing.length > 0) {
+      return existing[0]; // Return the existing relationship
+    }
+    
+    const result = await db.insert(electionCandidates)
+      .values({
+        ...electionCandidate,
+        runningMateId: electionCandidate.runningMateId || 0,
+        createdAt: new Date()
+      })
+      .returning();
+      
+    // Update candidate status to active
+    await this.updateCandidateStatus(electionCandidate.candidateId, "active");
+    
+    // If there's a running mate, update their status too
+    if (electionCandidate.runningMateId && electionCandidate.runningMateId > 0) {
+      await this.updateCandidateStatus(electionCandidate.runningMateId, "active");
+    }
+    
+    return result[0];
+  }
+
+  async removeCandidateFromElection(electionId: number, candidateId: number): Promise<void> {
+    // Find the relationship
+    const relationships = await db.select()
+      .from(electionCandidates)
+      .where(and(
+        eq(electionCandidates.electionId, electionId),
+        eq(electionCandidates.candidateId, candidateId)
+      ));
+      
+    if (relationships.length === 0) {
+      return; // Nothing to remove
+    }
+    
+    const relationship = relationships[0];
+    const runningMateId = relationship.runningMateId;
+    
+    // Delete the relationship
+    await db.delete(electionCandidates)
+      .where(eq(electionCandidates.id, relationship.id));
+    
+    // Check if candidate is still in any elections (as either candidate or running mate)
+    const candidateInOtherElections = await db.select().count()
+      .from(electionCandidates)
+      .where(
+        eq(electionCandidates.candidateId, candidateId)
+      );
+      
+    const candidateAsRunningMate = await db.select().count()
+      .from(electionCandidates)
+      .where(
+        eq(electionCandidates.runningMateId, candidateId)
+      );
+    
+    // If not in any other elections, update status to inactive
+    if (candidateInOtherElections[0].count === 0 && candidateAsRunningMate[0].count === 0) {
+      await this.updateCandidateStatus(candidateId, "inactive");
+    }
+    
+    // Do the same for running mate if there is one
+    if (runningMateId) {
+      const runningMateInOtherElections = await db.select().count()
+        .from(electionCandidates)
+        .where(
+          eq(electionCandidates.candidateId, runningMateId)
+        );
+        
+      const runningMateAsRunningMate = await db.select().count()
+        .from(electionCandidates)
+        .where(
+          eq(electionCandidates.runningMateId, runningMateId)
+        );
+      
+      if (runningMateInOtherElections[0].count === 0 && runningMateAsRunningMate[0].count === 0) {
+        await this.updateCandidateStatus(runningMateId, "inactive");
+      }
+    }
+  }
+}
+
+// Use the DatabaseStorage implementation instead of MemStorage
+export const storage = new DatabaseStorage();
