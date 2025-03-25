@@ -31,12 +31,22 @@ export function VoteForSenatorButton({
 
   // Check if the user has already voted when the component mounts or wallet connects
   const checkVoteStatus = async () => {
-    if (!isWalletConnected) return;
-    
     setIsChecking(true);
+    
     try {
-      const voted = await checkIfVoted(electionId);
-      setHasVoted(voted);
+      // Check if blockchain voting is enabled via localStorage
+      const blockchainVotingEnabled = localStorage.getItem('blockchainVotingEnabled') === 'true';
+      
+      if (blockchainVotingEnabled && isWalletConnected) {
+        // Use blockchain to check vote status if blockchain voting is enabled
+        const voted = await checkIfVoted(electionId);
+        setHasVoted(voted);
+      } else {
+        // Check localStorage for vote record if blockchain voting is not enabled
+        // or wallet is not connected
+        const localVoteRecord = localStorage.getItem(`vote_${electionId}_${candidateId}`);
+        setHasVoted(localVoteRecord === 'true');
+      }
     } catch (error) {
       console.error('Failed to check vote status:', error);
     } finally {

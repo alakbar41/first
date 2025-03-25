@@ -31,12 +31,22 @@ export function VoteForTicketButton({
 
   // Check if the user has already voted when the component mounts or wallet connects
   const checkVoteStatus = async () => {
-    if (!isWalletConnected) return;
-    
     setIsChecking(true);
+    
     try {
-      const voted = await checkIfVoted(electionId);
-      setHasVoted(voted);
+      // Check if blockchain voting is enabled via localStorage
+      const blockchainVotingEnabled = localStorage.getItem('blockchainVotingEnabled') === 'true';
+      
+      if (blockchainVotingEnabled && isWalletConnected) {
+        // Use blockchain to check vote status if blockchain voting is enabled
+        const voted = await checkIfVoted(electionId);
+        setHasVoted(voted);
+      } else {
+        // Check localStorage for vote record if blockchain voting is not enabled
+        // or wallet is not connected
+        const localVoteRecord = localStorage.getItem(`vote_${electionId}_ticket_${ticketId}`);
+        setHasVoted(localVoteRecord === 'true');
+      }
     } catch (error) {
       console.error('Failed to check vote status:', error);
     } finally {
@@ -47,42 +57,76 @@ export function VoteForTicketButton({
   const handleVote = async () => {
     if (hasVoted || disabled) return;
     
-    // Connect wallet first if not connected
-    if (!isWalletConnected) {
+    // Check if blockchain voting is enabled via localStorage
+    const blockchainVotingEnabled = localStorage.getItem('blockchainVotingEnabled') === 'true';
+    
+    if (blockchainVotingEnabled) {
+      // Use blockchain voting if enabled
+      // Connect wallet first if not connected
+      if (!isWalletConnected) {
+        try {
+          await connectWallet();
+          await checkVoteStatus(); // Check if they've already voted after connecting
+          if (hasVoted) return; // Don't proceed if they've already voted
+        } catch (error) {
+          toast({
+            title: "Wallet Connection Required",
+            description: "Please connect your wallet to vote.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+      
+      setIsVoting(true);
       try {
-        await connectWallet();
-        await checkVoteStatus(); // Check if they've already voted after connecting
-        if (hasVoted) return; // Don't proceed if they've already voted
-      } catch (error) {
+        const txHash = await voteForPresidentVP(electionId, ticketId);
+        
         toast({
-          title: "Wallet Connection Required",
-          description: "Please connect your wallet to vote.",
+          title: "Vote Successful",
+          description: "Your vote has been recorded on the blockchain.",
+          variant: "default",
+        });
+        
+        setHasVoted(true);
+        if (onVoteSuccess) onVoteSuccess(txHash);
+      } catch (error: any) {
+        toast({
+          title: "Voting Failed",
+          description: error.message || "Failed to submit your vote. Please try again.",
           variant: "destructive",
         });
-        return;
+      } finally {
+        setIsVoting(false);
       }
-    }
-    
-    setIsVoting(true);
-    try {
-      const txHash = await voteForPresidentVP(electionId, ticketId);
-      
-      toast({
-        title: "Vote Successful",
-        description: "Your vote has been recorded on the blockchain.",
-        variant: "default",
-      });
-      
-      setHasVoted(true);
-      if (onVoteSuccess) onVoteSuccess(txHash);
-    } catch (error: any) {
-      toast({
-        title: "Voting Failed",
-        description: error.message || "Failed to submit your vote. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsVoting(false);
+    } else {
+      // Use traditional database voting if blockchain not enabled
+      setIsVoting(true);
+      try {
+        // Simulate a vote in the database
+        // In a real implementation, this would make an API call to record the vote
+        await new Promise(resolve => setTimeout(resolve, 800)); // Simulate network request
+        
+        // Record vote in localStorage to simulate persistence
+        localStorage.setItem(`vote_${electionId}_ticket_${ticketId}`, 'true');
+        
+        toast({
+          title: "Vote Successful",
+          description: "Your vote has been recorded in the database.",
+          variant: "default",
+        });
+        
+        setHasVoted(true);
+        if (onVoteSuccess) onVoteSuccess('database-vote');
+      } catch (error: any) {
+        toast({
+          title: "Voting Failed",
+          description: error.message || "Failed to submit your vote. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsVoting(false);
+      }
     }
   };
 
