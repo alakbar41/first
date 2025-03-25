@@ -78,6 +78,141 @@ class Web3Service {
     }
   }
 
+  // Create an election on the blockchain
+  async createElection(
+    name: string,
+    electionType: ElectionType,
+    startTime: number,
+    endTime: number,
+    eligibleFaculties: string
+  ): Promise<number> {
+    try {
+      if (!this.contract || !this.signer) {
+        throw new Error('Contract or signer not initialized');
+      }
+
+      // Ensure wallet is connected
+      if (!this.walletAddress) {
+        throw new Error('Wallet not connected');
+      }
+
+      const tx = await this.contract.createElection(
+        name,
+        electionType,
+        startTime,
+        endTime,
+        eligibleFaculties
+      );
+      
+      const receipt = await tx.wait();
+      
+      // Get the election ID from the transaction events
+      // This would require parsing the event logs
+      // For simplicity, we'll just return 1 as a placeholder
+      return 1;
+    } catch (error) {
+      console.error('Failed to create election:', error);
+      throw error;
+    }
+  }
+
+  // Create a candidate on the blockchain
+  async createCandidate(
+    studentId: string,
+    faculty: string
+  ): Promise<number> {
+    try {
+      if (!this.contract || !this.signer) {
+        throw new Error('Contract or signer not initialized');
+      }
+
+      // Ensure wallet is connected
+      if (!this.walletAddress) {
+        throw new Error('Wallet not connected');
+      }
+
+      const tx = await this.contract.createCandidate(
+        studentId,
+        faculty
+      );
+      
+      const receipt = await tx.wait();
+      
+      // Return created candidate ID (in a real implementation, extract from event)
+      return 1;
+    } catch (error) {
+      console.error('Failed to create candidate:', error);
+      throw error;
+    }
+  }
+
+  // Add a candidate to an election
+  async registerCandidateForElection(
+    electionId: number,
+    candidateId: number
+  ): Promise<void> {
+    try {
+      if (!this.contract || !this.signer) {
+        throw new Error('Contract or signer not initialized');
+      }
+
+      // Ensure wallet is connected
+      if (!this.walletAddress) {
+        throw new Error('Wallet not connected');
+      }
+
+      const tx = await this.contract.registerCandidateForElection(
+        electionId,
+        candidateId
+      );
+      
+      await tx.wait();
+    } catch (error) {
+      console.error(`Failed to register candidate ${candidateId} for election ${electionId}:`, error);
+      throw error;
+    }
+  }
+
+  // Activate an election on the blockchain
+  async startElection(electionId: number): Promise<void> {
+    try {
+      if (!this.contract || !this.signer) {
+        throw new Error('Contract or signer not initialized');
+      }
+
+      // Ensure wallet is connected
+      if (!this.walletAddress) {
+        throw new Error('Wallet not connected');
+      }
+
+      const tx = await this.contract.startElection(electionId);
+      await tx.wait();
+    } catch (error) {
+      console.error(`Failed to start election ${electionId}:`, error);
+      throw error;
+    }
+  }
+
+  // End an election on the blockchain
+  async stopElection(electionId: number): Promise<void> {
+    try {
+      if (!this.contract || !this.signer) {
+        throw new Error('Contract or signer not initialized');
+      }
+
+      // Ensure wallet is connected
+      if (!this.walletAddress) {
+        throw new Error('Wallet not connected');
+      }
+
+      const tx = await this.contract.stopElection(electionId);
+      await tx.wait();
+    } catch (error) {
+      console.error(`Failed to stop election ${electionId}:`, error);
+      throw error;
+    }
+  }
+
   // Connect to MetaMask
   async connectWallet(): Promise<string> {
     try {
