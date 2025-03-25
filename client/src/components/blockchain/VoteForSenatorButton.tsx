@@ -104,8 +104,8 @@ export function VoteForSenatorButton({
           localStorage.setItem(`vote_${electionId}_${candidateId}`, 'true');
           
           toast({
-            title: "Vote Successful",
-            description: "Your vote has been recorded in the database (blockchain voting unavailable).",
+            title: "Vote Successful (Database Fallback)",
+            description: "Blockchain voting failed, but your vote was safely recorded in the database.",
             variant: "default",
           });
           
