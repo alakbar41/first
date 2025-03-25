@@ -211,14 +211,14 @@ export function BlockchainSyncButton({
       }
 
       toast({
-        title: "Blockchain Sync Complete",
-        description: `Successfully synchronized: ${syncStatus.elections} elections, ${syncStatus.candidates} candidates, ${syncStatus.registrations} registrations.`,
+        title: "Blockchain Voting Enabled",
+        description: `Successfully set up blockchain voting structures for ${syncStatus.elections} elections, ${syncStatus.candidates} candidates, and ${syncStatus.registrations} eligibility records.`,
         variant: "default",
       });
     } catch (error: any) {
       toast({
-        title: "Blockchain Sync Failed",
-        description: error.message || "Failed to sync with blockchain",
+        title: "Blockchain Voting Setup Failed",
+        description: error.message || "Failed to set up blockchain voting structures",
         variant: "destructive",
       });
     } finally {
@@ -240,19 +240,20 @@ export function BlockchainSyncButton({
         ) : (
           <ServerCog className="h-4 w-4 mr-2" />
         )}
-        SYNC TO BLOCKCHAIN
+        ENABLE BLOCKCHAIN VOTING
       </Button>
 
       {/* Confirmation Dialog */}
       <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Blockchain Synchronization</AlertDialogTitle>
+            <AlertDialogTitle>Enable Blockchain Voting</AlertDialogTitle>
             <AlertDialogDescription>
-              This will create all elections and candidates from the database on the blockchain.
+              This will enable blockchain-based voting for your elections. Only voting records will be stored on the blockchain, while election and candidate details remain in the database.
+              <br /><br />
               Make sure you have MetaMask installed and connected to Polygon Amoy testnet.
               <br /><br />
-              This operation requires multiple transactions and may take some time.
+              This operation will create a minimal reference structure on the blockchain that allows secure vote counting.
               <br /><br />
               Do you want to proceed?
             </AlertDialogDescription>
@@ -273,24 +274,24 @@ export function BlockchainSyncButton({
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Blockchain Synchronization</DialogTitle>
+            <DialogTitle>Blockchain Voting Setup</DialogTitle>
             <DialogDescription>
-              {isSyncing ? "Synchronizing data with blockchain..." : "Synchronization complete"}
+              {isSyncing ? "Setting up blockchain voting structures..." : "Blockchain voting enabled"}
             </DialogDescription>
           </DialogHeader>
 
           <div className="py-4 space-y-4">
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span>Elections:</span>
+                <span>Election Voting Structures:</span>
                 <span className="font-medium">{syncStatus.elections} / {elections?.length || 0}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span>Candidates:</span>
+                <span>Candidate Vote Trackers:</span>
                 <span className="font-medium">{syncStatus.candidates} / {candidates?.length || 0}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span>Registrations:</span>
+                <span>Voting Eligibility Records:</span>
                 <span className="font-medium">{syncStatus.registrations} / {electionCandidates?.length || 0}</span>
               </div>
 
@@ -326,7 +327,7 @@ export function BlockchainSyncButton({
             {isSyncing ? (
               <Button disabled>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Syncing...
+                Setting up voting...
               </Button>
             ) : (
               <>
@@ -335,7 +336,7 @@ export function BlockchainSyncButton({
                 </Button>
                 <Button onClick={handleSync}>
                   <ServerCog className="mr-2 h-4 w-4" />
-                  Sync Now
+                  Enable Voting
                 </Button>
               </>
             )}
