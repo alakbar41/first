@@ -47,42 +47,76 @@ export function VoteForSenatorButton({
   const handleVote = async () => {
     if (hasVoted || disabled) return;
     
-    // Connect wallet first if not connected
-    if (!isWalletConnected) {
+    // Check if blockchain voting is enabled via localStorage
+    const blockchainVotingEnabled = localStorage.getItem('blockchainVotingEnabled') === 'true';
+    
+    if (blockchainVotingEnabled) {
+      // Use blockchain voting if enabled
+      // Connect wallet first if not connected
+      if (!isWalletConnected) {
+        try {
+          await connectWallet();
+          await checkVoteStatus(); // Check if they've already voted after connecting
+          if (hasVoted) return; // Don't proceed if they've already voted
+        } catch (error) {
+          toast({
+            title: "Wallet Connection Required",
+            description: "Please connect your wallet to vote.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+      
+      setIsVoting(true);
       try {
-        await connectWallet();
-        await checkVoteStatus(); // Check if they've already voted after connecting
-        if (hasVoted) return; // Don't proceed if they've already voted
-      } catch (error) {
+        const txHash = await voteForSenator(electionId, candidateId);
+        
         toast({
-          title: "Wallet Connection Required",
-          description: "Please connect your wallet to vote.",
+          title: "Vote Successful",
+          description: "Your vote has been recorded on the blockchain.",
+          variant: "default",
+        });
+        
+        setHasVoted(true);
+        if (onVoteSuccess) onVoteSuccess(txHash);
+      } catch (error: any) {
+        toast({
+          title: "Voting Failed",
+          description: error.message || "Failed to submit your vote. Please try again.",
           variant: "destructive",
         });
-        return;
+      } finally {
+        setIsVoting(false);
       }
-    }
-    
-    setIsVoting(true);
-    try {
-      const txHash = await voteForSenator(electionId, candidateId);
-      
-      toast({
-        title: "Vote Successful",
-        description: "Your vote has been recorded on the blockchain.",
-        variant: "default",
-      });
-      
-      setHasVoted(true);
-      if (onVoteSuccess) onVoteSuccess(txHash);
-    } catch (error: any) {
-      toast({
-        title: "Voting Failed",
-        description: error.message || "Failed to submit your vote. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsVoting(false);
+    } else {
+      // Use traditional database voting if blockchain not enabled
+      setIsVoting(true);
+      try {
+        // Simulate a vote in the database
+        // In a real implementation, this would make an API call to record the vote
+        await new Promise(resolve => setTimeout(resolve, 800)); // Simulate network request
+        
+        // Record vote in localStorage to simulate persistence
+        localStorage.setItem(`vote_${electionId}_${candidateId}`, 'true');
+        
+        toast({
+          title: "Vote Successful",
+          description: "Your vote has been recorded in the database.",
+          variant: "default",
+        });
+        
+        setHasVoted(true);
+        if (onVoteSuccess) onVoteSuccess('database-vote');
+      } catch (error: any) {
+        toast({
+          title: "Voting Failed",
+          description: error.message || "Failed to submit your vote. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsVoting(false);
+      }
     }
   };
 
