@@ -8,13 +8,22 @@ type Web3ContextType = {
   isWalletConnected: boolean;
   walletAddress: string;
   connectWallet: () => Promise<string>;
+  // Election functions
+  createElection: (name: string, electionType: ElectionType, startTime: number, endTime: number, eligibleFaculties: string) => Promise<number>;
   getElectionDetails: (electionId: number) => Promise<Election>;
   getElectionCandidates: (electionId: number) => Promise<number[]>;
   getElectionTickets: (electionId: number) => Promise<number[]>;
+  startElection: (electionId: number) => Promise<void>;
+  stopElection: (electionId: number) => Promise<void>;
+  // Candidate functions
+  createCandidate: (studentId: string, faculty: string) => Promise<number>;
+  registerCandidateForElection: (electionId: number, candidateId: number) => Promise<void>;
   getCandidateDetails: (candidateId: number) => Promise<Candidate>;
   getCandidateVoteCount: (candidateId: number) => Promise<number>;
+  // Ticket functions
   getTicketDetails: (ticketId: number) => Promise<PresidentVPTicket>;
   getTicketVoteCount: (ticketId: number) => Promise<number>;
+  // Voting functions
   checkIfVoted: (electionId: number) => Promise<boolean>;
   voteForSenator: (electionId: number, candidateId: number) => Promise<string>;
   voteForPresidentVP: (electionId: number, ticketId: number) => Promise<string>;
@@ -254,19 +263,176 @@ export function Web3Provider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Create election
+  const createElection = async (
+    name: string,
+    electionType: ElectionType,
+    startTime: number,
+    endTime: number,
+    eligibleFaculties: string
+  ): Promise<number> => {
+    try {
+      if (!isWalletConnected) {
+        await connectWallet();
+      }
+      
+      const electionId = await web3Service.createElection(
+        name,
+        electionType,
+        startTime,
+        endTime,
+        eligibleFaculties
+      );
+      
+      toast({
+        title: "Election Created",
+        description: "Election has been created on the blockchain",
+        variant: "default",
+      });
+      
+      return electionId;
+    } catch (error: any) {
+      toast({
+        title: "Election Creation Failed",
+        description: error.message || "Failed to create election on the blockchain",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+  
+  // Start election
+  const startElection = async (electionId: number): Promise<void> => {
+    try {
+      if (!isWalletConnected) {
+        await connectWallet();
+      }
+      
+      await web3Service.startElection(electionId);
+      
+      toast({
+        title: "Election Started",
+        description: "Election has been started on the blockchain",
+        variant: "default",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Start Election Failed",
+        description: error.message || "Failed to start election on the blockchain",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+  
+  // Stop election
+  const stopElection = async (electionId: number): Promise<void> => {
+    try {
+      if (!isWalletConnected) {
+        await connectWallet();
+      }
+      
+      await web3Service.stopElection(electionId);
+      
+      toast({
+        title: "Election Stopped",
+        description: "Election has been stopped on the blockchain",
+        variant: "default",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Stop Election Failed",
+        description: error.message || "Failed to stop election on the blockchain",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+  
+  // Create candidate
+  const createCandidate = async (
+    studentId: string,
+    faculty: string
+  ): Promise<number> => {
+    try {
+      if (!isWalletConnected) {
+        await connectWallet();
+      }
+      
+      const candidateId = await web3Service.createCandidate(
+        studentId,
+        faculty
+      );
+      
+      toast({
+        title: "Candidate Created",
+        description: "Candidate has been created on the blockchain",
+        variant: "default",
+      });
+      
+      return candidateId;
+    } catch (error: any) {
+      toast({
+        title: "Candidate Creation Failed",
+        description: error.message || "Failed to create candidate on the blockchain",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+  
+  // Register candidate for election
+  const registerCandidateForElection = async (
+    electionId: number,
+    candidateId: number
+  ): Promise<void> => {
+    try {
+      if (!isWalletConnected) {
+        await connectWallet();
+      }
+      
+      await web3Service.registerCandidateForElection(
+        electionId,
+        candidateId
+      );
+      
+      toast({
+        title: "Candidate Registered",
+        description: "Candidate has been registered for the election on the blockchain",
+        variant: "default",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Candidate Registration Failed",
+        description: error.message || "Failed to register candidate for election on the blockchain",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
   // Context value
   const contextValue: Web3ContextType = {
     isInitialized,
     isWalletConnected,
     walletAddress,
     connectWallet,
+    // Election functions
+    createElection,
     getElectionDetails,
     getElectionCandidates,
     getElectionTickets,
+    startElection,
+    stopElection,
+    // Candidate functions
+    createCandidate,
+    registerCandidateForElection,
     getCandidateDetails,
     getCandidateVoteCount,
+    // Ticket functions
     getTicketDetails,
     getTicketVoteCount,
+    // Voting functions
     checkIfVoted,
     voteForSenator,
     voteForPresidentVP,
