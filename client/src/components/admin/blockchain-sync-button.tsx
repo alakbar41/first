@@ -236,11 +236,11 @@ export function BlockchainSyncButton({
         disabled={isSyncing || !isInitialized}
       >
         {isSyncing ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
+          <Loader2 className="h-4 w-4 animate-spin mr-2" />
         ) : (
-          <ServerCog className="h-4 w-4" />
+          <ServerCog className="h-4 w-4 mr-2" />
         )}
-        Sync with Blockchain
+        SYNC TO BLOCKCHAIN
       </Button>
 
       {/* Confirmation Dialog */}

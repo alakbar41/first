@@ -168,9 +168,9 @@ export default function AdminDashboard() {
               
               <div className="flex gap-2">
                 <BlockchainSyncButton 
-                  variant="outline" 
+                  variant="default" 
                   size="default"
-                  className="bg-white hover:bg-gray-100"
+                  className="flex items-center rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
                 />
                 
                 <Button 
