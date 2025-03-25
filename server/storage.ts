@@ -261,6 +261,8 @@ export class MemStorage implements IStorage {
   async updateUserPassword(email: string, newPassword: string): Promise<void> {
     const user = await this.getUserByEmail(email);
     if (user) {
+      // The newPassword is already hashed by the time it gets here
+      // We should NOT hash it again, just store it as is
       user.password = newPassword;
       this.users.set(user.id, user);
     } else {

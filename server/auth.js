@@ -38,6 +38,16 @@ export function setupAuth(app) {
   }
 
   async function comparePasswords(plainPassword, hashedPassword) {
+    console.log(`Comparing passwords: plain (length ${plainPassword.length}), hashed (length ${hashedPassword.length})`);
+    
+    // Check if the stored password is already a bcrypt hash
+    const isBcryptHash = hashedPassword.startsWith('$2b$') || hashedPassword.startsWith('$2a$');
+    
+    if (!isBcryptHash) {
+      console.log('WARNING: Stored password is not a bcrypt hash!');
+      return false;
+    }
+    
     const result = await bcrypt.compare(plainPassword, hashedPassword);
     console.log(`Password comparison result: ${result}`);
     return result;
@@ -242,11 +252,22 @@ export function setupAuth(app) {
     }
   });
 
-  app.post("/api/login", (req, res, next) => {
-    const { email } = req.body;
+  app.post("/api/login", async (req, res, next) => {
+    const { email, password } = req.body;
+    
+    console.log(`Login attempt for: ${email}`);
     
     if (!email) {
       return res.status(400).json({ message: "Email is required" });
+    }
+    
+    // For debugging purposes, get the user directly
+    const user = await storage.getUserByEmail(email);
+    if (user) {
+      console.log(`User found with ID: ${user.id}`);
+      console.log(`Stored password length: ${user.password.length}`);
+    } else {
+      console.log(`No user found with email: ${email}`);
     }
     
     // Use email as the rate limiting key instead of IP
@@ -271,6 +292,7 @@ export function setupAuth(app) {
       if (!user) {
         // Increment failed attempts count
         rateLimit(key, loginAttempts, 5, 5 * 60 * 1000);
+        console.log(`Authentication failed for ${email}`);
         return res.status(401).json({ message: info?.message || "Invalid login credentials" });
       }
       
@@ -280,6 +302,7 @@ export function setupAuth(app) {
       if (isAdmin !== undefined && isAdmin !== user.isAdmin) {
         // User is trying to login with wrong account type
         rateLimit(key, loginAttempts, 5, 5 * 60 * 1000);
+        console.log(`User tried to log in to wrong account type. isAdmin expected: ${user.isAdmin}, got: ${isAdmin}`);
         return res.status(401).json({ message: "Invalid login credentials" });
       }
       
@@ -291,6 +314,7 @@ export function setupAuth(app) {
         
         // Reset login attempts on successful login
         loginAttempts.delete(key);
+        console.log(`Login successful for ${email}`);
         
         return res.status(200).json(user);
       });

@@ -611,8 +611,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid OTP" });
       }
       
-      // Hash the new password before saving
+      // Hash the new password 
       const hashedPassword = await hashPassword(newPassword);
+      console.log(`Reset password: Generated hash for password (length ${hashedPassword.length})`);
       
       // Update password with the hashed version
       await storage.updateUserPassword(email, hashedPassword);
@@ -622,6 +623,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.status(200).json({ message: "Password reset successful" });
     } catch (error) {
+      console.error("Password reset verify error:", error);
       res.status(500).json({ message: "Failed to reset password" });
     }
   });
