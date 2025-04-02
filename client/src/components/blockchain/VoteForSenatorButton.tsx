@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { useWeb3 } from "@/hooks/use-web3";
 import { useToast } from "@/hooks/use-toast";
+import { voteForSenator as voteForSenatorBlockchain, checkIfUserVoted } from '@/lib/blockchain-integration';
 import { Loader2, Check, VoteIcon } from "lucide-react";
 
 interface VoteForSenatorButtonProps {
@@ -37,13 +38,12 @@ export function VoteForSenatorButton({
       // Check if blockchain voting is enabled via localStorage
       const blockchainVotingEnabled = localStorage.getItem('blockchainVotingEnabled') === 'true';
       
-      if (blockchainVotingEnabled && isWalletConnected) {
-        // Use blockchain to check vote status if blockchain voting is enabled
-        const voted = await checkIfVoted(electionId);
+      if (blockchainVotingEnabled) {
+        // Use blockchain integration helper to check vote status
+        const voted = await checkIfUserVoted(electionId);
         setHasVoted(voted);
       } else {
-        // Check localStorage for vote record if blockchain voting is not enabled
-        // or wallet is not connected
+        // If blockchain voting is not enabled, check localStorage
         const localVoteRecord = localStorage.getItem(`vote_${electionId}_${candidateId}`);
         setHasVoted(localVoteRecord === 'true');
       }
@@ -80,8 +80,8 @@ export function VoteForSenatorButton({
       
       setIsVoting(true);
       try {
-        // Use blockchain voting with no fallback
-        const txHash = await voteForSenator(electionId, candidateId);
+        // Use blockchain voting with no fallback via integration helper
+        const txHash = await voteForSenatorBlockchain(electionId, candidateId);
         
         toast({
           title: "Vote Successful",

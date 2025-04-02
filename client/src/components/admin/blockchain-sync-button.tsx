@@ -5,6 +5,7 @@ import { useWeb3, ElectionType } from "@/hooks/use-web3";
 import { Loader2, Cloud, ServerCog } from "lucide-react";
 import { Election } from "@shared/schema";
 import { useQuery } from "@tanstack/react-query";
+import { toggleOptimizedContract } from '@/lib/blockchain-integration';
 import {
   Dialog,
   DialogContent,
@@ -211,7 +212,9 @@ export function BlockchainSyncButton({
       }
 
       // Store flag in localStorage to indicate blockchain voting is enabled
+      // and set to use the optimized contract
       localStorage.setItem('blockchainVotingEnabled', 'true');
+      toggleOptimizedContract(true); // Use the optimized contract implementation
 
       toast({
         title: "Blockchain Voting Enabled",

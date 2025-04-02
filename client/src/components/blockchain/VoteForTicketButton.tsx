@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { useWeb3 } from "@/hooks/use-web3";
 import { useToast } from "@/hooks/use-toast";
+import { voteForPresidentVP as voteForPresidentVPBlockchain, checkIfUserVoted } from '@/lib/blockchain-integration';
 import { Loader2, Check, VoteIcon } from "lucide-react";
 
 interface VoteForTicketButtonProps {
@@ -37,13 +38,12 @@ export function VoteForTicketButton({
       // Check if blockchain voting is enabled via localStorage
       const blockchainVotingEnabled = localStorage.getItem('blockchainVotingEnabled') === 'true';
       
-      if (blockchainVotingEnabled && isWalletConnected) {
-        // Use blockchain to check vote status if blockchain voting is enabled
-        const voted = await checkIfVoted(electionId);
+      if (blockchainVotingEnabled) {
+        // Use blockchain integration helper to check vote status
+        const voted = await checkIfUserVoted(electionId);
         setHasVoted(voted);
       } else {
-        // Check localStorage for vote record if blockchain voting is not enabled
-        // or wallet is not connected
+        // If blockchain voting is not enabled, check localStorage
         const localVoteRecord = localStorage.getItem(`vote_${electionId}_ticket_${ticketId}`);
         setHasVoted(localVoteRecord === 'true');
       }
@@ -80,38 +80,17 @@ export function VoteForTicketButton({
       
       setIsVoting(true);
       try {
-        // Try blockchain voting first
-        try {
-          const txHash = await voteForPresidentVP(electionId, ticketId);
-          
-          toast({
-            title: "Vote Successful",
-            description: "Your vote has been recorded on the blockchain.",
-            variant: "default",
-          });
-          
-          setHasVoted(true);
-          if (onVoteSuccess) onVoteSuccess(txHash);
-          
-        } catch (blockchainError: any) {
-          console.error("Blockchain voting failed, using database fallback:", blockchainError);
-          
-          // If blockchain voting fails, fall back to database voting
-          // Simulate a vote in the database
-          await new Promise(resolve => setTimeout(resolve, 800)); // Simulate network request
-          
-          // Record vote in localStorage to simulate persistence
-          localStorage.setItem(`vote_${electionId}_ticket_${ticketId}`, 'true');
-          
-          toast({
-            title: "Vote Successful (Database Fallback)",
-            description: "Blockchain voting failed, but your vote was safely recorded in the database.",
-            variant: "default",
-          });
-          
-          setHasVoted(true);
-          if (onVoteSuccess) onVoteSuccess('database-fallback');
-        }
+        // Use blockchain voting with no fallback via integration helper
+        const txHash = await voteForPresidentVPBlockchain(electionId, ticketId);
+        
+        toast({
+          title: "Vote Successful",
+          description: "Your vote has been recorded on the blockchain.",
+          variant: "default",
+        });
+        
+        setHasVoted(true);
+        if (onVoteSuccess) onVoteSuccess(txHash);
       } catch (error: any) {
         toast({
           title: "Voting Failed",
