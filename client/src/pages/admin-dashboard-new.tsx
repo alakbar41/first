@@ -1,6 +1,6 @@
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
-import { Plus, Search, X, Filter } from "lucide-react";
+import { Plus, Search, X, Filter, ServerIcon } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Election } from "@shared/schema";
@@ -14,6 +14,7 @@ import { CreateElectionDialog } from "@/components/admin/create-election-dialog"
 import { EditElectionDialog } from "@/components/admin/edit-election-dialog";
 import { AddCandidatesToElectionDialog } from "@/components/admin/add-candidates-to-election-dialog";
 import { ViewElectionCandidatesDialog } from "@/components/admin/view-election-candidates-dialog";
+import { ViewElectionDetailsDialog } from "@/components/admin/view-election-details-dialog";
 import { BlockchainSyncButton } from "@/components/admin/blockchain-sync-button";
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -26,6 +27,7 @@ export default function AdminDashboard() {
   const [isEditElectionOpen, setIsEditElectionOpen] = useState(false);
   const [isAddCandidatesOpen, setIsAddCandidatesOpen] = useState(false);
   const [isViewCandidatesOpen, setIsViewCandidatesOpen] = useState(false);
+  const [isViewDetailsOpen, setIsViewDetailsOpen] = useState(false);
   const [selectedElection, setSelectedElection] = useState<Election | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState("");
   
@@ -93,6 +95,11 @@ export default function AdminDashboard() {
   const handleViewCandidates = (election: Election) => {
     setSelectedElection(election);
     setIsViewCandidatesOpen(true);
+  };
+  
+  const handleViewDetails = (election: Election) => {
+    setSelectedElection(election);
+    setIsViewDetailsOpen(true);
   };
 
   if (!user?.isAdmin) {
@@ -265,6 +272,7 @@ export default function AdminDashboard() {
                   onEdit={handleEditElection}
                   onAddCandidates={handleAddCandidates}
                   onViewCandidates={handleViewCandidates}
+                  onViewDetails={handleViewDetails}
                 />
                 
                 <div className="px-6 py-4 bg-white border-t border-gray-200 flex justify-between items-center">
@@ -318,6 +326,12 @@ export default function AdminDashboard() {
       <EditElectionDialog
         open={isEditElectionOpen}
         onOpenChange={setIsEditElectionOpen}
+        election={selectedElection}
+      />
+      
+      <ViewElectionDetailsDialog
+        open={isViewDetailsOpen}
+        onOpenChange={setIsViewDetailsOpen}
         election={selectedElection}
       />
     </div>

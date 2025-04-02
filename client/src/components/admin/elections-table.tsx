@@ -1,8 +1,9 @@
 import { format } from "date-fns";
-import { MoreHorizontal, Edit, Trash, UserPlus, Users } from "lucide-react";
+import { MoreHorizontal, Edit, Trash, UserPlus, Users, ServerIcon } from "lucide-react";
 import { Election, getFacultyName } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DeployToBlockchainButton } from "./deploy-to-blockchain-button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,9 +19,10 @@ interface ElectionsTableProps {
   onDelete?: (electionId: number) => void;
   onAddCandidates?: (election: Election) => void;
   onViewCandidates?: (election: Election) => void;
+  onViewDetails?: (election: Election) => void;
 }
 
-export function ElectionsTable({ elections, onEdit, onDelete, onAddCandidates, onViewCandidates }: ElectionsTableProps) {
+export function ElectionsTable({ elections, onEdit, onDelete, onAddCandidates, onViewCandidates, onViewDetails }: ElectionsTableProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "upcoming":
@@ -147,6 +149,15 @@ export function ElectionsTable({ elections, onEdit, onDelete, onAddCandidates, o
                       >
                         <Users className="mr-2 h-4 w-4" />
                         <span>View Candidates</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      {/* View details item */}
+                      <DropdownMenuItem 
+                        onClick={() => onViewDetails && onViewDetails(election)}
+                        className="cursor-pointer"
+                      >
+                        <ServerIcon className="mr-2 h-4 w-4" />
+                        <span>View & Deploy to Blockchain</span>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem 
