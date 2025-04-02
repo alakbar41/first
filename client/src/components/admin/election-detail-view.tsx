@@ -37,6 +37,7 @@ export function AdminElectionDetailView({ election, className = "" }: ElectionDe
 
   // Handle successful deployment to blockchain
   const handleDeploySuccess = async (id: number) => {
+    console.log(`handleDeploySuccess called with blockchain ID: ${id}`);
     setBlockchainId(id);
     
     // Update the election in the database with the blockchain ID
@@ -51,7 +52,10 @@ export function AdminElectionDetailView({ election, className = "" }: ElectionDe
       });
       
       if (!response.ok) {
-        console.error('Failed to update election with blockchain ID');
+        console.error('Failed to update election with blockchain ID:', await response.text());
+      } else {
+        const updatedElection = await response.json();
+        console.log('Successfully updated election with blockchain ID:', updatedElection);
       }
     } catch (error) {
       console.error('Error updating election with blockchain ID:', error);

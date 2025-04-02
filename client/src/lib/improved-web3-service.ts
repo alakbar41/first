@@ -106,25 +106,45 @@ class ImprovedWeb3Service {
         endTime
       );
       
+      console.log('Transaction sent, awaiting confirmation...');
       const receipt = await tx.wait();
+      console.log('Transaction confirmed:', receipt);
       
       // Get the election ID from the transaction events
       // For a real implementation, you'd parse the event logs
       // For simplicity, assume the first event is ElectionCreated
+      console.log('Looking for ElectionCreated event in logs...');
+      console.log('Total log entries:', receipt.logs.length);
+      
       const event = receipt.logs.find((log: any) => 
         log.topics[0] === ethers.id("ElectionCreated(uint256,uint8,uint256,uint256)")
       );
       
+      console.log('Found ElectionCreated event:', event ? 'Yes' : 'No');
+      
       if (event) {
+        console.log('Event topics:', event.topics);
         const decodedData = ethers.AbiCoder.defaultAbiCoder().decode(
           ['uint256'],
           event.topics[1]
         );
+        console.log('Decoded election ID:', Number(decodedData[0]));
         return Number(decodedData[0]);
       }
       
-      // Fallback - just return next ID
-      return 1;
+      // Fallback - try to get the election ID from election counter
+      console.log('Warning: ElectionCreated event not found. Trying alternative method...');
+      try {
+        const electionCount = await this.contract.getElectionCount();
+        console.log('Current election count:', Number(electionCount));
+        // Subtract 1 since election IDs are 0-indexed
+        return Number(electionCount) - 1;
+      } catch (error) {
+        console.error('Failed to get election count:', error);
+        // Last resort fallback
+        console.warn('Using fallback ID 1 - this may not be accurate!');
+        return 1;  
+      }
     } catch (error) {
       console.error('Failed to create election:', error);
       throw error;

@@ -51,8 +51,15 @@ export function VoteForSenatorButton({
       }
       
       const election = await response.json();
+      console.log('Fetched election details:', election);
+      
       // Use the blockchain ID if available, otherwise fallback to the database ID
       const blockchainElectionId = election.blockchainId || electionId;
+      
+      if (!election.blockchainId) {
+        console.warn(`WARNING: No blockchain ID found for election ${electionId}. Using database ID as fallback.`);
+      }
+      
       console.log(`Checking vote status for election ID: ${blockchainElectionId} (database ID: ${electionId})`);
       
       const voted = await checkIfVoted(blockchainElectionId);
@@ -92,8 +99,20 @@ export function VoteForSenatorButton({
       }
       
       const election = await response.json();
+      console.log('Fetched election details for voting:', election);
+      
       // Use the blockchain ID if available, otherwise fallback to the database ID
       const blockchainElectionId = election.blockchainId || electionId;
+      
+      if (!election.blockchainId) {
+        console.warn(`WARNING: No blockchain ID found for election ${electionId}. Voting might fail.`);
+        toast({
+          title: "Blockchain ID Missing",
+          description: "This election may not be properly deployed to the blockchain. Please contact an administrator.",
+          variant: "destructive",
+        });
+      }
+      
       console.log(`Voting in election ID: ${blockchainElectionId} (database ID: ${electionId}) for candidate ID: ${candidateId}`);
       
       // Use the improved blockchain integration to cast the vote
@@ -157,6 +176,67 @@ export function VoteForSenatorButton({
       >
         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
         <span className="font-medium">Checking Status...</span>
+      </Button>
+    );
+  }
+
+  // State to track if we need to fetch the election
+  const [election, setElection] = useState<any>(null);
+  const [isLoadingElection, setIsLoadingElection] = useState(false);
+  const [hasError, setHasError] = useState(false);
+  
+  // Fetch election details on mount to check blockchain ID
+  useEffect(() => {
+    const fetchElection = async () => {
+      setIsLoadingElection(true);
+      try {
+        const response = await fetch(`/api/elections/${electionId}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch election details');
+        }
+        
+        const electionData = await response.json();
+        setElection(electionData);
+        setHasError(!electionData.blockchainId);
+      } catch (error) {
+        console.error('Error fetching election:', error);
+        setHasError(true);
+      } finally {
+        setIsLoadingElection(false);
+      }
+    };
+    
+    fetchElection();
+  }, [electionId]);
+  
+  if (isLoadingElection) {
+    return (
+      <Button
+        variant="outline"
+        size={size}
+        className={`${className} bg-gray-50 border-gray-200 text-gray-500`}
+        disabled={true}
+      >
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        <span className="font-medium">Loading...</span>
+      </Button>
+    );
+  }
+  
+  // Show warning button if there's no blockchain ID
+  if (hasError) {
+    return (
+      <Button
+        variant="destructive"
+        size={size}
+        className={`${className}`}
+        disabled={true}
+        title="This election is not properly deployed to the blockchain"
+      >
+        <div className="flex items-center justify-center">
+          <VoteIcon className="mr-2 h-4 w-4" />
+          <span className="font-medium">Not Available</span>
+        </div>
       </Button>
     );
   }

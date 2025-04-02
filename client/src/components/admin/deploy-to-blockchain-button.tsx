@@ -95,11 +95,37 @@ export function DeployToBlockchainButton({
       await web3Service.initialize();
       
       // Call the web3 service to create the election
+      console.log("About to call createElection on web3Service");
       const blockchainElectionId = await web3Service.createElection(
         electionType,
         startTimestamp,
         endTimestamp
       );
+      console.log(`Successfully deployed election to blockchain with ID: ${blockchainElectionId}`);
+      
+      // Update the election in the database with the blockchain ID
+      try {
+        console.log(`Saving blockchain ID ${blockchainElectionId} for election ${election.id} to database`);
+        const response = await fetch(`/api/elections/${election.id}/blockchain-id`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ blockchainId: blockchainElectionId }),
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Failed to update election with blockchain ID:', errorText);
+          throw new Error(`Failed to update election with blockchain ID: ${errorText}`);
+        } else {
+          const updatedElection = await response.json();
+          console.log('Successfully updated election with blockchain ID in database:', updatedElection);
+        }
+      } catch (error) {
+        console.error('Error updating election with blockchain ID:', error);
+        // Continue the flow even if database update fails, as the blockchain deployment was successful
+      }
       
       toast({
         title: "Election Deployed Successfully",
