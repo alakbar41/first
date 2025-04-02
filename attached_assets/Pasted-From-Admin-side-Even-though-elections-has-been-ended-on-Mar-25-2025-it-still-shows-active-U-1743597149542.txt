@@ -1,0 +1,46 @@
+From Admin side:
+
+Even though elections has been ended on Mar 25, 2025, it still shows active. 
+Use ligther shade of purple on election creation and edit forms. 
+Even though I created two election that starts at the same time it shows one being active but another one still shows upcoming. This is not the case from voter side, they see both as "active"
+
+First of all, blockchain functionality does not still work, consider these: 
+
+Your smart contract mostly aligns with your university's requirement of storing only voting information on the blockchain, but there are a few aspects that could be optimized to strictly adhere to that goal.
+
+What Works Well:
+✅ Election Information Storage: The contract tracks election IDs, names, types, status, and votes. These details are necessary for managing the election process on-chain.
+
+✅ Vote Tracking: The contract ensures votes are recorded on-chain through the voteForSenator() and voteForPresidentVP() functions, preventing double voting via the hasVoted mapping.
+
+✅ Result Finalization: Once an election is completed, the contract finalizes the results, ensuring that stored voting data remains immutable.
+
+Potential Issues:
+⚠️ Storing Non-Essential Data on Blockchain:
+
+The contract stores student IDs and faculty names for candidates. This may not be necessary if the primary goal is only to track votes.
+
+Consider using a hash of student IDs instead, ensuring privacy while maintaining verifiability.
+
+eligibleFaculties is a comma-separated string—it might be better to store hashed or encoded faculty data off-chain for privacy.
+
+
+⚠️ Large Data Storage Costs:
+
+electionCandidates and electionTickets store entire lists of candidates/tickets on-chain. This increases gas costs unnecessarily.
+
+Instead, consider storing only vote counts on-chain and keeping the list of candidates/tickets off-chain in a decentralized database.
+
+Suggested Improvements:
+🔹 Store Only Essential Voting Data:
+
+Remove student IDs and faculty details from on-chain storage and instead use hashes or external references (e.g., IPFS, database).
+
+Only store election metadata and vote counts directly on the blockchain.
+
+
+🔹 Optimize Storage for Scalability:
+
+Store only the vote count per candidate/ticket, not full candidate lists.
+
+Use an off-chain index database to retrieve candidate details.

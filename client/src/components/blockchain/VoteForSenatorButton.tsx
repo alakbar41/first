@@ -80,38 +80,17 @@ export function VoteForSenatorButton({
       
       setIsVoting(true);
       try {
-        // Try blockchain voting first
-        try {
-          const txHash = await voteForSenator(electionId, candidateId);
-          
-          toast({
-            title: "Vote Successful",
-            description: "Your vote has been recorded on the blockchain.",
-            variant: "default",
-          });
-          
-          setHasVoted(true);
-          if (onVoteSuccess) onVoteSuccess(txHash);
-          
-        } catch (blockchainError: any) {
-          console.error("Blockchain voting failed, using database fallback:", blockchainError);
-          
-          // If blockchain voting fails, fall back to database voting
-          // Simulate a vote in the database
-          await new Promise(resolve => setTimeout(resolve, 800)); // Simulate network request
-          
-          // Record vote in localStorage to simulate persistence
-          localStorage.setItem(`vote_${electionId}_${candidateId}`, 'true');
-          
-          toast({
-            title: "Vote Successful (Database Fallback)",
-            description: "Blockchain voting failed, but your vote was safely recorded in the database.",
-            variant: "default",
-          });
-          
-          setHasVoted(true);
-          if (onVoteSuccess) onVoteSuccess('database-fallback');
-        }
+        // Use blockchain voting with no fallback
+        const txHash = await voteForSenator(electionId, candidateId);
+        
+        toast({
+          title: "Vote Successful",
+          description: "Your vote has been recorded on the blockchain.",
+          variant: "default",
+        });
+        
+        setHasVoted(true);
+        if (onVoteSuccess) onVoteSuccess(txHash);
       } catch (error: any) {
         toast({
           title: "Voting Failed",
