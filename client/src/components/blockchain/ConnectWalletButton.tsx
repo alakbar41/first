@@ -64,27 +64,30 @@ export function ConnectWalletButton({
   if (!isInitialized) {
     return (
       <Button
-        variant={variant}
+        variant="outline"
         size={size}
         disabled
-        className={className}
+        className={`${className} bg-gray-50 border-gray-200 text-gray-500`}
       >
-        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-        Initializing Blockchain...
+        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+        <span className="font-medium">Initializing Blockchain...</span>
       </Button>
     );
   }
 
   if (isWalletConnected) {
     return (
-      <Button
-        variant="outline"
-        size={size}
-        className={`${className} cursor-default`}
-      >
-        <WalletIcon className="mr-2 h-4 w-4" />
-        Connected: {displayAddress}
-      </Button>
+      <div className="border border-purple-200 bg-purple-50 text-purple-800 rounded-md p-3 flex items-center justify-between">
+        <div className="flex items-center">
+          <div className="bg-purple-100 p-1.5 rounded-full mr-3">
+            <WalletIcon className="h-5 w-5 text-purple-700" />
+          </div>
+          <span className="font-medium">Connected</span>
+        </div>
+        <div className="bg-white px-3 py-1 rounded-full border border-purple-200 text-sm font-mono">
+          {displayAddress}
+        </div>
+      </div>
     );
   }
 
@@ -94,18 +97,18 @@ export function ConnectWalletButton({
       size={size}
       onClick={handleConnect}
       disabled={isConnecting}
-      className={className}
+      className={`${className} bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 border-none shadow-sm hover:shadow transition-all duration-200`}
     >
       {isConnecting ? (
-        <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Connecting...
-        </>
+        <div className="flex items-center justify-center w-full">
+          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+          <span className="font-medium">Connecting...</span>
+        </div>
       ) : (
-        <>
-          <WalletIcon className="mr-2 h-4 w-4" />
-          Connect Wallet
-        </>
+        <div className="flex items-center justify-center w-full">
+          <WalletIcon className="mr-2 h-5 w-5" />
+          <span className="font-medium">Connect Metamask Wallet</span>
+        </div>
       )}
     </Button>
   );

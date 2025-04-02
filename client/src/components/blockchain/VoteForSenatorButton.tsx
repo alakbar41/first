@@ -97,35 +97,60 @@ export function VoteForSenatorButton({
     }
   };
 
+  if (hasVoted) {
+    return (
+      <Button
+        variant="outline"
+        size={size}
+        className={`${className} text-green-700 bg-green-50 border-green-200 hover:bg-green-100 hover:text-green-800 transition-colors cursor-default`}
+        disabled={true}
+      >
+        <Check className="mr-2 h-4 w-4" />
+        <span className="font-medium">Voted</span>
+      </Button>
+    );
+  }
+  
+  if (isVoting) {
+    return (
+      <Button
+        variant={variant}
+        size={size}
+        className={`${className} bg-purple-100 text-purple-800 border-purple-200`}
+        disabled={true}
+      >
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        <span className="font-medium">Submitting Vote...</span>
+      </Button>
+    );
+  }
+  
+  if (isChecking) {
+    return (
+      <Button
+        variant="outline"
+        size={size}
+        className={`${className} bg-gray-50 border-gray-200 text-gray-500`}
+        disabled={true}
+      >
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        <span className="font-medium">Checking Status...</span>
+      </Button>
+    );
+  }
+
   return (
     <Button
-      variant={variant}
+      variant={disabled ? "outline" : "default"}
       size={size}
-      className={className}
+      className={`${className} ${disabled ? "bg-gray-50 border-gray-200 text-gray-400" : "bg-purple-600 hover:bg-purple-700 text-white"}`}
       onClick={handleVote}
-      disabled={disabled || isVoting || hasVoted || isChecking}
+      disabled={disabled}
     >
-      {isVoting ? (
-        <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Voting...
-        </>
-      ) : isChecking ? (
-        <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Checking...
-        </>
-      ) : hasVoted ? (
-        <>
-          <Check className="mr-2 h-4 w-4" />
-          Voted
-        </>
-      ) : (
-        <>
-          <VoteIcon className="mr-2 h-4 w-4" />
-          Vote
-        </>
-      )}
+      <div className="flex items-center justify-center">
+        <VoteIcon className="mr-2 h-4 w-4" />
+        <span className="font-medium">Vote</span>
+      </div>
     </Button>
   );
 }
