@@ -59,6 +59,12 @@ class ImprovedWeb3Service {
         this.provider
       );
       
+      // If we have a signer, reconnect the contract with it
+      if (this.signer && this.walletAddress) {
+        this.contract = this.contract.connect(this.signer);
+        console.log('Contract connected with signer for address:', this.walletAddress);
+      }
+      
       this.isInitialized = true;
       return true;
     } catch (error) {
@@ -74,14 +80,25 @@ class ImprovedWeb3Service {
     endTime: number
   ): Promise<number> {
     try {
-      if (!this.contract || !this.signer) {
-        throw new Error('Contract or signer not initialized');
+      // Check if we have required wallet connection
+      if (!this.walletAddress || !this.signer) {
+        throw new Error('Wallet not connected. Please connect your MetaMask wallet first.');
       }
-
-      // Ensure wallet is connected
-      if (!this.walletAddress) {
-        throw new Error('Wallet not connected');
+      
+      // Make sure we have a contract instance
+      if (!this.contract) {
+        throw new Error('Contract not initialized');
       }
+      
+      // Make absolutely sure the contract is connected with signer
+      if (this.contract.runner !== this.signer) {
+        console.log('Reconnecting contract with signer...');
+        this.contract = this.contract.connect(this.signer);
+      }
+      
+      console.log(`Creating election with type: ${electionType}, startTime: ${startTime}, endTime: ${endTime}`);
+      console.log('Using contract address:', CONTRACT_ADDRESS);
+      console.log('Connected wallet address:', this.walletAddress);
 
       const tx = await this.contract.createElection(
         electionType,

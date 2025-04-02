@@ -77,6 +77,11 @@ export function DeployToBlockchainButton({
   const deployToBlockchain = async () => {
     setIsDeploying(true);
     try {
+      // Make sure we have a wallet connection
+      if (!isWalletConnected) {
+        await connectWallet();
+      }
+      
       // Convert database election to blockchain parameters
       const electionType = mapElectionTypeToBlockchain(election.position);
       const startTimestamp = dateToTimestamp(new Date(election.startDate));
@@ -85,6 +90,9 @@ export function DeployToBlockchainButton({
       // Create election on blockchain
       console.log(`Deploying ${election.name} to blockchain...`);
       console.log(`Election type: ${electionType}, Start: ${startTimestamp}, End: ${endTimestamp}`);
+      
+      // Ensure contract is initialized with signer before calling
+      await web3Service.initialize();
       
       // Call the web3 service to create the election
       const blockchainElectionId = await web3Service.createElection(
