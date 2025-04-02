@@ -3,7 +3,7 @@ import { IMPROVED_CONTRACT_ABI } from './improved-contract-abi';
 
 // Constants
 const POLYGON_AMOY_RPC_URL = 'https://rpc-amoy.polygon.technology';
-const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || '0x51eed4F96635FDE6E35d7826E4e0Bf1D62069635';
+const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || '0xb74f07812b45DBec4eC3E577194F6a798a060e5D'; // Deployer: 0x0E6ED3EB1acc94F03006b326C939CeaF8d0953D5
 
 // Contract enums
 export enum ElectionType {
