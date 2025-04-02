@@ -40,24 +40,41 @@ export function DeployToBlockchainButton({
   const [isDeploying, setIsDeploying] = useState(false);
   const [isDeployed, setIsDeployed] = useState(false);
   
-  const handleDeploy = async () => {
-    if (isDeployed || isDeploying) return;
+  // Separate the wallet connection from deployment
+  const connectMetamaskWallet = async (): Promise<boolean> => {
+    if (isWalletConnected) return true;
     
-    // Connect wallet first if not connected
-    if (!isWalletConnected) {
-      try {
-        await connectWallet();
-        // Now we're connected, continue with deployment
-      } catch (error: any) {
+    try {
+      toast({
+        title: "Connecting Wallet",
+        description: "Please approve the MetaMask connection request.",
+        variant: "default",
+      });
+      
+      await connectWallet();
+      return true;
+    } catch (error: any) {
+      console.error("Wallet connection error:", error);
+      
+      // Handle the "already processing" error specially
+      if (error.code === -32002) {
         toast({
-          title: "Wallet Connection Required",
-          description: "Please connect your wallet to deploy to blockchain.",
+          title: "MetaMask Connection In Progress",
+          description: "Please check your MetaMask extension and complete the pending connection request.",
+          variant: "default",
+        });
+      } else {
+        toast({
+          title: "Wallet Connection Failed",
+          description: error.message || "Failed to connect wallet. Make sure MetaMask is installed and unlocked.",
           variant: "destructive",
         });
-        return;
       }
+      return false;
     }
-    
+  };
+
+  const deployToBlockchain = async () => {
     setIsDeploying(true);
     try {
       // Convert database election to blockchain parameters
@@ -99,6 +116,17 @@ export function DeployToBlockchainButton({
     } finally {
       setIsDeploying(false);
     }
+  };
+  
+  const handleDeploy = async () => {
+    if (isDeployed || isDeploying) return;
+    
+    // First connect wallet if needed
+    const connected = await connectMetamaskWallet();
+    if (!connected) return;
+    
+    // Now deploy to blockchain
+    await deployToBlockchain();
   };
 
   // Disabled states

@@ -356,10 +356,59 @@ class ImprovedWeb3Service {
       if (!window.ethereum) {
         throw new Error('MetaMask is not installed');
       }
+      
+      // Check if already connected
+      if (this.walletAddress && this.signer) {
+        try {
+          // Verify the connection is still valid
+          const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+          if (accounts.length > 0 && accounts[0].toLowerCase() === this.walletAddress.toLowerCase()) {
+            console.log('Wallet already connected, using existing connection');
+            return this.walletAddress;
+          }
+        } catch (checkError) {
+          console.log('Error checking existing connection, will reconnect', checkError);
+        }
+      }
 
-      // Request account access
-      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-      this.walletAddress = accounts[0];
+      // Handle the "Already processing" error
+      try {
+        // Request account access
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        this.walletAddress = accounts[0];
+      } catch (error: any) {
+        // If we get the "already processing" error, wait and try to use eth_accounts instead
+        if (error.code === -32002) {
+          console.log('MetaMask connection already in progress, waiting for user...');
+          
+          // Create a timeout promise
+          const timeout = new Promise<string[]>((_, reject) => {
+            setTimeout(() => reject(new Error('Connection timeout. Please complete the MetaMask connection request.')), 30000);
+          });
+          
+          // Check for accounts periodically
+          const checkAccounts = new Promise<string[]>((resolve) => {
+            const checkInterval = setInterval(async () => {
+              try {
+                const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+                if (accounts && accounts.length > 0) {
+                  clearInterval(checkInterval);
+                  resolve(accounts);
+                }
+              } catch (e) {
+                // Ignore errors during polling
+              }
+            }, 1000);
+          });
+          
+          // Race between timeout and successful connection
+          const accounts = await Promise.race([checkAccounts, timeout]);
+          this.walletAddress = accounts[0];
+        } else {
+          // For other errors, throw normally
+          throw error;
+        }
+      }
 
       // Create Web3Provider using window.ethereum
       const ethersProvider = new ethers.BrowserProvider(window.ethereum);
