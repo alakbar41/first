@@ -184,6 +184,7 @@ export function VoteForSenatorButton({
   const [election, setElection] = useState<any>(null);
   const [isLoadingElection, setIsLoadingElection] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
   // Fetch election details on mount to check blockchain ID
   useEffect(() => {
@@ -197,10 +198,22 @@ export function VoteForSenatorButton({
         
         const electionData = await response.json();
         setElection(electionData);
-        setHasError(!electionData.blockchainId);
+        
+        if (!electionData.blockchainId) {
+          setHasError(true);
+          setErrorMessage('This election has not been deployed to the blockchain yet. Please contact an administrator.');
+          
+          // Log detailed information for debugging
+          console.warn(`Election ${electionId} has no blockchain ID`, electionData);
+        } else {
+          setHasError(false);
+          setErrorMessage(null);
+          console.log(`Election ${electionId} has blockchain ID: ${electionData.blockchainId}`);
+        }
       } catch (error) {
         console.error('Error fetching election:', error);
         setHasError(true);
+        setErrorMessage('Failed to fetch election details from the server.');
       } finally {
         setIsLoadingElection(false);
       }
@@ -226,18 +239,25 @@ export function VoteForSenatorButton({
   // Show warning button if there's no blockchain ID
   if (hasError) {
     return (
-      <Button
-        variant="destructive"
-        size={size}
-        className={`${className}`}
-        disabled={true}
-        title="This election is not properly deployed to the blockchain"
-      >
-        <div className="flex items-center justify-center">
-          <VoteIcon className="mr-2 h-4 w-4" />
-          <span className="font-medium">Not Available</span>
-        </div>
-      </Button>
+      <div className="flex flex-col items-center">
+        <Button
+          variant="destructive"
+          size={size}
+          className={`${className}`}
+          disabled={true}
+          title={errorMessage || "This election is not properly deployed to the blockchain"}
+        >
+          <div className="flex items-center justify-center">
+            <VoteIcon className="mr-2 h-4 w-4" />
+            <span className="font-medium">Not Available</span>
+          </div>
+        </Button>
+        {errorMessage && (
+          <div className="text-xs text-red-600 mt-1 max-w-[200px] text-center">
+            {errorMessage}
+          </div>
+        )}
+      </div>
     );
   }
 

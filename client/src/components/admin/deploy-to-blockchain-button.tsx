@@ -142,11 +142,21 @@ export function DeployToBlockchainButton({
       
     } catch (error: any) {
       console.error("Failed to deploy election to blockchain:", error);
-      toast({
-        title: "Deployment Failed",
-        description: error.message || "Failed to deploy election to blockchain. Please try again.",
-        variant: "destructive",
-      });
+      
+      // Check if this is the "execution reverted" error
+      if (error.message && error.message.includes("execution reverted")) {
+        toast({
+          title: "Blockchain Contract Error",
+          description: `The smart contract rejected the operation. This could be due to a limit on the number of elections, time constraints, or permission issues. Please check the console for more details.`,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Deployment Failed",
+          description: error.message || "Failed to deploy election to blockchain. Please try again.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsDeploying(false);
     }

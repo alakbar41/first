@@ -99,7 +99,59 @@ class ImprovedWeb3Service {
       console.log(`Creating election with type: ${electionType}, startTime: ${startTime}, endTime: ${endTime}`);
       console.log('Using contract address:', CONTRACT_ADDRESS);
       console.log('Connected wallet address:', this.walletAddress);
+      
+      // Pre-check: Get current election count (not all contracts have this, but it's useful for debugging)
+      try {
+        const electionCount = await this.contract.getElectionCount();
+        console.log('Current election count on the blockchain:', Number(electionCount));
+      } catch (error) {
+        console.log('Could not get election count (this is just a debug check):', error);
+      }
+      
+      // Debug: Check if these times make sense
+      const currentTime = Math.floor(Date.now() / 1000);
+      console.log('Current timestamp:', currentTime);
+      console.log('Start timestamp is in the future?', startTime > currentTime);
+      console.log('End timestamp is after start?', endTime > startTime);
+      
+      // Try to estimate gas first to get more detailed error messages
+      try {
+        console.log('Estimating gas for createElection transaction...');
+        const estimatedGas = await this.contract.createElection.estimateGas(
+          electionType,
+          startTime,
+          endTime
+        );
+        console.log('Estimated gas for transaction:', estimatedGas);
+      } catch (error) {
+        const gasError = error as any; // Type assertion to avoid TypeScript errors
+        console.error('Gas estimation failed (transaction would fail):', gasError);
+        
+        // Get a better error message if possible
+        if (gasError && gasError.message && typeof gasError.message === 'string' && 
+            gasError.message.includes('execution reverted')) {
+          // Try to extract revert reason if available
+          const revertReason = gasError.message.split('execution reverted: ')[1]?.split('"')[0];
+          if (revertReason) {
+            throw new Error(`Smart contract rejected the operation: ${revertReason}`);
+          } else if (gasError.reason && typeof gasError.reason === 'string') {
+            throw new Error(`Smart contract rejected the operation: ${gasError.reason}`);
+          } else {
+            throw new Error(`
+Smart contract rejected the operation. This may be due to:
+1. Another election with the same ID already exists
+2. The contract has reached its maximum number of elections
+3. Time constraints in the contract are not satisfied
+4. You don't have permission to create elections
 
+Technical error: ${gasError.message}`);
+          }
+        }
+        throw error;
+      }
+
+      // If gas estimation is successful, proceed with the transaction
+      console.log('Sending createElection transaction...');
       const tx = await this.contract.createElection(
         electionType,
         startTime,
