@@ -99,6 +99,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Update election blockchain ID (after successful deployment)
+  app.patch("/api/elections/:id/blockchain-id", isAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid election ID" });
+      }
+      
+      const { blockchainId } = req.body;
+      if (typeof blockchainId !== 'number') {
+        return res.status(400).json({ message: "Valid blockchain ID is required" });
+      }
+      
+      const election = await storage.getElection(id);
+      if (!election) {
+        return res.status(404).json({ message: "Election not found" });
+      }
+      
+      // Update only the blockchainId field
+      const updatedElection = await storage.updateElection(id, { blockchainId });
+      res.json(updatedElection);
+    } catch (error) {
+      console.error("Error updating blockchain ID:", error);
+      res.status(500).json({ message: "Failed to update election blockchain ID" });
+    }
+  });
+  
   // Update just the status of an election
   app.patch("/api/elections/:id/status", isAdmin, async (req, res) => {
     try {

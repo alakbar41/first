@@ -79,6 +79,7 @@ export const elections = pgTable("elections", {
   status: text("status").notNull().default("upcoming"), // upcoming, active, completed
   createdBy: integer("created_by").notNull(), // Reference to admin user id
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  blockchainId: integer("blockchain_id"), // ID of the election on the blockchain (set after deployment)
 });
 
 export const candidates = pgTable("candidates", {

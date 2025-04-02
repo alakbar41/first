@@ -12,7 +12,7 @@ interface ElectionDetailViewProps {
 }
 
 export function AdminElectionDetailView({ election, className = "" }: ElectionDetailViewProps) {
-  const [blockchainId, setBlockchainId] = useState<number | null>(null);
+  const [blockchainId, setBlockchainId] = useState<number | null>(election.blockchainId || null);
   
   // Helper function to format dates
   function formatDate(dateString: string | Date) {
@@ -36,8 +36,26 @@ export function AdminElectionDetailView({ election, className = "" }: ElectionDe
   };
 
   // Handle successful deployment to blockchain
-  const handleDeploySuccess = (id: number) => {
+  const handleDeploySuccess = async (id: number) => {
     setBlockchainId(id);
+    
+    // Update the election in the database with the blockchain ID
+    try {
+      console.log(`Updating election ${election.id} with blockchain ID ${id}`);
+      const response = await fetch(`/api/elections/${election.id}/blockchain-id`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ blockchainId: id }),
+      });
+      
+      if (!response.ok) {
+        console.error('Failed to update election with blockchain ID');
+      }
+    } catch (error) {
+      console.error('Error updating election with blockchain ID:', error);
+    }
   };
 
   return (

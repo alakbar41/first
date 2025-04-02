@@ -44,8 +44,18 @@ export function VoteForSenatorButton({
     setIsChecking(true);
     
     try {
-      // Use the improved blockchain integration
-      const voted = await checkIfVoted(electionId);
+      // First, get the election details to obtain the blockchain ID
+      const response = await fetch(`/api/elections/${electionId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch election details');
+      }
+      
+      const election = await response.json();
+      // Use the blockchain ID if available, otherwise fallback to the database ID
+      const blockchainElectionId = election.blockchainId || electionId;
+      console.log(`Checking vote status for election ID: ${blockchainElectionId} (database ID: ${electionId})`);
+      
+      const voted = await checkIfVoted(blockchainElectionId);
       setHasVoted(voted);
     } catch (error) {
       console.error('Failed to check vote status:', error);
@@ -75,8 +85,19 @@ export function VoteForSenatorButton({
     
     setIsVoting(true);
     try {
+      // Get the election details to obtain the blockchain ID
+      const response = await fetch(`/api/elections/${electionId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch election details');
+      }
+      
+      const election = await response.json();
+      // Use the blockchain ID if available, otherwise fallback to the database ID
+      const blockchainElectionId = election.blockchainId || electionId;
+      console.log(`Voting in election ID: ${blockchainElectionId} (database ID: ${electionId}) for candidate ID: ${candidateId}`);
+      
       // Use the improved blockchain integration to cast the vote
-      const txHash = await voteForSenator(electionId, candidateId);
+      const txHash = await voteForSenator(blockchainElectionId, candidateId);
       
       toast({
         title: "Vote Successful",
@@ -87,6 +108,7 @@ export function VoteForSenatorButton({
       setHasVoted(true);
       if (onVoteSuccess) onVoteSuccess(txHash);
     } catch (error: any) {
+      console.error('Vote failed:', error);
       toast({
         title: "Voting Failed",
         description: error.message || "Failed to submit your vote. Please try again.",
