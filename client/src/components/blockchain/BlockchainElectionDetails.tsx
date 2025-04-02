@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useWeb3, ElectionStatus, ElectionType } from '@/hooks/use-web3';
+import { useWeb3 } from '@/hooks/use-web3';
+import { ElectionStatus, ElectionType } from '@/lib/improved-web3-service';
+import { getElectionDetails as getBlockchainElection, checkIfVoted } from '@/lib/improved-blockchain-integration';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,9 +21,7 @@ export function BlockchainElectionDetails({
 }: BlockchainElectionDetailsProps) {
   const { 
     isInitialized, 
-    isWalletConnected, 
-    getElectionDetails, 
-    checkIfVoted 
+    isWalletConnected 
   } = useWeb3();
   
   const [isLoading, setIsLoading] = useState(true);
@@ -45,8 +45,19 @@ export function BlockchainElectionDetails({
     const fetchElection = async () => {
       setIsLoading(true);
       try {
-        const electionData = await getElectionDetails(electionId);
-        setElection(electionData);
+        // Get data from blockchain and merge with external data from our DB
+        const blockchainElection = await getBlockchainElection(electionId);
+        
+        // Get election data from API to get the name and faculties
+        const response = await fetch(`/api/elections/${electionId}`);
+        const dbElection = await response.json();
+        
+        // Merge the data
+        setElection({
+          ...blockchainElection,
+          name: dbElection.name,
+          eligibleFaculties: dbElection.eligibleFaculties || 'SITE,SB,SPIA,SESD'
+        });
       } catch (error) {
         console.error('Failed to fetch election details:', error);
       } finally {
@@ -55,7 +66,7 @@ export function BlockchainElectionDetails({
     };
 
     fetchElection();
-  }, [isInitialized, electionId, getElectionDetails]);
+  }, [isInitialized, electionId]);
 
   useEffect(() => {
     if (!isInitialized || !isWalletConnected) return;
@@ -73,7 +84,7 @@ export function BlockchainElectionDetails({
     };
 
     checkVoteStatus();
-  }, [isInitialized, isWalletConnected, electionId, checkIfVoted]);
+  }, [isInitialized, isWalletConnected, electionId]);
 
   // Helper function to format timestamp to date
   const formatDate = (timestamp: number) => {

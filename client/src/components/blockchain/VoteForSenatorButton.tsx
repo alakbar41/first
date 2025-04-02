@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { useWeb3 } from "@/hooks/use-web3";
 import { useToast } from "@/hooks/use-toast";
-import { voteForSenator as voteForSenatorBlockchain, checkIfUserVoted } from '@/lib/blockchain-integration';
+import { voteForSenator, checkIfVoted } from '@/lib/improved-blockchain-integration';
 import { Loader2, Check, VoteIcon } from "lucide-react";
 
 interface VoteForSenatorButtonProps {
@@ -24,29 +24,29 @@ export function VoteForSenatorButton({
   disabled = false,
   onVoteSuccess
 }: VoteForSenatorButtonProps) {
-  const { isWalletConnected, connectWallet, voteForSenator, checkIfVoted } = useWeb3();
+  const { isWalletConnected, connectWallet } = useWeb3();
   const { toast } = useToast();
   const [isVoting, setIsVoting] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
 
-  // Check if the user has already voted when the component mounts or wallet connects
+  // Check vote status when wallet connection changes
+  useEffect(() => {
+    if (isWalletConnected) {
+      checkVoteStatus();
+    }
+  }, [isWalletConnected, electionId]);
+
+  // Check if the user has already voted
   const checkVoteStatus = async () => {
+    if (!isWalletConnected) return;
+    
     setIsChecking(true);
     
     try {
-      // Check if blockchain voting is enabled via localStorage
-      const blockchainVotingEnabled = localStorage.getItem('blockchainVotingEnabled') === 'true';
-      
-      if (blockchainVotingEnabled) {
-        // Use blockchain integration helper to check vote status
-        const voted = await checkIfUserVoted(electionId);
-        setHasVoted(voted);
-      } else {
-        // If blockchain voting is not enabled, check localStorage
-        const localVoteRecord = localStorage.getItem(`vote_${electionId}_${candidateId}`);
-        setHasVoted(localVoteRecord === 'true');
-      }
+      // Use the improved blockchain integration
+      const voted = await checkIfVoted(electionId);
+      setHasVoted(voted);
     } catch (error) {
       console.error('Failed to check vote status:', error);
     } finally {
@@ -57,77 +57,43 @@ export function VoteForSenatorButton({
   const handleVote = async () => {
     if (hasVoted || disabled) return;
     
-    // Check if blockchain voting is enabled via localStorage
-    const blockchainVotingEnabled = localStorage.getItem('blockchainVotingEnabled') === 'true';
+    // Connect wallet first if not connected
+    if (!isWalletConnected) {
+      try {
+        await connectWallet();
+        // checkVoteStatus will be triggered by the useEffect
+        return; // Exit early to let the useEffect handle the rest
+      } catch (error) {
+        toast({
+          title: "Wallet Connection Required",
+          description: "Please connect your wallet to vote.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
     
-    if (blockchainVotingEnabled) {
-      // Use blockchain voting if enabled
-      // Connect wallet first if not connected
-      if (!isWalletConnected) {
-        try {
-          await connectWallet();
-          await checkVoteStatus(); // Check if they've already voted after connecting
-          if (hasVoted) return; // Don't proceed if they've already voted
-        } catch (error) {
-          toast({
-            title: "Wallet Connection Required",
-            description: "Please connect your wallet to vote.",
-            variant: "destructive",
-          });
-          return;
-        }
-      }
+    setIsVoting(true);
+    try {
+      // Use the improved blockchain integration to cast the vote
+      const txHash = await voteForSenator(electionId, candidateId);
       
-      setIsVoting(true);
-      try {
-        // Use blockchain voting with no fallback via integration helper
-        const txHash = await voteForSenatorBlockchain(electionId, candidateId);
-        
-        toast({
-          title: "Vote Successful",
-          description: "Your vote has been recorded on the blockchain.",
-          variant: "default",
-        });
-        
-        setHasVoted(true);
-        if (onVoteSuccess) onVoteSuccess(txHash);
-      } catch (error: any) {
-        toast({
-          title: "Voting Failed",
-          description: error.message || "Failed to submit your vote. Please try again.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsVoting(false);
-      }
-    } else {
-      // Use traditional database voting if blockchain not enabled
-      setIsVoting(true);
-      try {
-        // Simulate a vote in the database
-        // In a real implementation, this would make an API call to record the vote
-        await new Promise(resolve => setTimeout(resolve, 800)); // Simulate network request
-        
-        // Record vote in localStorage to simulate persistence
-        localStorage.setItem(`vote_${electionId}_${candidateId}`, 'true');
-        
-        toast({
-          title: "Vote Successful",
-          description: "Your vote has been recorded in the database.",
-          variant: "default",
-        });
-        
-        setHasVoted(true);
-        if (onVoteSuccess) onVoteSuccess('database-vote');
-      } catch (error: any) {
-        toast({
-          title: "Voting Failed",
-          description: error.message || "Failed to submit your vote. Please try again.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsVoting(false);
-      }
+      toast({
+        title: "Vote Successful",
+        description: "Your vote has been recorded on the blockchain.",
+        variant: "default",
+      });
+      
+      setHasVoted(true);
+      if (onVoteSuccess) onVoteSuccess(txHash);
+    } catch (error: any) {
+      toast({
+        title: "Voting Failed",
+        description: error.message || "Failed to submit your vote. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsVoting(false);
     }
   };
 

@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { useWeb3, ElectionType } from "@/hooks/use-web3";
+import { useWeb3 } from "@/hooks/use-web3";
+import { ElectionType } from "@/lib/improved-web3-service";
 import { Loader2, Cloud, ServerCog } from "lucide-react";
 import { Election } from "@shared/schema";
 import { useQuery } from "@tanstack/react-query";
@@ -40,10 +41,7 @@ export function BlockchainSyncButton({
   const { 
     isInitialized,
     isWalletConnected,
-    connectWallet,
-    createElection,
-    createCandidate,
-    registerCandidateForElection 
+    connectWallet
   } = useWeb3();
   
   const [isSyncing, setIsSyncing] = useState(false);
