@@ -167,7 +167,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Use the simplified updateElection method which handles blockchainId updates specially
       const updatedElection = await storage.updateElection(id, { blockchainId });
-      res.json(updatedElection);
+      
+      // After updating the blockchain ID, immediately check if the election should be active based on dates
+      // This will update the status in the database if needed
+      await storage.updateElectionStatusBasedOnTime(updatedElection);
+      
+      // Re-fetch the election to get the possibly updated status
+      const finalElection = await storage.getElection(id);
+      if (finalElection) {
+        console.log(`Election ${id} now has blockchain ID ${finalElection.blockchainId} and status ${finalElection.status}`);
+      }
+      
+      res.json(finalElection || updatedElection);
     } catch (error) {
       console.error("Error updating blockchain ID:", error);
       res.status(500).json({ message: "Failed to update election blockchain ID" });

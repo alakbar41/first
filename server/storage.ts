@@ -9,9 +9,11 @@ import { db } from "./db";
 import { eq, and, asc } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
+import createMemoryStore from "memorystore";
 import { pool } from "./db";
 
 const PostgresSessionStore = connectPg(session);
+const MemoryStore = createMemoryStore(session);
 
 // modify the interface with any CRUD methods
 // you might need
@@ -36,6 +38,7 @@ export interface IStorage {
   createElection(election: InsertElection): Promise<Election>;
   updateElection(id: number, election: Partial<InsertElection>): Promise<Election>;
   updateElectionStatus(id: number, status: string): Promise<void>;
+  updateElectionStatusBasedOnTime(election: Election): Promise<void>;
   deleteElection(id: number): Promise<void>;
   
   // Candidate methods
@@ -178,6 +181,7 @@ export class MemStorage implements IStorage {
       status: election.status || "upcoming",
       createdBy: election.createdBy,
       createdAt: new Date(),
+      blockchainId: null,
     };
     
     this.elections.set(id, newElection);
@@ -189,6 +193,37 @@ export class MemStorage implements IStorage {
     if (election) {
       election.status = status;
       this.elections.set(id, election);
+    }
+  }
+  
+  // Implementation of status check/update based on current date
+  async updateElectionStatusBasedOnTime(election: Election): Promise<void> {
+    // Only update blockchain-deployed elections
+    if (election.blockchainId === null || election.blockchainId === undefined) {
+      return;
+    }
+    
+    const now = new Date();
+    const startDate = new Date(election.startDate);
+    const endDate = new Date(election.endDate);
+    
+    let newStatus = election.status;
+    
+    // Check if election should be active
+    if (now >= startDate && now < endDate && election.status === 'upcoming') {
+      newStatus = 'active';
+      console.log(`Automatically updating election ${election.id} to active status`);
+    } 
+    // Check if election should be completed
+    else if (now >= endDate && election.status !== 'completed') {
+      newStatus = 'completed';
+      console.log(`Automatically updating election ${election.id} to completed status`);
+    }
+    
+    // Update if status changed
+    if (newStatus !== election.status) {
+      await this.updateElectionStatus(election.id, newStatus);
+      election.status = newStatus; // Update the passed object as well
     }
   }
   
@@ -587,12 +622,68 @@ export class DatabaseStorage implements IStorage {
 
   // Election methods
   async getElections(): Promise<Election[]> {
-    return await db.select().from(elections).orderBy(asc(elections.id));
+    // First, fetch all elections
+    const allElections = await db.select().from(elections).orderBy(asc(elections.id));
+    
+    // Then automatically check and update statuses based on dates
+    await this.updateElectionStatusesBasedOnTime(allElections);
+    
+    // Return the elections with updated statuses
+    return allElections;
   }
 
   async getElection(id: number): Promise<Election | undefined> {
     const result = await db.select().from(elections).where(eq(elections.id, id));
+    if (result.length > 0) {
+      // Check and update status based on date
+      await this.updateElectionStatusBasedOnTime(result[0]);
+    }
     return result[0];
+  }
+  
+  // Helper method to update election statuses based on current time
+  async updateElectionStatusesBasedOnTime(electionsList: Election[]): Promise<void> {
+    const now = new Date();
+    const updates: Promise<void>[] = [];
+    
+    for (const election of electionsList) {
+      // Only update blockchain-deployed elections
+      if (election.blockchainId !== null) {
+        const startDate = new Date(election.startDate);
+        const endDate = new Date(election.endDate);
+        
+        let newStatus = election.status;
+        
+        // Check if election should be active
+        if (now >= startDate && now < endDate && election.status === 'upcoming') {
+          newStatus = 'active';
+          console.log(`Automatically updating election ${election.id} to active status`);
+        } 
+        // Check if election should be completed
+        else if (now >= endDate && election.status !== 'completed') {
+          newStatus = 'completed';
+          console.log(`Automatically updating election ${election.id} to completed status`);
+        }
+        
+        // Update database if status changed
+        if (newStatus !== election.status) {
+          // Update in the database
+          updates.push(this.updateElectionStatus(election.id, newStatus));
+          // Update the election object for immediate use
+          election.status = newStatus;
+        }
+      }
+    }
+    
+    // Wait for all updates to complete
+    if (updates.length > 0) {
+      await Promise.all(updates);
+    }
+  }
+  
+  // Helper to update a single election's status based on time
+  async updateElectionStatusBasedOnTime(election: Election): Promise<void> {
+    await this.updateElectionStatusesBasedOnTime([election]);
   }
 
   async createElection(election: InsertElection): Promise<Election> {
