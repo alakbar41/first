@@ -152,8 +152,15 @@ export function DeployToBlockchainButton({
     } catch (error: any) {
       console.error("Failed to deploy election to blockchain:", error);
       
-      // Check if this is the "execution reverted" error
-      if (error.message && error.message.includes("execution reverted")) {
+      // Check for specific error types
+      if (error.message && error.message.includes("user rejected action")) {
+        toast({
+          title: "Transaction Rejected",
+          description: "You rejected the transaction in MetaMask. Please try again and approve the transaction when prompted.",
+          variant: "destructive",
+          duration: 5000
+        });
+      } else if (error.message && error.message.includes("execution reverted")) {
         toast({
           title: "Blockchain Contract Error",
           description: `The smart contract rejected the operation. This could be due to a limit on the number of elections, time constraints, or permission issues. Please check the console for more details.`,

@@ -118,12 +118,12 @@ class ImprovedWeb3Service {
       try {
         console.log('Estimating gas for createElection transaction...');
         
-        // Add explicit gas limit and value parameters to avoid estimation issues
+        // Use more balanced gas settings that won't trigger MetaMask warnings
         const options = {
-          gasLimit: 600000, // High gas limit for election creation on congested network
-          maxFeePerGas: ethers.parseUnits("15.0", "gwei"), // Higher max fee to overcome congestion
-          maxPriorityFeePerGas: ethers.parseUnits("3.0", "gwei"), // Higher priority fee for faster processing
-          type: 2, // Use EIP-1559 transaction type explicitly
+          gasLimit: 400000, // Sufficient gas limit without being excessive
+          maxFeePerGas: ethers.parseUnits("5.0", "gwei"), // Reasonable max fee
+          maxPriorityFeePerGas: ethers.parseUnits("1.5", "gwei"), // Reasonable priority fee
+          type: 2, // Use EIP-1559 transaction type
         };
         
         console.log('Using options:', options);
@@ -178,12 +178,12 @@ Technical error: ${gasError.message}`);
       // If gas estimation is successful, proceed with the transaction
       console.log('Sending createElection transaction...');
       
-      // Use higher gas settings to overcome network congestion
+      // Use more balanced gas settings that won't trigger MetaMask warnings
       const options = {
-        gasLimit: 600000, // High gas limit for election creation on congested network
-        maxFeePerGas: ethers.parseUnits("15.0", "gwei"), // Higher max fee to overcome congestion
-        maxPriorityFeePerGas: ethers.parseUnits("3.0", "gwei"), // Higher priority fee for faster processing
-        type: 2, // Use EIP-1559 transaction type explicitly
+        gasLimit: 400000, // Sufficient gas limit without being excessive
+        maxFeePerGas: ethers.parseUnits("5.0", "gwei"), // Reasonable max fee
+        maxPriorityFeePerGas: ethers.parseUnits("1.5", "gwei"), // Reasonable priority fee
+        type: 2, // Use EIP-1559 transaction type
       };
       
       console.log('Using transaction options:', options);
