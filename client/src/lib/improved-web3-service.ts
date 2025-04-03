@@ -117,27 +117,36 @@ class ImprovedWeb3Service {
       // Try to estimate gas first to get more detailed error messages
       try {
         console.log('Estimating gas for createElection transaction...');
+        
+        // Add explicit gas limit and value parameters to avoid estimation issues
+        const options = {
+          gasLimit: 500000, // Provide a generous gas limit
+        };
+        
+        console.log('Using options:', options);
         const estimatedGas = await this.contract.createElection.estimateGas(
           electionType,
           startTime,
-          endTime
+          endTime,
+          options
         );
         console.log('Estimated gas for transaction:', estimatedGas);
       } catch (error) {
         const gasError = error as any; // Type assertion to avoid TypeScript errors
         console.error('Gas estimation failed (transaction would fail):', gasError);
+        console.error('Error details:', JSON.stringify(gasError, null, 2));
         
         // Get a better error message if possible
-        if (gasError && gasError.message && typeof gasError.message === 'string' && 
-            gasError.message.includes('execution reverted')) {
-          // Try to extract revert reason if available
-          const revertReason = gasError.message.split('execution reverted: ')[1]?.split('"')[0];
-          if (revertReason) {
-            throw new Error(`Smart contract rejected the operation: ${revertReason}`);
-          } else if (gasError.reason && typeof gasError.reason === 'string') {
-            throw new Error(`Smart contract rejected the operation: ${gasError.reason}`);
-          } else {
-            throw new Error(`
+        if (gasError && gasError.message && typeof gasError.message === 'string') {
+          if (gasError.message.includes('execution reverted')) {
+            // Try to extract revert reason if available
+            const revertReason = gasError.message.split('execution reverted: ')[1]?.split('"')[0];
+            if (revertReason) {
+              throw new Error(`Smart contract rejected the operation: ${revertReason}`);
+            } else if (gasError.reason && typeof gasError.reason === 'string') {
+              throw new Error(`Smart contract rejected the operation: ${gasError.reason}`);
+            } else {
+              throw new Error(`
 Smart contract rejected the operation. This may be due to:
 1. Another election with the same ID already exists
 2. The contract has reached its maximum number of elections
@@ -145,6 +154,19 @@ Smart contract rejected the operation. This may be due to:
 4. You don't have permission to create elections
 
 Technical error: ${gasError.message}`);
+            }
+          } else if (gasError.message.includes('Internal JSON-RPC error')) {
+            throw new Error(`
+Network error when communicating with blockchain. This may be due to:
+1. Network congestion or temporary issues with the Polygon Amoy testnet
+2. MetaMask configuration issues - try setting the gas price manually
+3. The contract may require more gas than estimated
+
+Try again in a few moments or switch to a different network/wallet.
+
+Technical error: ${gasError.message}`);
+          } else if (gasError.code === 'INSUFFICIENT_FUNDS') {
+            throw new Error(`Your wallet doesn't have enough MATIC tokens to execute this transaction. Please add funds to your wallet on the Polygon Amoy testnet.`);
           }
         }
         throw error;
@@ -152,10 +174,18 @@ Technical error: ${gasError.message}`);
 
       // If gas estimation is successful, proceed with the transaction
       console.log('Sending createElection transaction...');
+      
+      // Use explicit gas limit to avoid potential issues
+      const options = {
+        gasLimit: 500000, // Provide a generous gas limit for the real transaction
+      };
+      
+      console.log('Using transaction options:', options);
       const tx = await this.contract.createElection(
         electionType,
         startTime,
-        endTime
+        endTime,
+        options
       );
       
       console.log('Transaction sent, awaiting confirmation...');
