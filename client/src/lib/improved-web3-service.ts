@@ -120,7 +120,9 @@ class ImprovedWeb3Service {
         
         // Add explicit gas limit and value parameters to avoid estimation issues
         const options = {
-          gasLimit: 300000, // Higher gas limit for election creation which is more complex
+          gasLimit: 500000, // Much higher gas limit for election creation to prevent RPC errors
+          maxFeePerGas: ethers.parseUnits("10.0", "gwei"), // Higher max fee to handle network congestion
+          maxPriorityFeePerGas: ethers.parseUnits("2.0", "gwei"), // Higher priority fee
         };
         
         console.log('Using options:', options);
@@ -177,8 +179,9 @@ Technical error: ${gasError.message}`);
       
       // Use explicit gas limit to avoid potential issues
       const options = {
-        gasLimit: 300000, // Higher gas limit for election creation which is more complex
-        maxPriorityFeePerGas: ethers.parseUnits("1.0", "gwei"), // Optimized priority fee
+        gasLimit: 500000, // Much higher gas limit for election creation to prevent RPC errors
+        maxFeePerGas: ethers.parseUnits("10.0", "gwei"), // Higher max fee to handle network congestion
+        maxPriorityFeePerGas: ethers.parseUnits("2.0", "gwei"), // Higher priority fee
       };
       
       console.log('Using transaction options:', options);

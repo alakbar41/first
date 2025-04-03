@@ -91,11 +91,20 @@ export function DeployToBlockchainButton({
       console.log(`Deploying ${election.name} to blockchain...`);
       console.log(`Election type: ${electionType}, Start: ${startTimestamp}, End: ${endTimestamp}`);
       
+      // Show more detailed toast for user
+      toast({
+        title: "Deploying to Blockchain",
+        description: "Please approve the transaction in MetaMask and wait for confirmation. This might take a few moments.",
+        duration: 10000,
+      });
+      
       // Ensure contract is initialized with signer before calling
       await web3Service.initialize();
       
-      // Call the web3 service to create the election
+      // Call the web3 service to create the election with extra logging
       console.log("About to call createElection on web3Service");
+      console.log("If this operation fails, it may be due to network issues or gas limitations");
+      
       const blockchainElectionId = await web3Service.createElection(
         electionType,
         startTimestamp,
@@ -149,6 +158,13 @@ export function DeployToBlockchainButton({
           title: "Blockchain Contract Error",
           description: `The smart contract rejected the operation. This could be due to a limit on the number of elections, time constraints, or permission issues. Please check the console for more details.`,
           variant: "destructive",
+        });
+      } else if (error.message && error.message.includes("Internal JSON-RPC error")) {
+        toast({
+          title: "Network Error",
+          description: "Transaction failed due to a blockchain network issue. This could be due to network congestion. Please try again with higher gas settings, or wait a few minutes before retrying.",
+          variant: "destructive",
+          duration: 8000
         });
       } else {
         toast({
