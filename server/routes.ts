@@ -41,19 +41,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const elections = await storage.getElections();
       
-      // Filter elections based on user role - admins see all, students only see blockchain-deployed elections
+      // Filter elections based on user role - admins see all, students only see blockchain-deployed AND active elections
       const isAdmin = req.isAuthenticated() && req.user && req.user.isAdmin === true;
       
       if (isAdmin) {
         // Admin sees all elections
         res.json(elections);
       } else {
-        // Students only see elections that have been deployed to blockchain
+        // Students only see elections that have been deployed to blockchain AND are active
         const filteredElections = elections.filter(election => 
           // Only show elections with blockchain IDs (that have been deployed)
+          // AND have status "active"
           election.blockchainId !== null && 
-          election.blockchainId !== undefined
+          election.blockchainId !== undefined &&
+          election.status === "active"
         );
+        console.log(`Student user viewing elections - filtered from ${elections.length} to ${filteredElections.length}`);
+        if (filteredElections.length === 0) {
+          console.log("No elections available to students. Elections available:", 
+            elections.map(e => ({
+              id: e.id, 
+              name: e.name, 
+              blockchainId: e.blockchainId, 
+              status: e.status
+            }))
+          );
+        }
         res.json(filteredElections);
       }
     } catch (error) {
@@ -71,14 +84,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Election not found" });
       }
       
-      // Check if user is admin or if election has a blockchain ID
+      // Check if user is admin or if election has a blockchain ID AND is active
       const isAdmin = req.isAuthenticated() && req.user && req.user.isAdmin === true;
       
-      if (isAdmin || (election.blockchainId !== null && election.blockchainId !== undefined)) {
-        // Admin sees all elections, students only see deployed ones
+      if (isAdmin) {
+        // Admin sees all elections
+        res.json(election);
+      } else if (election.blockchainId !== null && 
+                 election.blockchainId !== undefined && 
+                 election.status === "active") {
+        // Students only see deployed AND active elections
         res.json(election);
       } else {
-        // Students can't access non-deployed elections
+        // Students can't access non-deployed or non-active elections
+        console.log(`Student tried to access election ${election.id} but was denied. Status: ${election.status}, BlockchainId: ${election.blockchainId}`);
         return res.status(404).json({ message: "Election not found" });
       }
     } catch (error) {
@@ -371,11 +390,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Election not found" });
       }
       
-      // Check if user is admin or if election has a blockchain ID
+      // Check if user is admin or if election has a blockchain ID AND is active
       const isAdmin = req.isAuthenticated() && req.user && req.user.isAdmin === true;
       
-      if (!isAdmin && (election.blockchainId === null || election.blockchainId === undefined)) {
-        // Students can't access candidates for non-deployed elections
+      if (!isAdmin && (election.blockchainId === null || 
+                      election.blockchainId === undefined ||
+                      election.status !== "active")) {
+        // Students can't access candidates for non-deployed elections or non-active elections
+        console.log(`Student tried to access candidates for election ${election.id} but was denied. Status: ${election.status}, BlockchainId: ${election.blockchainId}`);
         return res.status(404).json({ message: "Election not found" });
       }
       
