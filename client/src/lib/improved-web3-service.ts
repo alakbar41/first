@@ -120,9 +120,10 @@ class ImprovedWeb3Service {
         
         // Add explicit gas limit and value parameters to avoid estimation issues
         const options = {
-          gasLimit: 350000, // Reasonable gas limit for election creation
-          maxFeePerGas: ethers.parseUnits("5.0", "gwei"), // Moderate max fee for network congestion
-          maxPriorityFeePerGas: ethers.parseUnits("1.5", "gwei"), // Moderate priority fee
+          gasLimit: 600000, // High gas limit for election creation on congested network
+          maxFeePerGas: ethers.parseUnits("15.0", "gwei"), // Higher max fee to overcome congestion
+          maxPriorityFeePerGas: ethers.parseUnits("3.0", "gwei"), // Higher priority fee for faster processing
+          type: 2, // Use EIP-1559 transaction type explicitly
         };
         
         console.log('Using options:', options);
@@ -177,11 +178,12 @@ Technical error: ${gasError.message}`);
       // If gas estimation is successful, proceed with the transaction
       console.log('Sending createElection transaction...');
       
-      // Use explicit gas limit to avoid potential issues
+      // Use higher gas settings to overcome network congestion
       const options = {
-        gasLimit: 350000, // Reasonable gas limit for election creation
-        maxFeePerGas: ethers.parseUnits("5.0", "gwei"), // Moderate max fee for network congestion
-        maxPriorityFeePerGas: ethers.parseUnits("1.5", "gwei"), // Moderate priority fee
+        gasLimit: 600000, // High gas limit for election creation on congested network
+        maxFeePerGas: ethers.parseUnits("15.0", "gwei"), // Higher max fee to overcome congestion
+        maxPriorityFeePerGas: ethers.parseUnits("3.0", "gwei"), // Higher priority fee for faster processing
+        type: 2, // Use EIP-1559 transaction type explicitly
       };
       
       console.log('Using transaction options:', options);
