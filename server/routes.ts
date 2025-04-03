@@ -7,7 +7,8 @@ import {
   insertElectionSchema, 
   insertCandidateSchema, 
   insertElectionCandidateSchema,
-  resetPasswordSchema 
+  resetPasswordSchema,
+  Election
 } from "@shared/schema";
 import { z } from "zod";
 import { mailer } from "./mailer.js";
@@ -39,8 +40,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/elections", async (req, res) => {
     try {
       const elections = await storage.getElections();
-      res.json(elections);
+      
+      // Filter elections based on user role - admins see all, students only see blockchain-deployed elections
+      const isAdmin = req.isAuthenticated() && req.user && req.user.isAdmin === true;
+      
+      if (isAdmin) {
+        // Admin sees all elections
+        res.json(elections);
+      } else {
+        // Students only see elections that have been deployed to blockchain
+        const filteredElections = elections.filter(election => 
+          // Only show elections with blockchain IDs (that have been deployed)
+          election.blockchainId !== null && 
+          election.blockchainId !== undefined
+        );
+        res.json(filteredElections);
+      }
     } catch (error) {
+      console.error("Failed to fetch elections:", error);
       res.status(500).json({ message: "Failed to fetch elections" });
     }
   });
@@ -54,8 +71,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Election not found" });
       }
       
-      res.json(election);
+      // Check if user is admin or if election has a blockchain ID
+      const isAdmin = req.isAuthenticated() && req.user && req.user.isAdmin === true;
+      
+      if (isAdmin || (election.blockchainId !== null && election.blockchainId !== undefined)) {
+        // Admin sees all elections, students only see deployed ones
+        res.json(election);
+      } else {
+        // Students can't access non-deployed elections
+        return res.status(404).json({ message: "Election not found" });
+      }
     } catch (error) {
+      console.error("Failed to fetch election:", error);
       res.status(500).json({ message: "Failed to fetch election" });
     }
   });
@@ -337,6 +364,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/elections/:electionId/candidates", async (req, res) => {
     try {
       const electionId = parseInt(req.params.electionId);
+      
+      // First, verify the election exists and should be visible to the user
+      const election = await storage.getElection(electionId);
+      if (!election) {
+        return res.status(404).json({ message: "Election not found" });
+      }
+      
+      // Check if user is admin or if election has a blockchain ID
+      const isAdmin = req.isAuthenticated() && req.user && req.user.isAdmin === true;
+      
+      if (!isAdmin && (election.blockchainId === null || election.blockchainId === undefined)) {
+        // Students can't access candidates for non-deployed elections
+        return res.status(404).json({ message: "Election not found" });
+      }
+      
       const electionCandidates = await storage.getElectionCandidates(electionId);
       
       // Get full candidate details for each election candidate
@@ -359,6 +401,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(candidatesWithDetails);
     } catch (error) {
+      console.error("Failed to fetch election candidates:", error);
       res.status(500).json({ message: "Failed to fetch election candidates" });
     }
   });
