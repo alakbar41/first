@@ -163,7 +163,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Election not found" });
       }
       
-      // Update only the blockchainId field
+      console.log(`Updating blockchain ID for election ${id} to ${blockchainId}`);
+      
+      // Use the simplified updateElection method which handles blockchainId updates specially
       const updatedElection = await storage.updateElection(id, { blockchainId });
       res.json(updatedElection);
     } catch (error) {

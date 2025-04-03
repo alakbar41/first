@@ -657,12 +657,38 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateElection(id: number, election: Partial<InsertElection>): Promise<Election> {
+    // Handle the blockchain ID update separately to avoid date issues
+    if (election.blockchainId !== undefined && Object.keys(election).length === 1) {
+      // This is just a blockchain ID update, use a simplified update
+      console.log(`Simplified update for blockchainId ${election.blockchainId} on election ${id}`);
+      const updated = await db.update(elections)
+        .set({ blockchainId: election.blockchainId })
+        .where(eq(elections.id, id))
+        .returning();
+      
+      if (!updated.length) {
+        throw new Error(`Election with id ${id} not found`);
+      }
+      
+      return updated[0];
+    }
+    
+    // For other updates, proceed normally
+    const updateData: any = { ...election };
+    
+    // Only handle dates if they're present in the update
+    if (election.startDate) {
+      updateData.startDate = election.startDate instanceof Date ? 
+        election.startDate : new Date(election.startDate as string);
+    }
+    
+    if (election.endDate) {
+      updateData.endDate = election.endDate instanceof Date ? 
+        election.endDate : new Date(election.endDate as string);
+    }
+    
     const updated = await db.update(elections)
-      .set({
-        ...election,
-        startDate: election.startDate instanceof Date ? election.startDate : new Date(election.startDate as string),
-        endDate: election.endDate instanceof Date ? election.endDate : new Date(election.endDate as string),
-      })
+      .set(updateData)
       .where(eq(elections.id, id))
       .returning();
       
