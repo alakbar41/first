@@ -41,20 +41,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const elections = await storage.getElections();
       
-      // Filter elections based on user role - admins see all, students only see blockchain-deployed AND active elections
+      // Filter elections based on user role - admins see all, students only see blockchain-deployed elections
       const isAdmin = req.isAuthenticated() && req.user && req.user.isAdmin === true;
       
       if (isAdmin) {
         // Admin sees all elections
         res.json(elections);
       } else {
-        // Students only see elections that have been deployed to blockchain AND are active
+        // Students see ALL elections that have been deployed to blockchain, regardless of status
+        // This gives them time to review candidates before voting begins
         const filteredElections = elections.filter(election => 
-          // Only show elections with blockchain IDs (that have been deployed)
-          // AND have status "active"
+          // Only filter on blockchain deployment status, not on election active status
           election.blockchainId !== null && 
-          election.blockchainId !== undefined &&
-          election.status === "active"
+          election.blockchainId !== undefined
         );
         console.log(`Student user viewing elections - filtered from ${elections.length} to ${filteredElections.length}`);
         if (filteredElections.length === 0) {
@@ -84,20 +83,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Election not found" });
       }
       
-      // Check if user is admin or if election has a blockchain ID AND is active
+      // Check if user is admin or if election has a blockchain ID (regardless of status)
       const isAdmin = req.isAuthenticated() && req.user && req.user.isAdmin === true;
       
       if (isAdmin) {
         // Admin sees all elections
         res.json(election);
       } else if (election.blockchainId !== null && 
-                 election.blockchainId !== undefined && 
-                 election.status === "active") {
-        // Students only see deployed AND active elections
+                 election.blockchainId !== undefined) {
+        // Students see ALL elections that are deployed to blockchain, regardless of status
+        // This allows them to review candidates before the election starts
         res.json(election);
       } else {
-        // Students can't access non-deployed or non-active elections
-        console.log(`Student tried to access election ${election.id} but was denied. Status: ${election.status}, BlockchainId: ${election.blockchainId}`);
+        // Students can't access non-deployed elections
+        console.log(`Student tried to access election ${election.id} but was denied. Not deployed to blockchain. BlockchainId: ${election.blockchainId}`);
         return res.status(404).json({ message: "Election not found" });
       }
     } catch (error) {
@@ -403,14 +402,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Election not found" });
       }
       
-      // Check if user is admin or if election has a blockchain ID AND is active
+      // Check if user is admin or if election has a blockchain ID
       const isAdmin = req.isAuthenticated() && req.user && req.user.isAdmin === true;
       
       if (!isAdmin && (election.blockchainId === null || 
-                      election.blockchainId === undefined ||
-                      election.status !== "active")) {
-        // Students can't access candidates for non-deployed elections or non-active elections
-        console.log(`Student tried to access candidates for election ${election.id} but was denied. Status: ${election.status}, BlockchainId: ${election.blockchainId}`);
+                      election.blockchainId === undefined)) {
+        // Students can't access candidates for non-deployed elections
+        console.log(`Student tried to access candidates for election ${election.id} but was denied. Not deployed to blockchain. BlockchainId: ${election.blockchainId}`);
         return res.status(404).json({ message: "Election not found" });
       }
       
