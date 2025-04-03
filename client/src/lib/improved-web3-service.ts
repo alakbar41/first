@@ -120,7 +120,7 @@ class ImprovedWeb3Service {
         
         // Add explicit gas limit and value parameters to avoid estimation issues
         const options = {
-          gasLimit: 500000, // Provide a generous gas limit
+          gasLimit: 300000, // Higher gas limit for election creation which is more complex
         };
         
         console.log('Using options:', options);
@@ -177,7 +177,8 @@ Technical error: ${gasError.message}`);
       
       // Use explicit gas limit to avoid potential issues
       const options = {
-        gasLimit: 500000, // Provide a generous gas limit for the real transaction
+        gasLimit: 300000, // Higher gas limit for election creation which is more complex
+        maxPriorityFeePerGas: ethers.parseUnits("1.0", "gwei"), // Optimized priority fee
       };
       
       console.log('Using transaction options:', options);
@@ -245,7 +246,13 @@ Technical error: ${gasError.message}`);
         throw new Error('Wallet not connected');
       }
 
-      const tx = await this.contract.registerVoter(voterAddress);
+      // Use optimized gas settings
+      const options = {
+        gasLimit: 100000,
+        maxPriorityFeePerGas: ethers.parseUnits("1.0", "gwei"),
+      };
+
+      const tx = await this.contract.registerVoter(voterAddress, options);
       await tx.wait();
     } catch (error) {
       console.error(`Failed to register voter ${voterAddress}:`, error);
@@ -265,7 +272,13 @@ Technical error: ${gasError.message}`);
         throw new Error('Wallet not connected');
       }
 
-      const tx = await this.contract.registerVotersBatch(voterAddresses);
+      // Use optimized gas settings for batch operations
+      const options = {
+        gasLimit: 300000, // Higher gas limit for batch operations
+        maxPriorityFeePerGas: ethers.parseUnits("1.0", "gwei"),
+      };
+
+      const tx = await this.contract.registerVotersBatch(voterAddresses, options);
       await tx.wait();
     } catch (error) {
       console.error(`Failed to register voters in batch:`, error);
@@ -285,7 +298,13 @@ Technical error: ${gasError.message}`);
         throw new Error('Wallet not connected');
       }
 
-      const tx = await this.contract.registerCandidate();
+      // Use optimized gas settings
+      const options = {
+        gasLimit: 150000, // Moderate gas limit for candidate creation
+        maxPriorityFeePerGas: ethers.parseUnits("1.0", "gwei"),
+      };
+
+      const tx = await this.contract.registerCandidate(options);
       
       const receipt = await tx.wait();
       
@@ -313,9 +332,16 @@ Technical error: ${gasError.message}`);
         throw new Error('Wallet not connected');
       }
 
+      // Use optimized gas settings
+      const options = {
+        gasLimit: 100000,
+        maxPriorityFeePerGas: ethers.parseUnits("1.0", "gwei"),
+      };
+
       const tx = await this.contract.addCandidateToElection(
         electionId,
-        candidateId
+        candidateId,
+        options
       );
       
       await tx.wait();
@@ -340,9 +366,16 @@ Technical error: ${gasError.message}`);
         throw new Error('Wallet not connected');
       }
 
+      // Use optimized gas settings
+      const options = {
+        gasLimit: 150000, // Moderate gas limit for ticket creation
+        maxPriorityFeePerGas: ethers.parseUnits("1.0", "gwei"),
+      };
+
       const tx = await this.contract.createTicket(
         presidentId,
-        vpId
+        vpId,
+        options
       );
       
       const receipt = await tx.wait();
@@ -371,9 +404,16 @@ Technical error: ${gasError.message}`);
         throw new Error('Wallet not connected');
       }
 
+      // Use optimized gas settings
+      const options = {
+        gasLimit: 100000,
+        maxPriorityFeePerGas: ethers.parseUnits("1.0", "gwei"),
+      };
+
       const tx = await this.contract.addTicketToElection(
         electionId,
-        ticketId
+        ticketId,
+        options
       );
       
       await tx.wait();
@@ -395,9 +435,16 @@ Technical error: ${gasError.message}`);
         throw new Error('Wallet not connected');
       }
 
+      // Use optimized gas settings
+      const options = {
+        gasLimit: 100000,
+        maxPriorityFeePerGas: ethers.parseUnits("1.0", "gwei"),
+      };
+
       const tx = await this.contract.updateElectionStatus(
         electionId, 
-        ElectionStatus.Active
+        ElectionStatus.Active,
+        options
       );
       await tx.wait();
     } catch (error) {
@@ -418,9 +465,16 @@ Technical error: ${gasError.message}`);
         throw new Error('Wallet not connected');
       }
 
+      // Use optimized gas settings
+      const options = {
+        gasLimit: 100000,
+        maxPriorityFeePerGas: ethers.parseUnits("1.0", "gwei"),
+      };
+
       const tx = await this.contract.updateElectionStatus(
         electionId, 
-        ElectionStatus.Completed
+        ElectionStatus.Completed,
+        options
       );
       await tx.wait();
     } catch (error) {
@@ -441,7 +495,13 @@ Technical error: ${gasError.message}`);
         throw new Error('Wallet not connected');
       }
 
-      const tx = await this.contract.autoUpdateElectionStatus(electionId);
+      // Use optimized gas settings
+      const options = {
+        gasLimit: 100000,
+        maxPriorityFeePerGas: ethers.parseUnits("1.0", "gwei"),
+      };
+
+      const tx = await this.contract.autoUpdateElectionStatus(electionId, options);
       await tx.wait();
     } catch (error) {
       console.error(`Failed to auto-update election status for ${electionId}:`, error);
@@ -461,7 +521,13 @@ Technical error: ${gasError.message}`);
         throw new Error('Wallet not connected');
       }
 
-      const tx = await this.contract.finalizeResults(electionId);
+      // Use optimized gas settings
+      const options = {
+        gasLimit: 100000,
+        maxPriorityFeePerGas: ethers.parseUnits("1.0", "gwei"),
+      };
+
+      const tx = await this.contract.finalizeResults(electionId, options);
       await tx.wait();
     } catch (error) {
       console.error(`Failed to finalize results for election ${electionId}:`, error);
@@ -719,8 +785,14 @@ Technical error: ${gasError.message}`);
       // Get next nonce for anti-replay protection
       const nonce = await this.getNextNonce();
 
-      // Send the vote transaction
-      const tx = await this.contract.voteForSenator(electionId, candidateId, nonce);
+      // Use optimized gas settings for voting
+      const options = {
+        gasLimit: 100000,
+        maxPriorityFeePerGas: ethers.parseUnits("1.0", "gwei"),
+      };
+
+      // Send the vote transaction with optimized gas settings
+      const tx = await this.contract.voteForSenator(electionId, candidateId, nonce, options);
       
       // Wait for the transaction to be mined
       const receipt = await tx.wait();
@@ -747,8 +819,14 @@ Technical error: ${gasError.message}`);
       // Get next nonce for anti-replay protection
       const nonce = await this.getNextNonce();
 
-      // Send the vote transaction
-      const tx = await this.contract.voteForPresidentVP(electionId, ticketId, nonce);
+      // Use optimized gas settings for voting
+      const options = {
+        gasLimit: 100000,
+        maxPriorityFeePerGas: ethers.parseUnits("1.0", "gwei"),
+      };
+
+      // Send the vote transaction with optimized gas settings
+      const tx = await this.contract.voteForPresidentVP(electionId, ticketId, nonce, options);
       
       // Wait for the transaction to be mined
       const receipt = await tx.wait();
