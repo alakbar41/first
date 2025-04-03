@@ -135,6 +135,20 @@ export const voteForSenator = async (electionId: number, candidateId: number): P
       throw new Error('You have already voted in this election.');
     }
     
+    // Get election details to verify it's active
+    try {
+      const electionDetails = await web3Service.getElectionDetails(electionId);
+      if (electionDetails.status !== 1) { // 1 = Active in ElectionStatus enum
+        throw new Error(`Cannot vote in election with status: ${electionDetails.status}. Election must be in active status.`);
+      }
+    } catch (electionError: any) {
+      if (electionError.message?.includes('revert')) {
+        throw new Error(`Election #${electionId} is not available for voting. It might not exist on the blockchain or has expired.`);
+      }
+      // If it's not a revert error, throw the original error
+      throw electionError;
+    }
+    
     // Submit vote
     return await web3Service.voteForSenator(electionId, candidateId);
   } catch (error: any) {
@@ -152,6 +166,20 @@ export const voteForPresidentVP = async (electionId: number, ticketId: number): 
     const hasVoted = await web3Service.checkIfVoted(electionId);
     if (hasVoted) {
       throw new Error('You have already voted in this election.');
+    }
+    
+    // Get election details to verify it's active
+    try {
+      const electionDetails = await web3Service.getElectionDetails(electionId);
+      if (electionDetails.status !== 1) { // 1 = Active in ElectionStatus enum
+        throw new Error(`Cannot vote in election with status: ${electionDetails.status}. Election must be in active status.`);
+      }
+    } catch (electionError: any) {
+      if (electionError.message?.includes('revert')) {
+        throw new Error(`Election #${electionId} is not available for voting. It might not exist on the blockchain or has expired.`);
+      }
+      // If it's not a revert error, throw the original error
+      throw electionError;
     }
     
     // Submit vote

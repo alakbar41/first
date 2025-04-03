@@ -790,11 +790,29 @@ Technical error: ${gasError.message}`);
       // Get next nonce for anti-replay protection
       const nonce = await this.getNextNonce();
 
-      // Use optimized gas settings for voting
+      // Use higher gas settings for voting to avoid transaction failures
       const options = {
-        gasLimit: 100000,
-        maxPriorityFeePerGas: ethers.parseUnits("1.0", "gwei"),
+        gasLimit: 300000, // Increased from 100000 to 300000
+        maxPriorityFeePerGas: ethers.parseUnits("2.0", "gwei"), // Increased priority fee
+        maxFeePerGas: ethers.parseUnits("30.0", "gwei"), // Added max fee
       };
+
+      console.log(`Sending vote transaction for election ${electionId}, candidate ${candidateId}, nonce ${nonce}`);
+
+      // First try estimating gas to catch errors before sending
+      try {
+        await this.contract.voteForSenator.estimateGas(electionId, candidateId, nonce, options);
+      } catch (gasError: any) {
+        console.error("Gas estimation failed:", gasError);
+        
+        if (gasError.reason) {
+          throw new Error(`Voting failed: ${gasError.reason}`);
+        } else if (gasError.message.includes("execution reverted")) {
+          throw new Error(`Voting failed: The election may have ended or is not in active state, or you might not be eligible to vote in this election. Please refresh the page and try again.`);
+        } else {
+          throw gasError;
+        }
+      }
 
       // Send the vote transaction with optimized gas settings
       const tx = await this.contract.voteForSenator(electionId, candidateId, nonce, options);
@@ -824,11 +842,29 @@ Technical error: ${gasError.message}`);
       // Get next nonce for anti-replay protection
       const nonce = await this.getNextNonce();
 
-      // Use optimized gas settings for voting
+      // Use higher gas settings for voting to avoid transaction failures
       const options = {
-        gasLimit: 100000,
-        maxPriorityFeePerGas: ethers.parseUnits("1.0", "gwei"),
+        gasLimit: 300000, // Increased from 100000 to 300000
+        maxPriorityFeePerGas: ethers.parseUnits("2.0", "gwei"), // Increased priority fee
+        maxFeePerGas: ethers.parseUnits("30.0", "gwei"), // Added max fee
       };
+
+      console.log(`Sending vote transaction for President/VP election ${electionId}, ticket ${ticketId}, nonce ${nonce}`);
+
+      // First try estimating gas to catch errors before sending
+      try {
+        await this.contract.voteForPresidentVP.estimateGas(electionId, ticketId, nonce, options);
+      } catch (gasError: any) {
+        console.error("Gas estimation failed:", gasError);
+        
+        if (gasError.reason) {
+          throw new Error(`Voting failed: ${gasError.reason}`);
+        } else if (gasError.message.includes("execution reverted")) {
+          throw new Error(`Voting failed: The election may have ended or is not in active state, or you might not be eligible to vote in this election. Please refresh the page and try again.`);
+        } else {
+          throw gasError;
+        }
+      }
 
       // Send the vote transaction with optimized gas settings
       const tx = await this.contract.voteForPresidentVP(electionId, ticketId, nonce, options);
