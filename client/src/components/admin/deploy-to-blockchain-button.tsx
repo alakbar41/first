@@ -91,11 +91,11 @@ export function DeployToBlockchainButton({
       console.log(`Deploying ${election.name} to blockchain...`);
       console.log(`Election type: ${electionType}, Start: ${startTimestamp}, End: ${endTimestamp}`);
       
-      // Show more detailed toast for user
+      // Show more detailed toast for user with manual gas configuration instructions
       toast({
         title: "Deploying to Blockchain",
-        description: "Please approve the transaction in MetaMask and wait for confirmation. This might take a few moments.",
-        duration: 10000,
+        description: "Please approve the transaction in MetaMask. When the confirmation dialog appears, click the Edit button and manually set Gas limit to at least 800000 to overcome network congestion issues.",
+        duration: 15000,
       });
       
       // Ensure contract is initialized with signer before calling
@@ -168,10 +168,10 @@ export function DeployToBlockchainButton({
         });
       } else if (error.message && error.message.includes("Internal JSON-RPC error")) {
         toast({
-          title: "Network Error",
-          description: "Transaction failed due to a blockchain network issue. This could be due to network congestion. Please try again with higher gas settings, or wait a few minutes before retrying.",
+          title: "Polygon Network Congestion",
+          description: "The Polygon Amoy testnet is experiencing high congestion. As a temporary workaround, please try using the manual configuration in MetaMask by clicking the settings gear icon during transaction confirmation and setting the gas limit to 800000.",
           variant: "destructive",
-          duration: 8000
+          duration: 15000
         });
       } else {
         toast({
