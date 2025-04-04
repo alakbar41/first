@@ -88,7 +88,7 @@ export const candidates = pgTable("candidates", {
   studentId: text("student_id").notNull().unique(),
   faculty: text("faculty").notNull(), // Will be a dropdown selection
   position: text("position").notNull(), // Limited to: President, Vice President, Senator
-  status: text("status").notNull().default("inactive"), // active (in election), inactive (not in election)
+  status: text("status").notNull().default("inactive"), // active (in ongoing election), pending (in upcoming election), inactive (not in election)
   pictureUrl: text("picture_url").default("").notNull(), // URL to candidate's picture (stored as base64)
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
