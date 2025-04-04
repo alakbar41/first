@@ -178,11 +178,11 @@ Technical error: ${gasError.message}`);
       // If gas estimation is successful, proceed with the transaction
       console.log('Sending createElection transaction...');
       
-      // Use extreme gas settings to overcome Polygon Amoy testnet congestion
+      // Use extremely high gas settings to overcome Polygon Amoy testnet congestion
       const options = {
-        gasLimit: 1000000, // Extremely high gas limit to ensure transaction success
-        maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"), // Very high priority fee to prioritize transaction
-        maxFeePerGas: ethers.parseUnits("35.0", "gwei"), // Very high max fee to ensure acceptance
+        gasLimit: 2000000, // Ultra high gas limit to ensure election creation success
+        maxPriorityFeePerGas: ethers.parseUnits("25.0", "gwei"), // Very high priority fee to prioritize transaction
+        maxFeePerGas: ethers.parseUnits("60.0", "gwei"), // Very high max fee to ensure acceptance
         type: 2, // Use EIP-1559 transaction type
       };
       
@@ -251,10 +251,12 @@ Technical error: ${gasError.message}`);
         throw new Error('Wallet not connected');
       }
 
-      // Use optimized gas settings
+      // Use optimized gas settings with higher limits for Polygon Amoy
       const options = {
-        gasLimit: 100000,
-        maxPriorityFeePerGas: ethers.parseUnits("1.0", "gwei"),
+        gasLimit: 500000,
+        maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"),
+        maxFeePerGas: ethers.parseUnits("35.0", "gwei"),
+        type: 2, // Use EIP-1559 transaction type
       };
 
       const tx = await this.contract.registerVoter(voterAddress, options);
@@ -279,8 +281,10 @@ Technical error: ${gasError.message}`);
 
       // Use optimized gas settings for batch operations
       const options = {
-        gasLimit: 300000, // Higher gas limit for batch operations
-        maxPriorityFeePerGas: ethers.parseUnits("1.0", "gwei"),
+        gasLimit: 1000000, // Higher gas limit for batch operations
+        maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"),
+        maxFeePerGas: ethers.parseUnits("35.0", "gwei"),
+        type: 2, // Use EIP-1559 transaction type
       };
 
       const tx = await this.contract.registerVotersBatch(voterAddresses, options);
@@ -303,10 +307,12 @@ Technical error: ${gasError.message}`);
         throw new Error('Wallet not connected');
       }
 
-      // Use optimized gas settings
+      // Use optimized gas settings with higher limits for Polygon Amoy
       const options = {
-        gasLimit: 150000, // Moderate gas limit for candidate creation
-        maxPriorityFeePerGas: ethers.parseUnits("1.0", "gwei"),
+        gasLimit: 500000, // Higher gas limit for candidate creation
+        maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"),
+        maxFeePerGas: ethers.parseUnits("35.0", "gwei"),
+        type: 2, // Use EIP-1559 transaction type
       };
 
       const tx = await this.contract.registerCandidate(options);
@@ -337,10 +343,12 @@ Technical error: ${gasError.message}`);
         throw new Error('Wallet not connected');
       }
 
-      // Use optimized gas settings
+      // Use optimized gas settings with higher limits for Polygon Amoy
       const options = {
-        gasLimit: 100000,
-        maxPriorityFeePerGas: ethers.parseUnits("1.0", "gwei"),
+        gasLimit: 500000,
+        maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"),
+        maxFeePerGas: ethers.parseUnits("35.0", "gwei"),
+        type: 2, // Use EIP-1559 transaction type
       };
 
       const tx = await this.contract.addCandidateToElection(
@@ -371,10 +379,12 @@ Technical error: ${gasError.message}`);
         throw new Error('Wallet not connected');
       }
 
-      // Use optimized gas settings
+      // Use optimized gas settings with higher limits for Polygon Amoy
       const options = {
-        gasLimit: 150000, // Moderate gas limit for ticket creation
-        maxPriorityFeePerGas: ethers.parseUnits("1.0", "gwei"),
+        gasLimit: 500000, // Higher gas limit for ticket creation
+        maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"),
+        maxFeePerGas: ethers.parseUnits("35.0", "gwei"),
+        type: 2, // Use EIP-1559 transaction type
       };
 
       const tx = await this.contract.createTicket(
@@ -409,10 +419,12 @@ Technical error: ${gasError.message}`);
         throw new Error('Wallet not connected');
       }
 
-      // Use optimized gas settings
+      // Use optimized gas settings with higher limits for Polygon Amoy
       const options = {
-        gasLimit: 100000,
-        maxPriorityFeePerGas: ethers.parseUnits("1.0", "gwei"),
+        gasLimit: 500000,
+        maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"),
+        maxFeePerGas: ethers.parseUnits("35.0", "gwei"),
+        type: 2, // Use EIP-1559 transaction type
       };
 
       const tx = await this.contract.addTicketToElection(
@@ -440,10 +452,12 @@ Technical error: ${gasError.message}`);
         throw new Error('Wallet not connected');
       }
 
-      // Use optimized gas settings
+      // Use optimized gas settings with higher limits for Polygon Amoy
       const options = {
-        gasLimit: 100000,
-        maxPriorityFeePerGas: ethers.parseUnits("1.0", "gwei"),
+        gasLimit: 500000,
+        maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"),
+        maxFeePerGas: ethers.parseUnits("35.0", "gwei"),
+        type: 2, // Use EIP-1559 transaction type
       };
 
       const tx = await this.contract.updateElectionStatus(
@@ -470,10 +484,12 @@ Technical error: ${gasError.message}`);
         throw new Error('Wallet not connected');
       }
 
-      // Use optimized gas settings
+      // Use optimized gas settings with higher limits for Polygon Amoy
       const options = {
-        gasLimit: 100000,
-        maxPriorityFeePerGas: ethers.parseUnits("1.0", "gwei"),
+        gasLimit: 500000,
+        maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"),
+        maxFeePerGas: ethers.parseUnits("35.0", "gwei"),
+        type: 2, // Use EIP-1559 transaction type
       };
 
       const tx = await this.contract.updateElectionStatus(
@@ -500,10 +516,12 @@ Technical error: ${gasError.message}`);
         throw new Error('Wallet not connected');
       }
 
-      // Use optimized gas settings
+      // Use optimized gas settings with higher limits for Polygon Amoy
       const options = {
-        gasLimit: 100000,
-        maxPriorityFeePerGas: ethers.parseUnits("1.0", "gwei"),
+        gasLimit: 500000,
+        maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"),
+        maxFeePerGas: ethers.parseUnits("35.0", "gwei"),
+        type: 2, // Use EIP-1559 transaction type
       };
 
       const tx = await this.contract.autoUpdateElectionStatus(electionId, options);
@@ -526,10 +544,12 @@ Technical error: ${gasError.message}`);
         throw new Error('Wallet not connected');
       }
 
-      // Use optimized gas settings
+      // Use optimized gas settings with higher limits for Polygon Amoy
       const options = {
-        gasLimit: 100000,
-        maxPriorityFeePerGas: ethers.parseUnits("1.0", "gwei"),
+        gasLimit: 500000,
+        maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"),
+        maxFeePerGas: ethers.parseUnits("35.0", "gwei"),
+        type: 2, // Use EIP-1559 transaction type
       };
 
       const tx = await this.contract.finalizeResults(electionId, options);
@@ -792,39 +812,45 @@ Technical error: ${gasError.message}`);
 
       // Use extreme gas settings for voting to overcome Polygon Amoy testnet congestion
       const options = {
-        gasLimit: 800000, // Extremely high gas limit to ensure transaction success
-        maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"), // Very high priority fee to prioritize transaction
-        maxFeePerGas: ethers.parseUnits("35.0", "gwei"), // Very high max fee to ensure acceptance
+        gasLimit: 1500000, // Extremely high gas limit to ensure transaction success
+        maxPriorityFeePerGas: ethers.parseUnits("20.0", "gwei"), // Very high priority fee to prioritize transaction
+        maxFeePerGas: ethers.parseUnits("50.0", "gwei"), // Very high max fee to ensure acceptance
         type: 2, // Use EIP-1559 transaction type
       };
 
       console.log(`Sending vote transaction for election ${electionId}, candidate ${candidateId}, nonce ${nonce}`);
 
-      // First try estimating gas to catch errors before sending
-      try {
-        await this.contract.voteForSenator.estimateGas(electionId, candidateId, nonce, options);
-      } catch (gasError: any) {
-        console.error("Gas estimation failed:", gasError);
-        
-        if (gasError.reason) {
-          throw new Error(`Voting failed: ${gasError.reason}`);
-        } else if (gasError.message.includes("execution reverted")) {
-          throw new Error(`Voting failed: The election may have ended or is not in active state, or you might not be eligible to vote in this election. Please refresh the page and try again.`);
-        } else {
-          throw gasError;
-        }
-      }
-
-      // Send the vote transaction with optimized gas settings
+      // Skip gas estimation and go straight to sending the transaction
+      // This approach might help when the contract has issues with gas estimation but can still process transactions
+      console.log("Skipping gas estimation and sending transaction directly with high gas parameters");
+      
+      // Send the vote transaction with extremely high gas settings
       const tx = await this.contract.voteForSenator(electionId, candidateId, nonce, options);
       
-      // Wait for the transaction to be mined
-      const receipt = await tx.wait();
+      console.log("Transaction sent, awaiting confirmation:", tx.hash);
+      
+      // Wait for the transaction to be mined with a longer timeout
+      const receipt = await tx.wait(3); // Wait for 3 confirmations for better reliability
+      
+      console.log("Transaction confirmed with receipt:", receipt);
       
       return receipt.hash;
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Failed to vote for candidate ${candidateId} in election ${electionId}:`, error);
-      throw error;
+      
+      // Enhanced error handling for different error cases
+      if (error.message?.includes("Internal JSON-RPC error") || error.message?.includes("insufficient funds")) {
+        throw new Error("Transaction failed due to network congestion or insufficient funds. Please ensure you have enough testnet MATIC and try these manual settings in MetaMask: Gas limit=1500000, Max priority fee=20 gwei, Max fee=50 gwei.");
+      } else if (error.message?.includes("execution reverted")) {
+        throw new Error("Vote transaction was rejected by the smart contract. This could be because you've already voted, the election status has changed, or there's an issue with the contract implementation.");
+      } else if (error.code === "CALL_EXCEPTION") {
+        throw new Error("Contract call exception. This usually indicates a problem with the contract's implementation or validation logic. Please contact the system administrator.");
+      } else if (error.message?.includes("replacement fee too low") || error.message?.includes("transaction underpriced")) {
+        throw new Error("Transaction fee too low. Please try again with higher gas fees in MetaMask settings.");
+      } else {
+        // For any other errors, throw with the original message
+        throw error;
+      }
     }
   }
 
@@ -845,39 +871,45 @@ Technical error: ${gasError.message}`);
 
       // Use extreme gas settings for voting to overcome Polygon Amoy testnet congestion
       const options = {
-        gasLimit: 800000, // Extremely high gas limit to ensure transaction success
-        maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"), // Very high priority fee to prioritize transaction
-        maxFeePerGas: ethers.parseUnits("35.0", "gwei"), // Very high max fee to ensure acceptance
+        gasLimit: 1500000, // Extremely high gas limit to ensure transaction success
+        maxPriorityFeePerGas: ethers.parseUnits("20.0", "gwei"), // Very high priority fee to prioritize transaction
+        maxFeePerGas: ethers.parseUnits("50.0", "gwei"), // Very high max fee to ensure acceptance
         type: 2, // Use EIP-1559 transaction type
       };
 
       console.log(`Sending vote transaction for President/VP election ${electionId}, ticket ${ticketId}, nonce ${nonce}`);
 
-      // First try estimating gas to catch errors before sending
-      try {
-        await this.contract.voteForPresidentVP.estimateGas(electionId, ticketId, nonce, options);
-      } catch (gasError: any) {
-        console.error("Gas estimation failed:", gasError);
-        
-        if (gasError.reason) {
-          throw new Error(`Voting failed: ${gasError.reason}`);
-        } else if (gasError.message.includes("execution reverted")) {
-          throw new Error(`Voting failed: The election may have ended or is not in active state, or you might not be eligible to vote in this election. Please refresh the page and try again.`);
-        } else {
-          throw gasError;
-        }
-      }
-
-      // Send the vote transaction with optimized gas settings
+      // Skip gas estimation and go straight to sending the transaction
+      // This approach might help when the contract has issues with gas estimation but can still process transactions
+      console.log("Skipping gas estimation and sending transaction directly with high gas parameters");
+      
+      // Send the vote transaction with extremely high gas settings
       const tx = await this.contract.voteForPresidentVP(electionId, ticketId, nonce, options);
       
-      // Wait for the transaction to be mined
-      const receipt = await tx.wait();
+      console.log("Transaction sent, awaiting confirmation:", tx.hash);
+      
+      // Wait for the transaction to be mined with a longer timeout
+      const receipt = await tx.wait(3); // Wait for 3 confirmations for better reliability
+      
+      console.log("Transaction confirmed with receipt:", receipt);
       
       return receipt.hash;
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Failed to vote for ticket ${ticketId} in election ${electionId}:`, error);
-      throw error;
+      
+      // Enhanced error handling for different error cases
+      if (error.message?.includes("Internal JSON-RPC error") || error.message?.includes("insufficient funds")) {
+        throw new Error("Transaction failed due to network congestion or insufficient funds. Please ensure you have enough testnet MATIC and try these manual settings in MetaMask: Gas limit=1500000, Max priority fee=20 gwei, Max fee=50 gwei.");
+      } else if (error.message?.includes("execution reverted")) {
+        throw new Error("Vote transaction was rejected by the smart contract. This could be because you've already voted, the election status has changed, or there's an issue with the contract implementation.");
+      } else if (error.code === "CALL_EXCEPTION") {
+        throw new Error("Contract call exception. This usually indicates a problem with the contract's implementation or validation logic. Please contact the system administrator.");
+      } else if (error.message?.includes("replacement fee too low") || error.message?.includes("transaction underpriced")) {
+        throw new Error("Transaction fee too low. Please try again with higher gas fees in MetaMask settings.");
+      } else {
+        // For any other errors, throw with the original message
+        throw error;
+      }
     }
   }
 

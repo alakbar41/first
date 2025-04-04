@@ -87,11 +87,63 @@ export function VoteForTicketButton({
       setHasVoted(true);
       if (onVoteSuccess) onVoteSuccess(txHash);
     } catch (error: any) {
-      toast({
-        title: "Voting Failed",
-        description: error.message || "Failed to submit your vote. Please try again.",
-        variant: "destructive",
-      });
+      console.error("Vote for President/VP error:", error);
+      
+      if (error.message && error.message.includes("User denied transaction")) {
+        toast({
+          title: "Transaction Rejected",
+          description: "You rejected the transaction in MetaMask. Please try again when you're ready to vote.",
+          variant: "destructive",
+        });
+      } else if (error.message && error.message.includes("Internal JSON-RPC error")) {
+        toast({
+          title: "Network Congestion",
+          description: "The Polygon Amoy testnet is experiencing high congestion. Please try again with manual configuration in MetaMask: click Edit during transaction confirmation and set Gas limit to 1500000, Max priority fee to 20 gwei, and Max fee to 50 gwei.",
+          variant: "destructive",
+          duration: 20000
+        });
+      } else if (error.message && error.message.includes("Transaction failed due to network congestion")) {
+        toast({
+          title: "Gas Settings Too Low",
+          description: error.message,
+          variant: "destructive",
+          duration: 20000
+        });
+      } else if (error.message && (error.message.includes("execution reverted") || error.message.includes("rejected by the smart contract"))) {
+        toast({
+          title: "Vote Failed",
+          description: "The blockchain transaction was rejected. This may be because the election is no longer active, you have already voted, or are not registered to vote. If this persists, try refreshing the page to get updated contract status.",
+          variant: "destructive",
+          duration: 10000
+        });
+      } else if (error.message && error.message.includes("insufficient funds")) {
+        toast({
+          title: "Insufficient Funds",
+          description: "You do not have enough testnet MATIC to complete this transaction. Please obtain some Polygon Amoy testnet MATIC from a faucet.",
+          variant: "destructive",
+          duration: 10000
+        });
+      } else if (error.message && error.message.includes("This election hasn't started yet")) {
+        toast({
+          title: "Election Not Started",
+          description: error.message,
+          variant: "destructive",
+          duration: 10000
+        });
+      } else if (error.message && error.message.includes("This election has ended")) {
+        toast({
+          title: "Election Ended",
+          description: error.message,
+          variant: "destructive",
+          duration: 10000
+        });
+      } else {
+        toast({
+          title: "Voting Failed",
+          description: error.message || "Failed to submit your vote. Please try again.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsVoting(false);
     }

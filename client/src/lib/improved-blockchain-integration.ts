@@ -141,6 +141,16 @@ export const voteForSenator = async (electionId: number, candidateId: number): P
       if (electionDetails.status !== 1) { // 1 = Active in ElectionStatus enum
         throw new Error(`Cannot vote in election with status: ${electionDetails.status}. Election must be in active status.`);
       }
+      
+      // Verify the current time is within the election period
+      const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
+      if (currentTime < electionDetails.startTime) {
+        throw new Error(`This election hasn't started yet. It will begin at ${new Date(electionDetails.startTime * 1000).toLocaleString()}.`);
+      }
+      if (currentTime > electionDetails.endTime) {
+        throw new Error(`This election has ended at ${new Date(electionDetails.endTime * 1000).toLocaleString()}.`);
+      }
+      
     } catch (electionError: any) {
       if (electionError.message?.includes('revert')) {
         throw new Error(`Election #${electionId} is not available for voting. It might not exist on the blockchain or has expired.`);
@@ -149,8 +159,25 @@ export const voteForSenator = async (electionId: number, candidateId: number): P
       throw electionError;
     }
     
-    // Submit vote
-    return await web3Service.voteForSenator(electionId, candidateId);
+    console.log(`Submitting vote for Senator candidate ${candidateId} in election ${electionId}...`);
+    
+    // Submit vote with enhanced error handling
+    try {
+      // Submit vote transaction
+      return await web3Service.voteForSenator(electionId, candidateId);
+    } catch (voteError: any) {
+      // Enhanced error handling for vote submission
+      if (voteError.message?.includes('execution reverted')) {
+        throw new Error("Vote transaction was rejected by the smart contract. This could be because you have already voted, the election status has changed, or there is an issue with the contract implementation.");
+      } else if (voteError.message?.includes('insufficient funds')) {
+        throw new Error('You do not have enough testnet MATIC to complete this transaction. Please obtain some Polygon Amoy testnet MATIC from a faucet.');
+      } else if (voteError.message?.includes('transaction underpriced')) {
+        throw new Error('The transaction fee is too low. Please try again with higher gas fees in your wallet settings.');
+      }
+      
+      // If none of the specific errors match, re-throw with the original message
+      throw voteError;
+    }
   } catch (error: any) {
     console.error('Error voting for senator:', error);
     throw new Error(`Voting failed: ${error.message}`);
@@ -174,6 +201,16 @@ export const voteForPresidentVP = async (electionId: number, ticketId: number): 
       if (electionDetails.status !== 1) { // 1 = Active in ElectionStatus enum
         throw new Error(`Cannot vote in election with status: ${electionDetails.status}. Election must be in active status.`);
       }
+      
+      // Verify the current time is within the election period
+      const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
+      if (currentTime < electionDetails.startTime) {
+        throw new Error(`This election hasn't started yet. It will begin at ${new Date(electionDetails.startTime * 1000).toLocaleString()}.`);
+      }
+      if (currentTime > electionDetails.endTime) {
+        throw new Error(`This election has ended at ${new Date(electionDetails.endTime * 1000).toLocaleString()}.`);
+      }
+      
     } catch (electionError: any) {
       if (electionError.message?.includes('revert')) {
         throw new Error(`Election #${electionId} is not available for voting. It might not exist on the blockchain or has expired.`);
@@ -182,8 +219,25 @@ export const voteForPresidentVP = async (electionId: number, ticketId: number): 
       throw electionError;
     }
     
-    // Submit vote
-    return await web3Service.voteForPresidentVP(electionId, ticketId);
+    console.log(`Submitting vote for President/VP ticket ${ticketId} in election ${electionId}...`);
+    
+    // Submit vote with enhanced error handling
+    try {
+      // Submit vote transaction
+      return await web3Service.voteForPresidentVP(electionId, ticketId);
+    } catch (voteError: any) {
+      // Enhanced error handling for vote submission
+      if (voteError.message?.includes('execution reverted')) {
+        throw new Error("Vote transaction was rejected by the smart contract. This could be because you have already voted, the election status has changed, or there is an issue with the contract implementation.");
+      } else if (voteError.message?.includes('insufficient funds')) {
+        throw new Error('You do not have enough testnet MATIC to complete this transaction. Please obtain some Polygon Amoy testnet MATIC from a faucet.');
+      } else if (voteError.message?.includes('transaction underpriced')) {
+        throw new Error('The transaction fee is too low. Please try again with higher gas fees in your wallet settings.');
+      }
+      
+      // If none of the specific errors match, re-throw with the original message
+      throw voteError;
+    }
   } catch (error: any) {
     console.error('Error voting for president/VP ticket:', error);
     throw new Error(`Voting failed: ${error.message}`);
