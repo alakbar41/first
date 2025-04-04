@@ -6,6 +6,7 @@ import web3Service from '@/lib/improved-web3-service';
 import { Loader2, PlayCircle } from "lucide-react";
 import { useQueryClient } from '@tanstack/react-query';
 import { ElectionStatus } from '@/lib/improved-web3-service';
+import { ethers } from 'ethers';
 
 interface ActivateElectionButtonProps {
   electionId: number;
@@ -109,38 +110,90 @@ export function ActivateElectionButton({
     
     // Only proceed with activation if the election is in pending status
     if (status === ElectionStatus.Pending) {
-      try {
-        // Call the smart contract to start the election
-        await web3Service.startElection(blockchainId);
-        
-        toast({
-          title: "Election Activated",
-          description: "The election has been successfully activated on the blockchain. Voting is now open.",
-          variant: "default",
-        });
-        
-        // Invalidate related queries to refresh the UI
-        queryClient.invalidateQueries({ queryKey: ["/api/elections"] });
-        queryClient.invalidateQueries({ queryKey: [`/api/elections/${electionId}`] });
-        
-        // Call success callback if provided
-        if (onSuccess) onSuccess();
-        
-      } catch (error: any) {
-        console.error("Failed to activate election:", error);
-        
-        if (error.message && error.message.includes("user rejected")) {
-          toast({
-            title: "Transaction Rejected",
-            description: "You rejected the activation transaction. The election remains in pending state.",
-            variant: "destructive",
-          });
-        } else {
+      let retryCount = 0;
+      const maxRetries = 2;
+      
+      const attemptActivation = async (): Promise<boolean> => {
+        try {
+          // Call the smart contract to start the election with higher gas settings on retry
+          if (retryCount > 0) {
+            await web3Service.startElectionWithCustomGas(blockchainId, {
+              gasLimit: 1500000, // Even higher gas limit on retry
+              maxPriorityFeePerGas: ethers.parseUnits((20 + (retryCount * 5)).toString(), "gwei"),
+              maxFeePerGas: ethers.parseUnits((50 + (retryCount * 10)).toString(), "gwei"),
+            });
+          } else {
+            await web3Service.startElection(blockchainId);
+          }
+          return true;
+        } catch (error: any) {
+          console.error(`Activation attempt ${retryCount + 1} failed:`, error);
+          
+          // Specific error checks
+          if (error.message && error.message.includes("user rejected")) {
+            toast({
+              title: "Transaction Rejected",
+              description: "You rejected the activation transaction. The election remains in pending state.",
+              variant: "destructive",
+            });
+            return false; // Don't retry on user rejection
+          }
+          
+          // MetaMask RPC error - often temporary
+          if (error.message && (
+              error.message.includes("Internal JSON-RPC error") || 
+              error.message.includes("could not coalesce error") ||
+              error.message.includes("transaction underpriced"))) {
+            
+            if (retryCount < maxRetries) {
+              retryCount++;
+              const waitTime = retryCount * 1500; // Increase wait time with each retry
+              
+              toast({
+                title: "Transaction Failed",
+                description: `Network congestion detected. Retrying in ${waitTime/1000} seconds with higher gas...`,
+                variant: "default",
+              });
+              
+              // Wait before retry
+              await new Promise(resolve => setTimeout(resolve, waitTime));
+              return await attemptActivation(); // Recursive retry
+            } else {
+              toast({
+                title: "Network Congestion",
+                description: "The Polygon Amoy testnet is experiencing high congestion. Please try again later.",
+                variant: "destructive",
+              });
+              return false;
+            }
+          }
+          
+          // Other errors
           toast({
             title: "Activation Failed",
             description: error.message || "Failed to activate election on the blockchain.",
             variant: "destructive",
           });
+          return false;
+        }
+      };
+      
+      try {
+        const success = await attemptActivation();
+        
+        if (success) {
+          toast({
+            title: "Election Activated",
+            description: "The election has been successfully activated on the blockchain. Voting is now open.",
+            variant: "default",
+          });
+          
+          // Invalidate related queries to refresh the UI
+          queryClient.invalidateQueries({ queryKey: ["/api/elections"] });
+          queryClient.invalidateQueries({ queryKey: [`/api/elections/${electionId}`] });
+          
+          // Call success callback if provided
+          if (onSuccess) onSuccess();
         }
       } finally {
         setIsActivating(false);

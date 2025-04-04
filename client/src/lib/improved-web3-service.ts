@@ -506,6 +506,67 @@ Technical error: ${gasError.message}`);
       throw error;
     }
   }
+  
+  // Start an election with custom gas settings (for retries)
+  async startElectionWithCustomGas(electionId: number, customGasOptions: any): Promise<void> {
+    try {
+      if (!this.contract || !this.signer) {
+        throw new Error('Contract or signer not initialized');
+      }
+
+      // Ensure wallet is connected
+      if (!this.walletAddress) {
+        throw new Error('Wallet not connected');
+      }
+      
+      // First, check the election status
+      const electionDetails = await this.getElectionDetails(electionId);
+      
+      // Log election details and gas settings for debugging
+      console.log(`Starting election ${electionId} with custom gas settings:`, customGasOptions);
+      console.log(`Election status: ${electionDetails.status}, Start time: ${new Date(electionDetails.startTime * 1000).toLocaleString()}, End time: ${new Date(electionDetails.endTime * 1000).toLocaleString()}`);
+      
+      // If already active, no need to proceed
+      if (electionDetails.status === ElectionStatus.Active) {
+        console.log(`Election ${electionId} is already active. No action needed.`);
+        return;
+      }
+      
+      // If completed, cannot be activated
+      if (electionDetails.status === ElectionStatus.Completed || electionDetails.status === ElectionStatus.Cancelled) {
+        throw new Error(`Cannot activate election ${electionId} because it is already in ${electionDetails.status === ElectionStatus.Completed ? 'completed' : 'cancelled'} state.`);
+      }
+      
+      // Get nonce before transaction to ensure proper sequencing
+      const nonce = await this.getNextNonce();
+      const optionsWithNonce = { ...customGasOptions, nonce };
+      
+      console.log(`Starting election ${electionId} with custom gas settings and nonce ${nonce}`);
+
+      const tx = await this.contract.updateElectionStatus(
+        electionId, 
+        ElectionStatus.Active,
+        optionsWithNonce
+      );
+      
+      console.log(`Election activation transaction sent with custom gas: ${tx.hash}`);
+      
+      // Wait for 3 confirmations with custom gas settings (more reliable)
+      const receipt = await tx.wait(3);
+      console.log(`Election activation confirmed in block ${receipt.blockNumber}`);
+      
+      // Verify the status was updated correctly
+      const updatedDetails = await this.getElectionDetails(electionId);
+      if (updatedDetails.status === ElectionStatus.Active) {
+        console.log(`Election ${electionId} successfully activated with custom gas settings.`);
+      } else {
+        console.warn(`Election ${electionId} status is ${updatedDetails.status} after activation attempt with custom gas. Expected ${ElectionStatus.Active}.`);
+      }
+    } catch (error) {
+      console.error(`Failed to start election ${electionId} with custom gas:`, error);
+      throw error;
+    }
+  }
 
   // Stop an election
   async stopElection(electionId: number): Promise<void> {
@@ -902,7 +963,7 @@ Technical error: ${gasError.message}`);
   }
 
   // Vote for a Senator candidate
-  async voteForSenator(electionId: number, candidateId: number): Promise<string> {
+  async voteForSenator(electionId: number, candidateId: number, customGasOptions?: any): Promise<string> {
     try {
       if (!this.contract || !this.signer) {
         throw new Error('Contract or signer not initialized');
@@ -916,13 +977,18 @@ Technical error: ${gasError.message}`);
       // Get next nonce for anti-replay protection
       const nonce = await this.getNextNonce();
 
-      // Use extreme gas settings for voting to overcome Polygon Amoy testnet congestion
-      const options = {
+      // Use custom gas settings if provided, otherwise use default high settings
+      const options = customGasOptions || {
         gasLimit: 1500000, // Extremely high gas limit to ensure transaction success
         maxPriorityFeePerGas: ethers.parseUnits("20.0", "gwei"), // Very high priority fee to prioritize transaction
         maxFeePerGas: ethers.parseUnits("50.0", "gwei"), // Very high max fee to ensure acceptance
         type: 2, // Use EIP-1559 transaction type
       };
+      
+      // If custom gas options were provided, log them
+      if (customGasOptions) {
+        console.log(`Using custom gas settings for vote transaction:`, customGasOptions);
+      }
 
       console.log(`Sending vote transaction for election ${electionId}, candidate ${candidateId}, nonce ${nonce}`);
 
@@ -961,7 +1027,7 @@ Technical error: ${gasError.message}`);
   }
 
   // Vote for a President/VP ticket
-  async voteForPresidentVP(electionId: number, ticketId: number): Promise<string> {
+  async voteForPresidentVP(electionId: number, ticketId: number, customGasOptions?: any): Promise<string> {
     try {
       if (!this.contract || !this.signer) {
         throw new Error('Contract or signer not initialized');
@@ -975,13 +1041,18 @@ Technical error: ${gasError.message}`);
       // Get next nonce for anti-replay protection
       const nonce = await this.getNextNonce();
 
-      // Use extreme gas settings for voting to overcome Polygon Amoy testnet congestion
-      const options = {
+      // Use custom gas settings if provided, otherwise use default high settings
+      const options = customGasOptions || {
         gasLimit: 1500000, // Extremely high gas limit to ensure transaction success
         maxPriorityFeePerGas: ethers.parseUnits("20.0", "gwei"), // Very high priority fee to prioritize transaction
         maxFeePerGas: ethers.parseUnits("50.0", "gwei"), // Very high max fee to ensure acceptance
         type: 2, // Use EIP-1559 transaction type
       };
+      
+      // If custom gas options were provided, log them
+      if (customGasOptions) {
+        console.log(`Using custom gas settings for President/VP vote transaction:`, customGasOptions);
+      }
 
       console.log(`Sending vote transaction for President/VP election ${electionId}, ticket ${ticketId}, nonce ${nonce}`);
 
