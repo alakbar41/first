@@ -8,12 +8,14 @@ interface CandidateVoteCountProps {
   candidateId: number;
   showLabel?: boolean;
   className?: string;
+  onRegisterRefresh?: (candidateId: number, refreshFn: () => void) => void;
 }
 
 export function CandidateVoteCount({ 
   candidateId,
   showLabel = true,
-  className = "" 
+  className = "",
+  onRegisterRefresh
 }: CandidateVoteCountProps) {
   const { isInitialized, getCandidateVoteCount } = useWeb3();
   
@@ -21,6 +23,18 @@ export function CandidateVoteCount({
   const [voteCount, setVoteCount] = useState<number | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
+  // Function to refresh the vote count
+  const refreshVoteCount = () => {
+    setRefreshKey(prev => prev + 1);
+  };
+  
+  // Register the refresh function with the parent component if needed
+  useEffect(() => {
+    if (onRegisterRefresh) {
+      onRegisterRefresh(candidateId, refreshVoteCount);
+    }
+  }, [candidateId, onRegisterRefresh]);
+  
   useEffect(() => {
     if (!isInitialized) return;
     
@@ -39,11 +53,6 @@ export function CandidateVoteCount({
 
     fetchVoteCount();
   }, [isInitialized, candidateId, getCandidateVoteCount, refreshKey]);
-
-  // Function to refresh the vote count
-  const refreshVoteCount = () => {
-    setRefreshKey(prev => prev + 1);
-  };
 
   if (isLoading) {
     return (

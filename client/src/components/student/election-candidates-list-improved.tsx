@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 import { Candidate, Election, ElectionCandidate } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { UserCircle, Award, Check, Info, Clock, Calendar, AlertTriangle } from "lucide-react";
 import { getFacultyName } from "@shared/schema";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Tooltip,
   TooltipContent,
@@ -292,6 +293,14 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
     // which handle the blockchain integration directly
   };
   
+  // Create a reference to all CandidateVoteCount components for refreshing
+  const candidateVoteCountRefs = useRef<{[key: number]: () => void}>({});
+  
+  // Register a refresh function for a candidate
+  const registerVoteCountRefresh = (candidateId: number, refreshFn: () => void) => {
+    candidateVoteCountRefs.current[candidateId] = refreshFn;
+  };
+  
   // Handle successful vote
   const handleVoteSuccess = (txHash: string) => {
     toast({
@@ -302,6 +311,17 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
     
     // Update UI state to indicate user has voted
     setHasVotedInElection(true);
+    
+    // Wait a moment for the transaction to be processed, then update all vote counts
+    setTimeout(() => {
+      // Refresh vote counts for all candidates
+      Object.values(candidateVoteCountRefs.current).forEach(refreshFn => {
+        if (typeof refreshFn === 'function') refreshFn();
+      });
+      
+      // Also force re-fetch of the candidate list to refresh all data
+      queryClient.invalidateQueries({ queryKey: [`/api/elections/${election.id}/candidates`] });
+    }, 2000);
   };
 
   // Get appropriate status message for display
@@ -539,6 +559,7 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                         candidateId={candidate.id} 
                         showLabel={true}
                         className="w-full justify-center"
+                        onRegisterRefresh={registerVoteCountRefresh}
                       />
                     
                       {hasVotedInElection ? (
