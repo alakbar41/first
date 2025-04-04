@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { useWeb3 } from "@/hooks/use-web3";
 import { useToast } from "@/hooks/use-toast";
-import { voteForSenator, checkIfVoted } from '@/lib/improved-blockchain-integration';
+import { voteForSenator, checkIfVoted, voteForSenatorWithCustomGas } from '@/lib/improved-blockchain-integration';
 import { Loader2, Check, VoteIcon } from "lucide-react";
 
 interface VoteForSenatorButtonProps {
@@ -248,8 +248,9 @@ export function VoteForSenatorButton({
         });
       }
       
-      // Use the improved blockchain integration to cast the vote
-      const txHash = await voteForSenator(blockchainElectionId, candidateId);
+      // Use the enhanced blockchain integration with custom gas settings to cast the vote
+      // Attempt with the new robust retryable function with custom gas settings
+      const txHash = await voteForSenatorWithCustomGas(blockchainElectionId, candidateId, 0);
       
       toast({
         title: "Vote Successful",
@@ -262,27 +263,57 @@ export function VoteForSenatorButton({
     } catch (error: any) {
       console.error('Vote failed:', error);
       
-      // Check for specific error types with enhanced pattern matching
+      // Check for specific error types with enhanced pattern matching and auto-retry
       if (error.message && error.message.includes("user rejected")) {
         toast({
           title: "Transaction Rejected",
           description: "You rejected the transaction in MetaMask. Please try again when you're ready to vote.",
           variant: "destructive",
         });
-      } else if (error.message && error.message.includes("Internal JSON-RPC error")) {
+      } else if (error.message && (
+          error.message.includes("Internal JSON-RPC error") ||
+          error.message.includes("Transaction failed due to network congestion") ||
+          error.message.includes("transaction underpriced") ||
+          error.message.includes("failed to meet block's gas target")
+        )) {
+        // Conditions where automatic retry makes sense - network issues, congestion, gas price issues
+        // Try with higher retry count (1) and thus higher gas settings
+        
         toast({
-          title: "Network Congestion",
-          description: "The Polygon Amoy testnet is experiencing high congestion. Please try again with manual configuration in MetaMask: click Edit during transaction confirmation and set Gas limit to 1500000, Max priority fee to 20 gwei, and Max fee to 50 gwei.",
-          variant: "destructive",
-          duration: 20000
+          title: "Network Congestion Detected",
+          description: "Automatically retrying with higher gas settings. Please wait...",
+          variant: "default",
+          duration: 10000
         });
-      } else if (error.message && error.message.includes("Transaction failed due to network congestion")) {
-        toast({
-          title: "Gas Settings Too Low",
-          description: error.message,
-          variant: "destructive",
-          duration: 20000
-        });
+        
+        try {
+          console.log("Automatically retrying vote with higher gas settings...");
+          // Make sure we have the blockchainElectionId from the election object
+          const blockchainElectionId = election.blockchainId;
+          // Use a higher retry count which will use higher gas settings
+          const retryTxHash = await voteForSenatorWithCustomGas(blockchainElectionId, candidateId, 1);
+          
+          toast({
+            title: "Vote Successful",
+            description: "Your vote has been recorded on the blockchain after automatic retry.",
+            variant: "default",
+          });
+          
+          setHasVoted(true);
+          if (onVoteSuccess) onVoteSuccess(retryTxHash);
+          return; // Exit early since we succeeded on retry
+        } catch (retryError: any) {
+          // If retry also failed, continue with regular error handling
+          console.error("Auto-retry also failed:", retryError);
+          
+          // Show more actionable error message after retry failed
+          toast({
+            title: "Network Congestion Persistent",
+            description: "The Polygon Amoy testnet is experiencing severe congestion. Please try again with manual configuration in MetaMask: click Edit during transaction confirmation and set Gas limit to 1500000, Max priority fee to 30 gwei, and Max fee to 60 gwei.",
+            variant: "destructive",
+            duration: 20000
+          });
+        }
       } else if (error.message && (
           error.message.includes("execution reverted") || 
           error.message.includes("rejected by the smart contract") ||

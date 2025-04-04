@@ -59,6 +59,10 @@ export interface IStorage {
   getAllElectionCandidates(): Promise<ElectionCandidate[]>;
   addCandidateToElection(electionCandidate: InsertElectionCandidate): Promise<ElectionCandidate>;
   removeCandidateFromElection(electionId: number, candidateId: number): Promise<void>;
+  
+  // Vote history tracking (optional, blockchain is the main source of truth)
+  recordVote?(userId: number, electionId: number): Promise<void>;
+  hasUserVoted?(userId: number, electionId: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
