@@ -4,6 +4,7 @@ import { Election, getFacultyName } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DeployToBlockchainButton } from "./deploy-to-blockchain-button";
+import { BlockchainDeploymentStatus } from "./blockchain-deployment-status";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -56,6 +57,9 @@ export function ElectionsTable({ elections, onEdit, onDelete, onAddCandidates, o
             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Status
             </th>
+            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Blockchain
+            </th>
             <th scope="col" className="relative px-6 py-3">
               <span className="sr-only">Actions</span>
             </th>
@@ -64,7 +68,7 @@ export function ElectionsTable({ elections, onEdit, onDelete, onAddCandidates, o
         <tbody className="bg-white divide-y divide-gray-200">
           {elections.length === 0 ? (
             <tr>
-              <td colSpan={6} className="px-6 py-12 text-center text-sm text-gray-500">
+              <td colSpan={7} className="px-6 py-12 text-center text-sm text-gray-500">
                 <p className="font-medium mb-2">No elections found</p>
                 <p>Create your first election to get started</p>
               </td>
@@ -126,6 +130,12 @@ export function ElectionsTable({ elections, onEdit, onDelete, onAddCandidates, o
                     {election.status.charAt(0).toUpperCase() + election.status.slice(1)}
                   </Badge>
                 </td>
+
+                {/* Blockchain Status */}
+                <td className="px-6 py-4 text-sm text-gray-500">
+                  <BlockchainDeploymentStatus election={election} />
+                </td>
+
                 <td className="px-6 py-4 text-right text-sm font-medium">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>

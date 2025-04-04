@@ -168,9 +168,24 @@ export function VoteForSenatorButton({
           duration: 20000
         });
       } else if (error.message && (error.message.includes("execution reverted") || error.message.includes("rejected by the smart contract"))) {
+        // More detailed error message for execution reverted errors
+        let errorDetails = "The blockchain transaction was rejected. ";
+        
+        if (error.message.includes("unknown custom error")) {
+          errorDetails += "The contract returned an unknown error. This usually happens when you've already voted or are ineligible to vote in this election. Please check if your account meets the eligibility requirements.";
+        } else if (error.message.includes("ElectionNotActive")) {
+          errorDetails += "This election is not currently active. Voting is only allowed during the active period.";
+        } else if (error.message.includes("AlreadyVoted")) {
+          errorDetails += "You have already voted in this election. Each voter can only vote once.";
+        } else if (error.message.includes("InvalidCandidate")) {
+          errorDetails += "The candidate you're trying to vote for is not valid in this election.";
+        } else {
+          errorDetails += "This may be because the election is no longer active, you have already voted, or are not registered to vote. If this persists, try refreshing the page to get updated contract status.";
+        }
+        
         toast({
           title: "Vote Failed",
-          description: "The blockchain transaction was rejected. This may be because the election is no longer active, you have already voted, or are not registered to vote. If this persists, try refreshing the page to get updated contract status.",
+          description: errorDetails,
           variant: "destructive",
           duration: 10000
         });

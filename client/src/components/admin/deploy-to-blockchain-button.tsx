@@ -1,11 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { useWeb3 } from "@/hooks/use-web3";
 import { useToast } from "@/hooks/use-toast";
-import { ServerIcon, Loader2 } from "lucide-react";
+import { ServerIcon, Loader2, AlertTriangle } from "lucide-react";
 import { Election } from "@shared/schema";
 import { ElectionType } from '@/lib/improved-web3-service';
 import web3Service from '@/lib/improved-web3-service';
+import { 
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger
+} from "@/components/ui/tooltip";
 
 // Convert database election to blockchain election type
 function mapElectionTypeToBlockchain(dbPosition: string): ElectionType {
@@ -39,6 +45,15 @@ export function DeployToBlockchainButton({
   const { toast } = useToast();
   const [isDeploying, setIsDeploying] = useState(false);
   const [isDeployed, setIsDeployed] = useState(false);
+  const [alreadyDeployedWarning, setAlreadyDeployedWarning] = useState(false);
+  
+  // Set initial state based on whether the election already has a blockchain ID
+  useEffect(() => {
+    if (election.blockchainId) {
+      setIsDeployed(true);
+      setAlreadyDeployedWarning(true);
+    }
+  }, [election.blockchainId]);
   
   // Separate the wallet connection from deployment
   const connectMetamaskWallet = async (): Promise<boolean> => {
@@ -212,6 +227,36 @@ export function DeployToBlockchainButton({
   }
 
   if (isDeployed) {
+    if (alreadyDeployedWarning) {
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex flex-col">
+                <Button
+                  variant="outline"
+                  size={size}
+                  disabled
+                  className={`${className} bg-green-50 text-green-700 border-green-200`}
+                >
+                  <ServerIcon className="mr-2 h-4 w-4" />
+                  Already Deployed
+                </Button>
+                <div className="mt-1 flex items-center justify-center text-amber-700 text-xs">
+                  <AlertTriangle className="h-3 w-3 mr-1" />
+                  <span>Already on blockchain (ID: {election.blockchainId})</span>
+                </div>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="max-w-xs">
+              <p>This election has already been deployed to the blockchain with ID: {election.blockchainId}.</p>
+              <p className="mt-1 text-amber-700">Warning: Attempting to redeploy may create a duplicate election on the blockchain.</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
+    
     return (
       <Button
         variant="outline"
