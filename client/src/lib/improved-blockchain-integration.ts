@@ -308,12 +308,11 @@ export const voteForSenatorWithCustomGas = async (
       throw electionError;
     }
     
-    // Define extremely aggressive gas settings to overcome network congestion
-    // We drastically increase these values with each retry attempt
+    // Define progressive gas settings (increasing with each retry)
     const customGasOptions = {
-      gasLimit: 2000000 + (retryCount * 500000), // Start very high and increase even more
-      maxPriorityFeePerGas: ethers.parseUnits((50 + (retryCount * 25)).toString(), "gwei"), // Much higher priority fee
-      maxFeePerGas: ethers.parseUnits((100 + (retryCount * 50)).toString(), "gwei"), // Much higher max fee
+      gasLimit: 1500000 + (retryCount * 200000), // Increase gas limit with each retry
+      maxPriorityFeePerGas: ethers.parseUnits((20 + (retryCount * 5)).toString(), "gwei"),
+      maxFeePerGas: ethers.parseUnits((50 + (retryCount * 10)).toString(), "gwei"),
       type: 2, // Use EIP-1559 transaction type
     };
     
@@ -392,16 +391,16 @@ export const voteForPresidentVPWithCustomGas = async (
       }
       throw electionError;
     }
-    // Define extremely aggressive gas settings to overcome network congestion
-    // We drastically increase these values with each retry attempt
+    
+    // Define progressive gas settings (increasing with each retry)
     const customGasOptions = {
-      gasLimit: 2000000 + (retryCount * 500000), // Start very high and increase even more
-      maxPriorityFeePerGas: ethers.parseUnits((50 + (retryCount * 25)).toString(), "gwei"), // Much higher priority fee
-      maxFeePerGas: ethers.parseUnits((100 + (retryCount * 50)).toString(), "gwei"), // Much higher max fee
+      gasLimit: 1500000 + (retryCount * 200000), // Increase gas limit with each retry
+      maxPriorityFeePerGas: ethers.parseUnits((20 + (retryCount * 5)).toString(), "gwei"),
+      maxFeePerGas: ethers.parseUnits((50 + (retryCount * 10)).toString(), "gwei"),
       type: 2, // Use EIP-1559 transaction type
     };
     
-    console.log(`Attempting vote with extreme gas settings (retry #${retryCount}):`, customGasOptions);
+    console.log(`Attempting vote with custom gas settings (retry #${retryCount}):`, customGasOptions);
     
     try {
       // Use gas options explicitly here
