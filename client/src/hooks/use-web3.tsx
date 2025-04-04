@@ -5,6 +5,7 @@ import {
   getWalletInfo,
   isRegisteredVoter
 } from '@/lib/improved-blockchain-integration';
+import web3Service from '@/lib/improved-web3-service';
 
 interface Web3ContextType {
   isInitialized: boolean;
@@ -16,6 +17,7 @@ interface Web3ContextType {
   isCheckingVoter: boolean;
   connectWallet: () => Promise<string>;
   reinitialize: () => Promise<void>;
+  getCandidateVoteCount: (candidateId: number) => Promise<number>;
 }
 
 const Web3Context = createContext<Web3ContextType | null>(null);
@@ -113,6 +115,19 @@ export function Web3Provider({ children }: { children: ReactNode }) {
     }
   }, [walletAddress]);
 
+  // Get candidate vote count from the blockchain
+  const handleGetCandidateVoteCount = async (candidateId: number): Promise<number> => {
+    try {
+      if (!isInitialized) {
+        await initializeWeb3();
+      }
+      return await web3Service.getCandidateVoteCount(candidateId);
+    } catch (error) {
+      console.error(`Failed to get vote count for candidate ${candidateId}:`, error);
+      return 0;
+    }
+  };
+
   return (
     <Web3Context.Provider value={{
       isInitialized,
@@ -123,7 +138,8 @@ export function Web3Provider({ children }: { children: ReactNode }) {
       isRegisteredVoter: isVoter,
       isCheckingVoter,
       connectWallet: handleConnectWallet,
-      reinitialize: initialize
+      reinitialize: initialize,
+      getCandidateVoteCount: handleGetCandidateVoteCount
     }}>
       {children}
     </Web3Context.Provider>
