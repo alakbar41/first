@@ -8,6 +8,7 @@ import RegisterPage from "@/pages/register-page";
 import Dashboard from "@/pages/dashboard-redesigned"; // Using the redesigned dashboard
 import Results from "@/pages/results";
 import Guidelines from "@/pages/guidelines";
+import VerifyVote from "@/pages/verify-vote";
 import AdminDashboard from "@/pages/admin-dashboard-new";
 import AdminCandidates from "@/pages/admin-candidates";
 import { ProtectedRoute, AdminProtectedRoute } from "./lib/protected-route";
@@ -21,6 +22,7 @@ function Router() {
       <ProtectedRoute path="/" component={Dashboard} />
       <ProtectedRoute path="/results" component={Results} />
       <ProtectedRoute path="/guidelines" component={Guidelines} />
+      <ProtectedRoute path="/verify-vote" component={VerifyVote} />
       
       {/* Admin routes - using AdminProtectedRoute to ensure admin validation */}
       <AdminProtectedRoute path="/admin" component={AdminDashboard} />

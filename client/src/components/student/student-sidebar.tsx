@@ -7,7 +7,9 @@ import {
   GraduationCapIcon,
   ExternalLinkIcon,
   VoteIcon,
-  UserIcon
+  UserIcon,
+  SearchIcon,
+  ClipboardCheckIcon
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { User } from "@shared/schema";
@@ -154,16 +156,34 @@ export function StudentSidebar({ user }: SidebarProps) {
               <ExternalLinkIcon className="w-3.5 h-3.5 ml-auto opacity-70" />
             </a>
             
-            <a 
-              href="https://portal.ada.edu.az" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="flex items-center px-4 py-2.5 rounded-lg text-gray-700 hover:bg-gray-100"
-            >
-              <UserIcon className="w-5 h-5 mr-3" />
-              <span>Student Portal</span>
-              <ExternalLinkIcon className="w-3.5 h-3.5 ml-auto opacity-70" />
-            </a>
+            <Link to="/verify-vote">
+              <span className={`flex items-center px-4 py-2.5 rounded-lg cursor-pointer ${
+                isActive('/verify-vote') 
+                  ? 'bg-purple-100 text-purple-800 font-medium shadow-sm' 
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}>
+                <SearchIcon className="w-5 h-5 mr-3" />
+                <span>Verify Your Vote</span>
+                {isActive('/verify-vote') && (
+                  <div className="ml-auto w-1.5 h-6 rounded-full bg-purple-600" />
+                )}
+              </span>
+            </Link>
+            
+            <div className="mt-1 px-4 py-3 rounded-lg bg-purple-50 border border-purple-100">
+              <div className="flex items-start mb-2">
+                <ClipboardCheckIcon className="w-5 h-5 mr-2 text-purple-700 mt-0.5 flex-shrink-0" />
+                <h3 className="font-medium text-purple-800">Blockchain Verification</h3>
+              </div>
+              <p className="text-xs text-purple-700 leading-relaxed mb-2">
+                After voting, you'll receive an email with your transaction hash. 
+                This provides proof that your vote is securely recorded on the blockchain.
+              </p>
+              <p className="text-xs text-purple-700 leading-relaxed">
+                Click "Verify Your Vote" to access our verification tool where you can
+                check your vote's status on the Polygon Amoy blockchain.
+              </p>
+            </div>
           </nav>
         </div>
       </ScrollArea>
