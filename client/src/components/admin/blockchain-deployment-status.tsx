@@ -45,11 +45,15 @@ export function BlockchainDeploymentStatus({
         // Check if election status should be updated based on time
         const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
         const shouldBeActive = currentTime >= details.startTime && currentTime <= details.endTime;
+        const shouldBeCompleted = currentTime > details.endTime;
         
-        // If election is in Pending status but current time is within start/end dates,
-        // automatically update status for admin users
+        // Improved logging about status checks
         if (details.status === ElectionStatus.Pending && shouldBeActive) {
-          console.log(`Election ${election.blockchainId} is in Pending status but should be Active based on time. Administrators can manually update the status.`);
+          console.log(`Election ${election.blockchainId} is in Pending status but should be Active based on time (${new Date(details.startTime * 1000).toLocaleString()} - ${new Date(details.endTime * 1000).toLocaleString()}). Current time: ${new Date(currentTime * 1000).toLocaleString()}`);
+        } else if (details.status === ElectionStatus.Active && shouldBeCompleted) {
+          console.log(`Election ${election.blockchainId} is in Active status but should be Completed based on time (end: ${new Date(details.endTime * 1000).toLocaleString()}). Current time: ${new Date(currentTime * 1000).toLocaleString()}`);
+        } else {
+          console.log(`Election ${election.blockchainId} has correct status (${details.status}) based on time period (${new Date(details.startTime * 1000).toLocaleString()} - ${new Date(details.endTime * 1000).toLocaleString()}). Current time: ${new Date(currentTime * 1000).toLocaleString()}`);
         }
         
         // Map blockchain status to readable format
@@ -157,9 +161,10 @@ export function BlockchainDeploymentStatus({
   // Status-specific badges with tooltips
   if (blockchainStatus === 'pending') {
     // Check if election should be active based on current time
+    const currentTime = Math.floor(Date.now() / 1000);
     const shouldShowUpdateButton = blockchainDetails && 
-      Math.floor(Date.now() / 1000) >= blockchainDetails.startTime && 
-      Math.floor(Date.now() / 1000) <= blockchainDetails.endTime;
+      currentTime >= blockchainDetails.startTime && 
+      currentTime <= blockchainDetails.endTime;
       
     return (
       <div className="flex flex-row items-center gap-2">
@@ -168,17 +173,17 @@ export function BlockchainDeploymentStatus({
             <TooltipTrigger asChild>
               <Badge 
                 variant="outline" 
-                className={`bg-yellow-50 text-yellow-700 border-yellow-200 ${className}`}
+                className={`bg-purple-50 text-purple-700 border-purple-200 ${className}`}
               >
                 <Server className="mr-1 h-3 w-3" />
-                On-Chain (Pending)
+                On-Chain
               </Badge>
             </TooltipTrigger>
             {showTooltip && (
               <TooltipContent side="right">
-                <p>This election is deployed to the blockchain but not yet active.</p>
+                <p>This election is deployed to the blockchain.</p>
                 {shouldShowUpdateButton && (
-                  <p className="text-amber-600 font-medium mt-1">Based on start time, this election should be ACTIVE. Click the Update Status button to activate it.</p>
+                  <p className="text-amber-600 font-medium mt-1">This election should be active now. Use the Sync Timeline button if voting isn't working.</p>
                 )}
                 {showDetailed && blockchainDetails && (
                   <div className="mt-2 text-xs">
@@ -192,13 +197,21 @@ export function BlockchainDeploymentStatus({
           </Tooltip>
         </TooltipProvider>
         
-        {shouldShowUpdateButton && (
+        <Badge 
+          variant="outline" 
+          className="bg-yellow-50 text-yellow-700 border-yellow-200 ml-1 text-xs"
+        >
+          <Info className="mr-1 h-3 w-3" />
+          Not Started
+        </Badge>
+        
+        {shouldShowUpdateButton && showDetailed && (
           <UpdateBlockchainStatusButton 
             electionId={election.id} 
             blockchainId={Number(election.blockchainId)} 
             variant="outline"
             size="sm"
-            className="ml-2 text-xs h-7 px-2 py-0 bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"
+            className="ml-1 text-xs h-7 px-2 py-0"
           />
         )}
       </div>
@@ -206,62 +219,99 @@ export function BlockchainDeploymentStatus({
   }
 
   if (blockchainStatus === 'active') {
+    // Check if election should be completed based on time
+    const currentTime = Math.floor(Date.now() / 1000);
+    const shouldBeCompleted = blockchainDetails && currentTime > blockchainDetails.endTime;
+    
     return (
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Badge 
-              variant="outline" 
-              className={`bg-green-50 text-green-700 border-green-200 ${className}`}
-            >
-              <Server className="mr-1 h-3 w-3" />
-              On-Chain (Active)
-            </Badge>
-          </TooltipTrigger>
-          {showTooltip && (
-            <TooltipContent side="right">
-              <p>This election is active on the blockchain. Votes are being recorded.</p>
-              {showDetailed && blockchainDetails && (
-                <div className="mt-2 text-xs">
-                  <p>Blockchain ID: {election.blockchainId}</p>
-                  <p>Votes cast: {blockchainDetails.totalVotesCast}</p>
-                  <p>End: {new Date(blockchainDetails.endTime * 1000).toLocaleString()}</p>
-                </div>
-              )}
-            </TooltipContent>
-          )}
-        </Tooltip>
-      </TooltipProvider>
+      <div className="flex flex-row items-center gap-2">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge 
+                variant="outline" 
+                className={`bg-purple-50 text-purple-700 border-purple-200 ${className}`}
+              >
+                <Server className="mr-1 h-3 w-3" />
+                On-Chain
+              </Badge>
+            </TooltipTrigger>
+            {showTooltip && (
+              <TooltipContent side="right">
+                <p>This election is deployed to the blockchain.</p>
+                {shouldBeCompleted && (
+                  <p className="text-amber-600 font-medium mt-1">This election should be completed now. Use the Sync Timeline button to update it.</p>
+                )}
+                {showDetailed && blockchainDetails && (
+                  <div className="mt-2 text-xs">
+                    <p>Blockchain ID: {election.blockchainId}</p>
+                    <p>Votes cast: {blockchainDetails.totalVotesCast}</p>
+                    <p>End: {new Date(blockchainDetails.endTime * 1000).toLocaleString()}</p>
+                  </div>
+                )}
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
+        
+        <Badge 
+          variant="outline" 
+          className="bg-green-50 text-green-700 border-green-200 ml-1 text-xs"
+        >
+          <Check className="mr-1 h-3 w-3" />
+          Voting Active
+        </Badge>
+        
+        {shouldBeCompleted && showDetailed && (
+          <UpdateBlockchainStatusButton 
+            electionId={election.id} 
+            blockchainId={Number(election.blockchainId)} 
+            variant="outline"
+            size="sm"
+            className="ml-1 text-xs h-7 px-2 py-0"
+          />
+        )}
+      </div>
     );
   }
 
   if (blockchainStatus === 'completed') {
     return (
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Badge 
-              variant="outline" 
-              className={`bg-blue-50 text-blue-700 border-blue-200 ${className}`}
-            >
-              <Check className="mr-1 h-3 w-3" />
-              On-Chain (Completed)
-            </Badge>
-          </TooltipTrigger>
-          {showTooltip && (
-            <TooltipContent side="right">
-              <p>This election has ended. All votes are recorded on the blockchain.</p>
-              {showDetailed && blockchainDetails && (
-                <div className="mt-2 text-xs">
-                  <p>Blockchain ID: {election.blockchainId}</p>
-                  <p>Total votes: {blockchainDetails.totalVotesCast}</p>
-                  <p>Results finalized: {blockchainDetails.resultsFinalized ? 'Yes' : 'No'}</p>
-                </div>
-              )}
-            </TooltipContent>
-          )}
-        </Tooltip>
-      </TooltipProvider>
+      <div className="flex flex-row items-center gap-2">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge 
+                variant="outline" 
+                className={`bg-purple-50 text-purple-700 border-purple-200 ${className}`}
+              >
+                <Server className="mr-1 h-3 w-3" />
+                On-Chain
+              </Badge>
+            </TooltipTrigger>
+            {showTooltip && (
+              <TooltipContent side="right">
+                <p>This election is deployed to the blockchain.</p>
+                {showDetailed && blockchainDetails && (
+                  <div className="mt-2 text-xs">
+                    <p>Blockchain ID: {election.blockchainId}</p>
+                    <p>Total votes: {blockchainDetails.totalVotesCast}</p>
+                    <p>Results finalized: {blockchainDetails.resultsFinalized ? 'Yes' : 'No'}</p>
+                  </div>
+                )}
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
+        
+        <Badge 
+          variant="outline" 
+          className="bg-blue-50 text-blue-700 border-blue-200 ml-1 text-xs"
+        >
+          <Check className="mr-1 h-3 w-3" />
+          Voting Ended
+        </Badge>
+      </div>
     );
   }
 

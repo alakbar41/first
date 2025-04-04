@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useWeb3 } from "@/hooks/use-web3";
 import web3Service from '@/lib/improved-web3-service';
-import { Loader2, Play } from "lucide-react";
+import { Loader2, Play, Clock, CalendarClock } from "lucide-react";
 import { useQueryClient } from '@tanstack/react-query';
 
 interface UpdateBlockchainStatusButtonProps {
@@ -65,6 +65,37 @@ export function UpdateBlockchainStatusButton({
     setIsUpdating(true);
     
     try {
+      // First verify the current election status
+      const electionDetails = await web3Service.getElectionDetails(blockchainId);
+      const currentTime = Math.floor(Date.now() / 1000);
+      
+      // Determine what status update will happen
+      let actionDescription = "";
+      if (electionDetails.status === 0) {
+        if (currentTime >= electionDetails.startTime && currentTime <= electionDetails.endTime) {
+          actionDescription = "This will change the election status from 'Not Started' to 'Voting Active'";
+        } else if (currentTime < electionDetails.startTime) {
+          actionDescription = "This election's start time has not been reached yet. No status change needed.";
+        } else {
+          actionDescription = "This election's time period has passed. It will be marked as completed.";
+        }
+      } else if (electionDetails.status === 1) {
+        if (currentTime > electionDetails.endTime) {
+          actionDescription = "This will change the election status from 'Voting Active' to 'Voting Ended'";
+        } else {
+          actionDescription = "The election is already active. No status change needed.";
+        }
+      } else {
+        actionDescription = "The election is already completed. No status change possible.";
+      }
+      
+      // Show what's going to happen
+      toast({
+        title: "Updating Blockchain Status",
+        description: actionDescription,
+        duration: 5000,
+      });
+      
       // Try to auto-update the election status
       await web3Service.autoUpdateElectionStatus(blockchainId);
       
@@ -122,9 +153,10 @@ export function UpdateBlockchainStatusButton({
       size={size}
       className={className}
       onClick={handleUpdate}
+      title="This syncs the election status on the blockchain based on its start/end times"
     >
-      <Play className="mr-2 h-4 w-4" />
-      <span>Update Status</span>
+      <CalendarClock className="mr-2 h-4 w-4" />
+      <span>Sync Timeline</span>
     </Button>
   );
 }
