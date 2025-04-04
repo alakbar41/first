@@ -6,6 +6,7 @@ import { ServerIcon, Loader2, AlertTriangle } from "lucide-react";
 import { Election } from "@shared/schema";
 import { ElectionType } from '@/lib/improved-web3-service';
 import web3Service from '@/lib/improved-web3-service';
+import { queryClient } from "@/lib/queryClient";
 import { 
   Tooltip,
   TooltipContent,
@@ -145,6 +146,13 @@ export function DeployToBlockchainButton({
         } else {
           const updatedElection = await response.json();
           console.log('Successfully updated election with blockchain ID in database:', updatedElection);
+          
+          // Invalidate the elections cache to refresh all components that use election data
+          // This ensures the BlockchainDeploymentStatus component gets fresh data
+          queryClient.invalidateQueries({ queryKey: ["/api/elections"] });
+          
+          // Also invalidate any specific election query if it exists
+          queryClient.invalidateQueries({ queryKey: [`/api/elections/${election.id}`] });
         }
       } catch (error) {
         console.error('Error updating election with blockchain ID:', error);

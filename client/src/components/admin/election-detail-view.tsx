@@ -5,6 +5,7 @@ import { Election, getFacultyName } from "@shared/schema";
 import { User, CalendarIcon, Clock, Users, ServerIcon } from "lucide-react";
 import { format } from "date-fns";
 import { DeployToBlockchainButton } from "./deploy-to-blockchain-button";
+import { queryClient } from "@/lib/queryClient";
 
 interface ElectionDetailViewProps {
   election: Election;
@@ -56,6 +57,12 @@ export function AdminElectionDetailView({ election, className = "" }: ElectionDe
       } else {
         const updatedElection = await response.json();
         console.log('Successfully updated election with blockchain ID:', updatedElection);
+        
+        // Invalidate the elections cache to refresh all components that use election data
+        queryClient.invalidateQueries({ queryKey: ["/api/elections"] });
+        
+        // Also invalidate any specific election query if it exists
+        queryClient.invalidateQueries({ queryKey: [`/api/elections/${election.id}`] });
       }
     } catch (error) {
       console.error('Error updating election with blockchain ID:', error);

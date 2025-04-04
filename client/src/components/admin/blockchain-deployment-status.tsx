@@ -7,6 +7,9 @@ import { useWeb3 } from "@/hooks/use-web3";
 import web3Service from '@/lib/improved-web3-service';
 import { ElectionStatus } from '@/lib/improved-web3-service';
 
+// Used to force a refresh when blockchainId changes
+const getKey = (election: Election) => `blockchain-status-${election.id}-${election.blockchainId || 'none'}`;
+
 interface BlockchainDeploymentStatusProps {
   election: Election;
   showTooltip?: boolean;
@@ -66,8 +69,18 @@ export function BlockchainDeploymentStatus({
       }
     };
     
-    checkBlockchainStatus();
-  }, [isInitialized, election.blockchainId]);
+    // Reset state when election or blockchainId changes
+    setBlockchainStatus(null);
+    setBlockchainDetails(null);
+    setError(null);
+    setIsLoading(!!election.blockchainId);
+    
+    if (election.blockchainId) {
+      checkBlockchainStatus();
+    }
+    
+    // Use the key to force component to properly reset when the blockchainId changes
+  }, [isInitialized, election.id, election.blockchainId, getKey(election)]);
 
   // If not deployed to blockchain
   if (!election.blockchainId) {

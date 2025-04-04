@@ -146,7 +146,7 @@ export function VoteForSenatorButton({
     } catch (error: any) {
       console.error('Vote failed:', error);
       
-      // Check for specific error types
+      // Check for specific error types with enhanced pattern matching
       if (error.message && error.message.includes("user rejected")) {
         toast({
           title: "Transaction Rejected",
@@ -167,12 +167,21 @@ export function VoteForSenatorButton({
           variant: "destructive",
           duration: 20000
         });
-      } else if (error.message && (error.message.includes("execution reverted") || error.message.includes("rejected by the smart contract"))) {
+      } else if (error.message && (
+          error.message.includes("execution reverted") || 
+          error.message.includes("rejected by the smart contract") ||
+          error.message.includes("unknown custom error")
+        )) {
         // More detailed error message for execution reverted errors
         let errorDetails = "The blockchain transaction was rejected. ";
         
         if (error.message.includes("unknown custom error")) {
-          errorDetails += "The contract returned an unknown error. This usually happens when you've already voted or are ineligible to vote in this election. Please check if your account meets the eligibility requirements.";
+          // This is a common error signature when the blockchain contract throws an error
+          errorDetails += "The contract returned an error. This usually happens when:\n\n" +
+                          "• You've already voted in this election\n" +
+                          "• The election is no longer active\n" + 
+                          "• Your wallet is not eligible to vote in this election\n\n" +
+                          "Please check your status and try again.";
         } else if (error.message.includes("ElectionNotActive")) {
           errorDetails += "This election is not currently active. Voting is only allowed during the active period.";
         } else if (error.message.includes("AlreadyVoted")) {
@@ -187,8 +196,12 @@ export function VoteForSenatorButton({
           title: "Vote Failed",
           description: errorDetails,
           variant: "destructive",
-          duration: 10000
+          duration: 15000
         });
+        
+        // In many cases, this error indicates the user has already voted but our local state
+        // doesn't reflect that, so let's manually check vote status again after a delay
+        setTimeout(() => checkVoteStatus(), 2000);
       } else if (error.message && error.message.includes("insufficient funds")) {
         toast({
           title: "Insufficient Funds",
@@ -215,6 +228,16 @@ export function VoteForSenatorButton({
           title: "Voting Failed",
           description: error.message || "Failed to submit your vote. Please try again.",
           variant: "destructive",
+          duration: 15000
+        });
+        
+        // Log more detailed error information for debugging
+        console.error("Detailed voting error:", {
+          errorMessage: error.message,
+          errorObject: error,
+          electionId: electionId,
+          blockchainElectionId: election?.blockchainId,
+          candidateId: candidateId
         });
       }
     } finally {
