@@ -997,12 +997,28 @@ Technical error: ${gasError.message}`);
       console.log("Skipping gas estimation and sending transaction directly with high gas parameters");
       
       // Send the vote transaction with extremely high gas settings
-      const tx = await this.contract.voteForSenator(electionId, candidateId, nonce, options);
+      // FIXED: Properly separate contract arguments from transaction options
+      // The nonce is a function argument, options are transaction parameters
+      const tx = await this.contract.voteForSenator.populateTransaction(electionId, candidateId, nonce);
       
-      console.log("Transaction sent, awaiting confirmation:", tx.hash);
+      // Use the populated transaction with our transaction options
+      const transaction = {
+        ...tx,
+        ...options
+      };
+      
+      // Send the transaction with the signer
+      const txResponse = await this.signer.sendTransaction(transaction);
+      
+      console.log("Transaction sent, awaiting confirmation:", txResponse.hash);
       
       // Wait for the transaction to be mined with a longer timeout
-      const receipt = await tx.wait(3); // Wait for 3 confirmations for better reliability
+      const receipt = await txResponse.wait(3); // Wait for 3 confirmations for better reliability
+      
+      // Add null check to satisfy TypeScript
+      if (!receipt) {
+        throw new Error("Transaction was sent but no receipt was returned");
+      }
       
       console.log("Transaction confirmed with receipt:", receipt);
       
@@ -1060,13 +1076,28 @@ Technical error: ${gasError.message}`);
       // This approach might help when the contract has issues with gas estimation but can still process transactions
       console.log("Skipping gas estimation and sending transaction directly with high gas parameters");
       
-      // Send the vote transaction with extremely high gas settings
-      const tx = await this.contract.voteForPresidentVP(electionId, ticketId, nonce, options);
+      // FIXED: Apply the same correct pattern for President/VP voting 
+      // Properly separate contract arguments from transaction options
+      const tx = await this.contract.voteForPresidentVP.populateTransaction(electionId, ticketId, nonce);
       
-      console.log("Transaction sent, awaiting confirmation:", tx.hash);
+      // Use the populated transaction with our transaction options
+      const transaction = {
+        ...tx,
+        ...options
+      };
+      
+      // Send the transaction with the signer
+      const txResponse = await this.signer.sendTransaction(transaction);
+      
+      console.log("Transaction sent, awaiting confirmation:", txResponse.hash);
       
       // Wait for the transaction to be mined with a longer timeout
-      const receipt = await tx.wait(3); // Wait for 3 confirmations for better reliability
+      const receipt = await txResponse.wait(3); // Wait for 3 confirmations for better reliability
+      
+      // Add null check to satisfy TypeScript
+      if (!receipt) {
+        throw new Error("Transaction was sent but no receipt was returned");
+      }
       
       console.log("Transaction confirmed with receipt:", receipt);
       
