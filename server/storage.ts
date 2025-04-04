@@ -48,6 +48,8 @@ export interface IStorage {
   createCandidate(candidate: InsertCandidate): Promise<Candidate>;
   updateCandidate(id: number, candidate: Partial<InsertCandidate>): Promise<Candidate>;
   updateCandidateStatus(id: number, status: string): Promise<void>;
+  updateCandidateStatusesForElection(electionId: number): Promise<void>;
+  updateCandidateActiveStatus(candidateId: number): Promise<void>;
   deleteCandidate(id: number): Promise<void>;
   resetCandidateIds(): Promise<void>;
   
@@ -378,6 +380,57 @@ export class MemStorage implements IStorage {
     }
   }
   
+  // Helper method to update candidate statuses when an election completes
+  async updateCandidateStatusesForElection(electionId: number): Promise<void> {
+    // Get all candidates in this election
+    const electionCandidates = await this.getElectionCandidates(electionId);
+    
+    // For each candidate, check if they're in any active elections
+    for (const ec of electionCandidates) {
+      await this.updateCandidateActiveStatus(ec.candidateId);
+      
+      // Also update running mate if exists
+      if (ec.runningMateId && ec.runningMateId > 0) {
+        await this.updateCandidateActiveStatus(ec.runningMateId);
+      }
+    }
+  }
+  
+  // Helper method to determine if a candidate should be active or inactive
+  async updateCandidateActiveStatus(candidateId: number): Promise<void> {
+    // Get the candidate
+    const candidate = await this.getCandidate(candidateId);
+    if (!candidate) return;
+    
+    // Get all elections where the candidate is the main candidate
+    const candidateElections = await this.getCandidateElections(candidateId);
+    
+    // Get all elections where the candidate is a running mate
+    const runningMateElections = Array.from(this.electionCandidates.values())
+      .filter(ec => ec.runningMateId === candidateId);
+    
+    // Check if candidate is in any active elections
+    let shouldBeActive = false;
+    
+    // For each election, check if it's not completed
+    for (const ec of [...candidateElections, ...runningMateElections]) {
+      const election = await this.getElection(ec.electionId);
+      if (election && election.status !== 'completed') {
+        shouldBeActive = true;
+        break;
+      }
+    }
+    
+    // Update status if needed
+    if (candidate.status === 'active' && !shouldBeActive) {
+      await this.updateCandidateStatus(candidateId, 'inactive');
+      console.log(`Candidate ${candidateId} marked inactive - no active elections remaining`);
+    } else if (candidate.status === 'inactive' && shouldBeActive) {
+      await this.updateCandidateStatus(candidateId, 'active'); 
+      console.log(`Candidate ${candidateId} marked active - has active elections`);
+    }
+  }
+  
   async deleteCandidate(id: number): Promise<void> {
     this.candidates.delete(id);
     
@@ -698,6 +751,11 @@ export class DatabaseStorage implements IStorage {
     await db.update(elections)
       .set({ status })
       .where(eq(elections.id, id));
+      
+    // If the election is marked as completed, update candidate statuses
+    if (status === 'completed') {
+      await this.updateCandidateStatusesForElection(id);
+    }
   }
 
   async deleteElection(id: number): Promise<void> {
@@ -847,6 +905,64 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(candidates.id, id));
   }
+  
+  // Helper method to update candidate statuses when an election completes
+  async updateCandidateStatusesForElection(electionId: number): Promise<void> {
+    // Get all candidates in this election
+    const electionCandidates = await this.getElectionCandidates(electionId);
+    
+    // For each candidate, check if they're in any active elections
+    for (const ec of electionCandidates) {
+      await this.updateCandidateActiveStatus(ec.candidateId);
+      
+      // Also update running mate if exists
+      if (ec.runningMateId && ec.runningMateId > 0) {
+        await this.updateCandidateActiveStatus(ec.runningMateId);
+      }
+    }
+  }
+  
+  // Helper method to determine if a candidate should be active or inactive
+  async updateCandidateActiveStatus(candidateId: number): Promise<void> {
+    // Get the candidate
+    const candidate = await this.getCandidate(candidateId);
+    if (!candidate) return;
+    
+    // Get all elections where the candidate is the main candidate
+    const candidateElections = await this.getCandidateElections(candidateId);
+    
+    // Get all elections where the candidate is a running mate
+    const runningMateElections = await db.select()
+      .from(electionCandidates)
+      .where(eq(electionCandidates.runningMateId, candidateId));
+    
+    // Check if candidate is in any active elections
+    let shouldBeActive = false;
+    
+    // For each election, check if it's not completed
+    const allElectionIds = [
+      ...candidateElections.map(ec => ec.electionId),
+      ...runningMateElections.map(ec => ec.electionId)
+    ].filter((value, index, self) => self.indexOf(value) === index); // Unique values
+    
+    // Check all elections the candidate is in
+    for (const electionId of allElectionIds) {
+      const election = await this.getElection(electionId);
+      if (election && election.status !== 'completed') {
+        shouldBeActive = true;
+        break;
+      }
+    }
+    
+    // Update status if needed
+    if (candidate.status === 'active' && !shouldBeActive) {
+      await this.updateCandidateStatus(candidateId, 'inactive');
+      console.log(`Candidate ${candidateId} marked inactive - no active elections remaining`);
+    } else if (candidate.status === 'inactive' && shouldBeActive) {
+      await this.updateCandidateStatus(candidateId, 'active'); 
+      console.log(`Candidate ${candidateId} marked active - has active elections`);
+    }
+  }
 
   async deleteCandidate(id: number): Promise<void> {
     await db.delete(candidates).where(eq(candidates.id, id));
@@ -928,38 +1044,38 @@ export class DatabaseStorage implements IStorage {
       .where(eq(electionCandidates.id, relationship.id));
     
     // Check if candidate is still in any elections (as either candidate or running mate)
-    const candidateInOtherElections = await db.select().count()
+    const candidateInOtherElections = await db.select()
       .from(electionCandidates)
       .where(
         eq(electionCandidates.candidateId, candidateId)
       );
       
-    const candidateAsRunningMate = await db.select().count()
+    const candidateAsRunningMate = await db.select()
       .from(electionCandidates)
       .where(
         eq(electionCandidates.runningMateId, candidateId)
       );
     
     // If not in any other elections, update status to inactive
-    if (candidateInOtherElections[0].count === 0 && candidateAsRunningMate[0].count === 0) {
+    if (candidateInOtherElections.length === 0 && candidateAsRunningMate.length === 0) {
       await this.updateCandidateStatus(candidateId, "inactive");
     }
     
     // Do the same for running mate if there is one
     if (runningMateId) {
-      const runningMateInOtherElections = await db.select().count()
+      const runningMateInOtherElections = await db.select()
         .from(electionCandidates)
         .where(
           eq(electionCandidates.candidateId, runningMateId)
         );
         
-      const runningMateAsRunningMate = await db.select().count()
+      const runningMateAsRunningMate = await db.select()
         .from(electionCandidates)
         .where(
           eq(electionCandidates.runningMateId, runningMateId)
         );
       
-      if (runningMateInOtherElections[0].count === 0 && runningMateAsRunningMate[0].count === 0) {
+      if (runningMateInOtherElections.length === 0 && runningMateAsRunningMate.length === 0) {
         await this.updateCandidateStatus(runningMateId, "inactive");
       }
     }
