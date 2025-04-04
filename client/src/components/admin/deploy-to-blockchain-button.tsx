@@ -94,8 +94,8 @@ export function DeployToBlockchainButton({
       // Show more detailed toast for user with manual gas configuration instructions
       toast({
         title: "Deploying to Blockchain",
-        description: "Please approve the transaction in MetaMask. When the confirmation dialog appears, click the Edit button and manually set Gas limit to at least 800000 to overcome network congestion issues.",
-        duration: 15000,
+        description: "Please approve the transaction in MetaMask. For best results, click the Edit button in MetaMask and manually set: Gas limit to at least 1000000, Max priority fee to 15 gwei, and Max fee to 35 gwei. This helps ensure success on the congested Polygon Amoy testnet.",
+        duration: 20000,
       });
       
       // Ensure contract is initialized with signer before calling
@@ -169,9 +169,9 @@ export function DeployToBlockchainButton({
       } else if (error.message && error.message.includes("Internal JSON-RPC error")) {
         toast({
           title: "Polygon Network Congestion",
-          description: "The Polygon Amoy testnet is experiencing high congestion. As a temporary workaround, please try using the manual configuration in MetaMask by clicking the settings gear icon during transaction confirmation and setting the gas limit to 800000.",
+          description: "The Polygon Amoy testnet is experiencing high congestion. Please try again with manual configuration in MetaMask: click Edit during transaction confirmation and set Gas limit to 1000000, Max priority fee to 15 gwei, and Max fee to 35 gwei.",
           variant: "destructive",
-          duration: 15000
+          duration: 20000
         });
       } else {
         toast({

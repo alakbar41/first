@@ -145,11 +145,34 @@ export function VoteForSenatorButton({
       if (onVoteSuccess) onVoteSuccess(txHash);
     } catch (error: any) {
       console.error('Vote failed:', error);
-      toast({
-        title: "Voting Failed",
-        description: error.message || "Failed to submit your vote. Please try again.",
-        variant: "destructive",
-      });
+      
+      // Check for specific error types
+      if (error.message && error.message.includes("user rejected")) {
+        toast({
+          title: "Transaction Rejected",
+          description: "You rejected the transaction in MetaMask. Please try again when you're ready to vote.",
+          variant: "destructive",
+        });
+      } else if (error.message && error.message.includes("Internal JSON-RPC error")) {
+        toast({
+          title: "Network Congestion",
+          description: "The Polygon Amoy testnet is experiencing high congestion. Please try again with manual configuration in MetaMask: click Edit during transaction confirmation and set Gas limit to 800000, Max priority fee to 15 gwei, and Max fee to 35 gwei.",
+          variant: "destructive",
+          duration: 20000
+        });
+      } else if (error.message && error.message.includes("execution reverted")) {
+        toast({
+          title: "Vote Failed",
+          description: "The blockchain transaction was rejected. This may be because the election is no longer active, you've already voted, or are not registered to vote.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Voting Failed",
+          description: error.message || "Failed to submit your vote. Please try again.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsVoting(false);
     }

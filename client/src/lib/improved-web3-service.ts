@@ -118,11 +118,11 @@ class ImprovedWeb3Service {
       try {
         console.log('Estimating gas for createElection transaction...');
         
-        // Try a different approach with higher max fees
+        // Use extreme gas settings to overcome Polygon Amoy testnet congestion
         const options = {
-          gasLimit: 600000, // Very high gas limit to overcome network congestion
-          maxPriorityFeePerGas: ethers.parseUnits("10.0", "gwei"), // Much higher priority fee to prioritize the transaction
-          maxFeePerGas: ethers.parseUnits("25.0", "gwei"), // Much higher max fee
+          gasLimit: 1000000, // Extremely high gas limit to ensure transaction success
+          maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"), // Very high priority fee to prioritize transaction
+          maxFeePerGas: ethers.parseUnits("35.0", "gwei"), // Very high max fee to ensure acceptance
           type: 2, // Use EIP-1559 transaction type
         };
         
@@ -178,11 +178,11 @@ Technical error: ${gasError.message}`);
       // If gas estimation is successful, proceed with the transaction
       console.log('Sending createElection transaction...');
       
-      // Try a different approach with higher max fees
+      // Use extreme gas settings to overcome Polygon Amoy testnet congestion
       const options = {
-        gasLimit: 600000, // Very high gas limit to overcome network congestion
-        maxPriorityFeePerGas: ethers.parseUnits("10.0", "gwei"), // Much higher priority fee to prioritize the transaction
-        maxFeePerGas: ethers.parseUnits("25.0", "gwei"), // Much higher max fee
+        gasLimit: 1000000, // Extremely high gas limit to ensure transaction success
+        maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"), // Very high priority fee to prioritize transaction
+        maxFeePerGas: ethers.parseUnits("35.0", "gwei"), // Very high max fee to ensure acceptance
         type: 2, // Use EIP-1559 transaction type
       };
       
@@ -790,11 +790,12 @@ Technical error: ${gasError.message}`);
       // Get next nonce for anti-replay protection
       const nonce = await this.getNextNonce();
 
-      // Use higher gas settings for voting to avoid transaction failures
+      // Use extreme gas settings for voting to overcome Polygon Amoy testnet congestion
       const options = {
-        gasLimit: 300000, // Increased from 100000 to 300000
-        maxPriorityFeePerGas: ethers.parseUnits("2.0", "gwei"), // Increased priority fee
-        maxFeePerGas: ethers.parseUnits("30.0", "gwei"), // Added max fee
+        gasLimit: 800000, // Extremely high gas limit to ensure transaction success
+        maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"), // Very high priority fee to prioritize transaction
+        maxFeePerGas: ethers.parseUnits("35.0", "gwei"), // Very high max fee to ensure acceptance
+        type: 2, // Use EIP-1559 transaction type
       };
 
       console.log(`Sending vote transaction for election ${electionId}, candidate ${candidateId}, nonce ${nonce}`);
@@ -842,11 +843,12 @@ Technical error: ${gasError.message}`);
       // Get next nonce for anti-replay protection
       const nonce = await this.getNextNonce();
 
-      // Use higher gas settings for voting to avoid transaction failures
+      // Use extreme gas settings for voting to overcome Polygon Amoy testnet congestion
       const options = {
-        gasLimit: 300000, // Increased from 100000 to 300000
-        maxPriorityFeePerGas: ethers.parseUnits("2.0", "gwei"), // Increased priority fee
-        maxFeePerGas: ethers.parseUnits("30.0", "gwei"), // Added max fee
+        gasLimit: 800000, // Extremely high gas limit to ensure transaction success
+        maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"), // Very high priority fee to prioritize transaction
+        maxFeePerGas: ethers.parseUnits("35.0", "gwei"), // Very high max fee to ensure acceptance
+        type: 2, // Use EIP-1559 transaction type
       };
 
       console.log(`Sending vote transaction for President/VP election ${electionId}, ticket ${ticketId}, nonce ${nonce}`);
