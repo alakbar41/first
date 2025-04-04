@@ -6,6 +6,7 @@ import { Election } from "@shared/schema";
 import { useWeb3 } from "@/hooks/use-web3";
 import web3Service from '@/lib/improved-web3-service';
 import { ElectionStatus } from '@/lib/improved-web3-service';
+import { UpdateBlockchainStatusButton } from './update-blockchain-status-button';
 
 // Used to force a refresh when blockchainId changes
 const getKey = (election: Election) => `blockchain-status-${election.id}-${election.blockchainId || 'none'}`;
@@ -29,7 +30,7 @@ export function BlockchainDeploymentStatus({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Check blockchain status
+  // Check blockchain status and optionally auto-update if needed
   useEffect(() => {
     const checkBlockchainStatus = async () => {
       if (!isInitialized || !election.blockchainId) return;
@@ -40,6 +41,16 @@ export function BlockchainDeploymentStatus({
       try {
         const details = await web3Service.getElectionDetails(election.blockchainId);
         setBlockchainDetails(details);
+        
+        // Check if election status should be updated based on time
+        const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
+        const shouldBeActive = currentTime >= details.startTime && currentTime <= details.endTime;
+        
+        // If election is in Pending status but current time is within start/end dates,
+        // automatically update status for admin users
+        if (details.status === ElectionStatus.Pending && shouldBeActive) {
+          console.log(`Election ${election.blockchainId} is in Pending status but should be Active based on time. Administrators can manually update the status.`);
+        }
         
         // Map blockchain status to readable format
         if (details) {
@@ -145,32 +156,52 @@ export function BlockchainDeploymentStatus({
 
   // Status-specific badges with tooltips
   if (blockchainStatus === 'pending') {
+    // Check if election should be active based on current time
+    const shouldShowUpdateButton = blockchainDetails && 
+      Math.floor(Date.now() / 1000) >= blockchainDetails.startTime && 
+      Math.floor(Date.now() / 1000) <= blockchainDetails.endTime;
+      
     return (
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Badge 
-              variant="outline" 
-              className={`bg-yellow-50 text-yellow-700 border-yellow-200 ${className}`}
-            >
-              <Server className="mr-1 h-3 w-3" />
-              On-Chain (Pending)
-            </Badge>
-          </TooltipTrigger>
-          {showTooltip && (
-            <TooltipContent side="right">
-              <p>This election is deployed to the blockchain but not yet active.</p>
-              {showDetailed && blockchainDetails && (
-                <div className="mt-2 text-xs">
-                  <p>Blockchain ID: {election.blockchainId}</p>
-                  <p>Start: {new Date(blockchainDetails.startTime * 1000).toLocaleString()}</p>
-                  <p>End: {new Date(blockchainDetails.endTime * 1000).toLocaleString()}</p>
-                </div>
-              )}
-            </TooltipContent>
-          )}
-        </Tooltip>
-      </TooltipProvider>
+      <div className="flex flex-row items-center gap-2">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge 
+                variant="outline" 
+                className={`bg-yellow-50 text-yellow-700 border-yellow-200 ${className}`}
+              >
+                <Server className="mr-1 h-3 w-3" />
+                On-Chain (Pending)
+              </Badge>
+            </TooltipTrigger>
+            {showTooltip && (
+              <TooltipContent side="right">
+                <p>This election is deployed to the blockchain but not yet active.</p>
+                {shouldShowUpdateButton && (
+                  <p className="text-amber-600 font-medium mt-1">Based on start time, this election should be ACTIVE. Click the Update Status button to activate it.</p>
+                )}
+                {showDetailed && blockchainDetails && (
+                  <div className="mt-2 text-xs">
+                    <p>Blockchain ID: {election.blockchainId}</p>
+                    <p>Start: {new Date(blockchainDetails.startTime * 1000).toLocaleString()}</p>
+                    <p>End: {new Date(blockchainDetails.endTime * 1000).toLocaleString()}</p>
+                  </div>
+                )}
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
+        
+        {shouldShowUpdateButton && (
+          <UpdateBlockchainStatusButton 
+            electionId={election.id} 
+            blockchainId={Number(election.blockchainId)} 
+            variant="outline"
+            size="sm"
+            className="ml-2 text-xs h-7 px-2 py-0 bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"
+          />
+        )}
+      </div>
     );
   }
 
