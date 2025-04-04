@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DeployToBlockchainButton } from "./deploy-to-blockchain-button";
 import { BlockchainDeploymentStatus } from "./blockchain-deployment-status";
+import { ActivateElectionButton } from "./activate-election-button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -133,7 +134,19 @@ export function ElectionsTable({ elections, onEdit, onDelete, onAddCandidates, o
 
                 {/* Blockchain Status */}
                 <td className="px-6 py-4 text-sm text-gray-500">
-                  <BlockchainDeploymentStatus election={election} />
+                  <div className="flex flex-col space-y-2">
+                    <BlockchainDeploymentStatus election={election} />
+                    
+                    {election.blockchainId && election.blockchainId > 0 && (
+                      <ActivateElectionButton 
+                        electionId={election.id}
+                        blockchainId={election.blockchainId as number}
+                        size="sm"
+                        variant="outline"
+                        className="mt-2"
+                      />
+                    )}
+                  </div>
                 </td>
 
                 <td className="px-6 py-4 text-right text-sm font-medium">

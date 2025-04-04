@@ -451,21 +451,56 @@ Technical error: ${gasError.message}`);
       if (!this.walletAddress) {
         throw new Error('Wallet not connected');
       }
+      
+      // First, check the election status
+      const electionDetails = await this.getElectionDetails(electionId);
+      
+      // Log election details for debugging
+      console.log(`Starting election ${electionId}. Current status: ${electionDetails.status}, Start time: ${new Date(electionDetails.startTime * 1000).toLocaleString()}, End time: ${new Date(electionDetails.endTime * 1000).toLocaleString()}`);
+      
+      // If already active, no need to proceed
+      if (electionDetails.status === ElectionStatus.Active) {
+        console.log(`Election ${electionId} is already active. No action needed.`);
+        return;
+      }
+      
+      // If completed, cannot be activated
+      if (electionDetails.status === ElectionStatus.Completed || electionDetails.status === ElectionStatus.Cancelled) {
+        throw new Error(`Cannot activate election ${electionId} because it is already in ${electionDetails.status === ElectionStatus.Completed ? 'completed' : 'cancelled'} state.`);
+      }
 
-      // Use optimized gas settings with higher limits for Polygon Amoy
+      // Use higher gas settings to ensure transaction success on Polygon Amoy
       const options = {
-        gasLimit: 500000,
-        maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"),
-        maxFeePerGas: ethers.parseUnits("35.0", "gwei"),
+        gasLimit: 1000000, // Higher gas limit for better success chance
+        maxPriorityFeePerGas: ethers.parseUnits("20.0", "gwei"),
+        maxFeePerGas: ethers.parseUnits("50.0", "gwei"),
         type: 2, // Use EIP-1559 transaction type
       };
+      
+      // Get nonce before transaction to ensure proper sequencing
+      const nonce = await this.getNextNonce();
+      const optionsWithNonce = { ...options, nonce };
+      
+      console.log(`Starting election ${electionId} with nonce ${nonce}`);
 
       const tx = await this.contract.updateElectionStatus(
         electionId, 
         ElectionStatus.Active,
-        options
+        optionsWithNonce
       );
-      await tx.wait();
+      
+      console.log(`Election activation transaction sent: ${tx.hash}`);
+      
+      const receipt = await tx.wait(2); // Wait for 2 confirmations
+      console.log(`Election activation confirmed in block ${receipt.blockNumber}`);
+      
+      // Verify the status was updated correctly
+      const updatedDetails = await this.getElectionDetails(electionId);
+      if (updatedDetails.status === ElectionStatus.Active) {
+        console.log(`Election ${electionId} successfully activated.`);
+      } else {
+        console.warn(`Election ${electionId} status is ${updatedDetails.status} after activation attempt. Expected ${ElectionStatus.Active}.`);
+      }
     } catch (error) {
       console.error(`Failed to start election ${electionId}:`, error);
       throw error;
