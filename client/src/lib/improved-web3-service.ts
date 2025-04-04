@@ -649,11 +649,12 @@ Technical error: ${gasError.message}`);
 
       console.log(`Updating election ${electionId} status from ${electionDetails.status} to target status ${targetStatus}`);
 
-      // Use significantly higher gas settings to ensure the transaction goes through
+      // Use extremely aggressive gas settings to overcome network congestion
+      // These are dramatically higher than normal to ensure status updates succeed
       const options = {
-        gasLimit: 1000000, // High gas limit for better chance of success
-        maxPriorityFeePerGas: ethers.parseUnits("20.0", "gwei"),
-        maxFeePerGas: ethers.parseUnits("50.0", "gwei"),
+        gasLimit: 5000000, // Extremely high gas limit for guaranteed success
+        maxPriorityFeePerGas: ethers.parseUnits("100.0", "gwei"), // Very aggressive priority fee
+        maxFeePerGas: ethers.parseUnits("200.0", "gwei"), // Extremely high max fee
         type: 2, // Use EIP-1559 transaction type
       };
 
@@ -977,11 +978,11 @@ Technical error: ${gasError.message}`);
       // Get next nonce for anti-replay protection
       const nonce = await this.getNextNonce();
 
-      // Use custom gas settings if provided, otherwise use default high settings
+      // Use custom gas settings if provided, otherwise use extremely aggressive defaults
       const options = customGasOptions || {
-        gasLimit: 1500000, // Extremely high gas limit to ensure transaction success
-        maxPriorityFeePerGas: ethers.parseUnits("20.0", "gwei"), // Very high priority fee to prioritize transaction
-        maxFeePerGas: ethers.parseUnits("50.0", "gwei"), // Very high max fee to ensure acceptance
+        gasLimit: 5000000, // Ultra high gas limit to guarantee transaction success
+        maxPriorityFeePerGas: ethers.parseUnits("100.0", "gwei"), // Extremely high priority fee
+        maxFeePerGas: ethers.parseUnits("200.0", "gwei"), // Dramatically increased max fee
         type: 2, // Use EIP-1559 transaction type
       };
       
@@ -1041,11 +1042,11 @@ Technical error: ${gasError.message}`);
       // Get next nonce for anti-replay protection
       const nonce = await this.getNextNonce();
 
-      // Use custom gas settings if provided, otherwise use default high settings
+      // Use custom gas settings if provided, otherwise use extremely aggressive defaults
       const options = customGasOptions || {
-        gasLimit: 1500000, // Extremely high gas limit to ensure transaction success
-        maxPriorityFeePerGas: ethers.parseUnits("20.0", "gwei"), // Very high priority fee to prioritize transaction
-        maxFeePerGas: ethers.parseUnits("50.0", "gwei"), // Very high max fee to ensure acceptance
+        gasLimit: 5000000, // Ultra high gas limit to guarantee transaction success
+        maxPriorityFeePerGas: ethers.parseUnits("100.0", "gwei"), // Extremely high priority fee
+        maxFeePerGas: ethers.parseUnits("200.0", "gwei"), // Dramatically increased max fee
         type: 2, // Use EIP-1559 transaction type
       };
       
