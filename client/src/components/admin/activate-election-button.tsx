@@ -184,19 +184,9 @@ export function ActivateElectionButton({
     );
   }
   
-  // For elections that have completed, show a disabled button
-  if (currentStatus === ElectionStatus.Completed) {
-    return (
-      <Button
-        variant="outline"
-        size={size}
-        className={`${className} bg-gray-50 text-gray-500 border-gray-200`}
-        disabled={true}
-      >
-        <PlayCircle className="mr-2 h-4 w-4" />
-        <span>Election Ended</span>
-      </Button>
-    );
+  // For elections that have completed or cancelled, show nothing at all
+  if (currentStatus === ElectionStatus.Completed || currentStatus === ElectionStatus.Cancelled) {
+    return null;
   }
   
   return (

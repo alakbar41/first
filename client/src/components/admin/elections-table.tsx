@@ -137,7 +137,9 @@ export function ElectionsTable({ elections, onEdit, onDelete, onAddCandidates, o
                   <div className="flex flex-col space-y-2">
                     <BlockchainDeploymentStatus election={election} />
                     
-                    {election.blockchainId && election.blockchainId > 0 && (
+                    {election.blockchainId && 
+                     election.blockchainId > 0 && 
+                     election.status !== "completed" && (
                       <ActivateElectionButton 
                         electionId={election.id}
                         blockchainId={election.blockchainId as number}
