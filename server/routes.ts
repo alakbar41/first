@@ -731,6 +731,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Endpoint to manually update candidate status (for debugging/fixing status issues)
+  app.post("/api/candidates/:id/update-status", isAdmin, async (req, res) => {
+    try {
+      const candidateId = parseInt(req.params.id);
+      
+      // Get the candidate to check if it exists
+      const candidate = await storage.getCandidate(candidateId);
+      if (!candidate) {
+        return res.status(404).json({ message: `Candidate with ID ${candidateId} not found` });
+      }
+      
+      // Update the candidate's status based on their election participation
+      await storage.updateCandidateActiveStatus(candidateId);
+      
+      // Get the updated candidate
+      const updatedCandidate = await storage.getCandidate(candidateId);
+      
+      res.json({
+        message: `Candidate status updated successfully`,
+        candidate: updatedCandidate
+      });
+    } catch (error) {
+      res.status(500).json({ message: `Error updating candidate status: ${error.message}` });
+    }
+  });
+  
   // Create HTTP server
   const httpServer = createServer(app);
 

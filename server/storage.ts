@@ -414,7 +414,7 @@ export class MemStorage implements IStorage {
     const runningMateElections = Array.from(this.electionCandidates.values())
       .filter(ec => ec.runningMateId === candidateId);
     
-    // If not in any elections, mark as inactive
+    // If not in any elections at all, mark as inactive immediately
     if (candidateElections.length === 0 && runningMateElections.length === 0) {
       if (candidate.status !== 'inactive') {
         await this.updateCandidateStatus(candidateId, 'inactive');
@@ -423,23 +423,30 @@ export class MemStorage implements IStorage {
       return;
     }
     
-    // Check the status of each election the candidate is in
-    let inActiveElection = false;
-    let inUpcomingElection = false;
+    // Get all elections the candidate is part of
+    const allElectionEntries = [...candidateElections, ...runningMateElections];
     
-    // Check all the elections this candidate is in
-    for (const ec of [...candidateElections, ...runningMateElections]) {
+    // Gather all the election objects
+    const validElections: Election[] = [];
+    for (const ec of allElectionEntries) {
       const election = await this.getElection(ec.electionId);
-      if (!election) continue;
-      
-      if (election.status === 'active') {
-        inActiveElection = true;
-        break; // Being in an active election takes precedence
-      } else if (election.status === 'upcoming') {
-        inUpcomingElection = true;
-        // Don't break, keep checking in case there's an active election
+      if (election) {
+        validElections.push(election);
       }
     }
+    
+    // If there are no valid elections, mark as inactive
+    if (validElections.length === 0) {
+      if (candidate.status !== 'inactive') {
+        await this.updateCandidateStatus(candidateId, 'inactive');
+        console.log(`Candidate ${candidateId} marked inactive - no valid elections`);
+      }
+      return;
+    }
+    
+    // Check if the candidate is in any active or upcoming election
+    const inActiveElection = validElections.some(e => e.status === 'active');
+    const inUpcomingElection = validElections.some(e => e.status === 'upcoming');
     
     // Determine the appropriate status
     let newStatus = 'inactive';
@@ -452,7 +459,9 @@ export class MemStorage implements IStorage {
     // Update status if needed
     if (candidate.status !== newStatus) {
       await this.updateCandidateStatus(candidateId, newStatus);
-      console.log(`Candidate ${candidateId} marked ${newStatus} - based on election statuses`);
+      console.log(`Candidate ${candidateId} marked ${newStatus} - based on election status check`);
+    } else {
+      console.log(`Candidate ${candidateId} status remains ${candidate.status}`);
     }
   }
   
@@ -943,15 +952,9 @@ export class DatabaseStorage implements IStorage {
     const runningMateElections = await db.select()
       .from(electionCandidates)
       .where(eq(electionCandidates.runningMateId, candidateId));
-    
-    // Get unique election IDs
-    const allElectionIds = [
-      ...candidateElections.map(ec => ec.electionId),
-      ...runningMateElections.map(ec => ec.electionId)
-    ].filter((value, index, self) => self.indexOf(value) === index); // Unique values
-    
-    // If not in any elections, mark as inactive
-    if (allElectionIds.length === 0) {
+
+    // If not in any elections at all, mark as inactive immediately
+    if (candidateElections.length === 0 && runningMateElections.length === 0) {
       if (candidate.status !== 'inactive') {
         await this.updateCandidateStatus(candidateId, 'inactive');
         console.log(`Candidate ${candidateId} marked inactive - not in any elections`);
@@ -959,22 +962,32 @@ export class DatabaseStorage implements IStorage {
       return;
     }
     
-    // Check the status of each election the candidate is in
-    let inActiveElection = false;
-    let inUpcomingElection = false;
+    // Get all elections the candidate is part of
+    const combinedElectionIds = [
+      ...candidateElections.map(ec => ec.electionId),
+      ...runningMateElections.map(ec => ec.electionId)
+    ];
     
-    for (const electionId of allElectionIds) {
-      const election = await this.getElection(electionId);
-      if (!election) continue;
-      
-      if (election.status === 'active') {
-        inActiveElection = true;
-        break; // Being in an active election takes precedence
-      } else if (election.status === 'upcoming') {
-        inUpcomingElection = true;
-        // Don't break, keep checking in case there's an active election
+    // Load the actual election details for checking status
+    const electionDetails = await Promise.all(
+      combinedElectionIds.map(id => this.getElection(id))
+    );
+    
+    // Filter out null values and ensure we're only considering valid elections
+    const validElections = electionDetails.filter(e => e !== undefined) as Election[];
+    
+    // If there are no valid elections, mark as inactive
+    if (validElections.length === 0) {
+      if (candidate.status !== 'inactive') {
+        await this.updateCandidateStatus(candidateId, 'inactive');
+        console.log(`Candidate ${candidateId} marked inactive - no valid elections`);
       }
+      return;
     }
+    
+    // Check if the candidate is in any active or upcoming election
+    const inActiveElection = validElections.some(e => e.status === 'active');
+    const inUpcomingElection = validElections.some(e => e.status === 'upcoming');
     
     // Determine the appropriate status
     let newStatus = 'inactive';
@@ -987,7 +1000,9 @@ export class DatabaseStorage implements IStorage {
     // Update status if needed
     if (candidate.status !== newStatus) {
       await this.updateCandidateStatus(candidateId, newStatus);
-      console.log(`Candidate ${candidateId} marked ${newStatus} - based on election statuses`);
+      console.log(`Candidate ${candidateId} marked ${newStatus} - based on election status check`);
+    } else {
+      console.log(`Candidate ${candidateId} status remains ${candidate.status}`);
     }
   }
 
