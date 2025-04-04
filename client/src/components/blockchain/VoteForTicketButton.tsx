@@ -167,7 +167,17 @@ export function VoteForTicketButton({
             console.log(`Successfully updated election ${blockchainElectionId} status on blockchain`);
           } catch (updateError: any) {
             console.error("Error updating election status:", updateError);
-            throw new Error(`The election needs to be activated, but the update failed: ${updateError.message}. Please try again or contact an administrator.`);
+            
+            // Show warning but don't abort the voting process
+            toast({
+              title: "Status Update Warning",
+              description: "There was an issue activating the election automatically. Attempting to vote anyway.",
+              variant: "warning",
+              duration: 5000,
+            });
+            
+            // Instead of throwing, just log the error and continue with voting attempt
+            console.warn(`Election activation failed but continuing with voting attempt: ${updateError.message}`);
           }
         } else if (electionDetails.status !== 1) { // Not active (0=pending, 2=completed, 3=cancelled)
           // Check if it should be active based on time
