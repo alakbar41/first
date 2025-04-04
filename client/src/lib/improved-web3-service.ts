@@ -515,19 +515,90 @@ Technical error: ${gasError.message}`);
       if (!this.walletAddress) {
         throw new Error('Wallet not connected');
       }
+      
+      // First, check the current election details to know what we're working with
+      const electionDetails = await this.getElectionDetails(electionId);
+      const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
+      
+      console.log(`Auto-update check for election ${electionId}: Current status=${electionDetails.status}, Start=${new Date(electionDetails.startTime * 1000).toLocaleString()}, End=${new Date(electionDetails.endTime * 1000).toLocaleString()}, Current time=${new Date(currentTime * 1000).toLocaleString()}`);
+      
+      // Only proceed if the election needs a status update
+      const needsUpdate = 
+        // If pending but should be active
+        (electionDetails.status === 0 && 
+         currentTime >= electionDetails.startTime && 
+         currentTime <= electionDetails.endTime) ||
+        // If active but should be completed
+        (electionDetails.status === 1 && 
+         currentTime > electionDetails.endTime);
+      
+      if (!needsUpdate) {
+        console.log(`Election ${electionId} status (${electionDetails.status}) is already correct based on time.`);
+        return;
+      }
 
-      // Use optimized gas settings with higher limits for Polygon Amoy
+      // Determine target status
+      let targetStatus: ElectionStatus;
+      if (electionDetails.status === 0 && currentTime >= electionDetails.startTime && currentTime <= electionDetails.endTime) {
+        targetStatus = ElectionStatus.Active;
+        console.log(`Election ${electionId} should be updated from Pending (0) to Active (1)`);
+      } else if (electionDetails.status === 1 && currentTime > electionDetails.endTime) {
+        targetStatus = ElectionStatus.Completed;
+        console.log(`Election ${electionId} should be updated from Active (1) to Completed (2)`);
+      } else {
+        // This should not happen given our checks, but just to be safe
+        console.log(`No clear target status for election ${electionId} with current status ${electionDetails.status}`);
+        return;
+      }
+
+      console.log(`Updating election ${electionId} status from ${electionDetails.status} to target status ${targetStatus}`);
+
+      // Use significantly higher gas settings to ensure the transaction goes through
       const options = {
-        gasLimit: 500000,
-        maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"),
-        maxFeePerGas: ethers.parseUnits("35.0", "gwei"),
+        gasLimit: 1000000, // High gas limit for better chance of success
+        maxPriorityFeePerGas: ethers.parseUnits("20.0", "gwei"),
+        maxFeePerGas: ethers.parseUnits("50.0", "gwei"),
         type: 2, // Use EIP-1559 transaction type
       };
 
-      const tx = await this.contract.autoUpdateElectionStatus(electionId, options);
-      await tx.wait();
-    } catch (error) {
+      // Get nonce before transaction to ensure proper sequencing
+      const nonce = await this.getNextNonce();
+      const optionsWithNonce = { ...options, nonce };
+      
+      const tx = await this.contract.autoUpdateElectionStatus(electionId, optionsWithNonce);
+      console.log(`Election status update transaction sent: ${tx.hash} with nonce ${nonce}`);
+      
+      const receipt = await tx.wait(2); // Wait for 2 confirmations
+      console.log(`Election status update confirmed in block ${receipt.blockNumber}`);
+      
+      // Check the updated status to verify it was correctly updated
+      const updatedDetails = await this.getElectionDetails(electionId);
+      
+      if (updatedDetails.status === targetStatus) {
+        console.log(`Election ${electionId} successfully updated to target status ${targetStatus}`);
+      } else {
+        console.warn(`Election ${electionId} status updated from ${electionDetails.status} to ${updatedDetails.status}, but target was ${targetStatus}`);
+        
+        // If still not at target status, this might indicate an issue with the contract's internal logic
+        // We'll log this but not throw an error as the transaction was successful
+        if (updatedDetails.status !== targetStatus) {
+          console.warn(`Election ${electionId} did not reach target status ${targetStatus} after update transaction. Current status: ${updatedDetails.status}`);
+        }
+      }
+      
+      return;
+    } catch (error: any) {
+      // Log detailed error for debugging
       console.error(`Failed to auto-update election status for ${electionId}:`, error);
+      
+      // Check for specific errors and handle accordingly
+      if (error.message && error.message.includes("execution reverted")) {
+        console.warn(`Contract execution reverted when updating election ${electionId}. This may indicate the election status cannot be changed due to contract restrictions.`);
+      } else if (error.message && error.message.includes("nonce too low")) {
+        console.error(`Nonce too low error when updating election ${electionId}. This suggests a transaction sequencing issue.`);
+      }
+      
+      // Re-throw the error for the calling function to handle
       throw error;
     }
   }

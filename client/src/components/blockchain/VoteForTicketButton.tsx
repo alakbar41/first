@@ -139,6 +139,8 @@ export function VoteForTicketButton({
         const electionDetails = await web3Service.getElectionDetails(blockchainElectionId);
         const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
         
+        console.log(`Checking election ${blockchainElectionId} status: Current=${electionDetails.status}, Time period: ${new Date(electionDetails.startTime * 1000).toLocaleString()} - ${new Date(electionDetails.endTime * 1000).toLocaleString()}`);
+        
         // If election is in pending status but should be active based on time, try to auto-update it
         if (electionDetails.status === 0 && 
             currentTime >= electionDetails.startTime && 
@@ -153,18 +155,33 @@ export function VoteForTicketButton({
               duration: 8000,
             });
             
-            // Try to auto-update the election status
+            // Try to auto-update the election status with the improved implementation
             await web3Service.autoUpdateElectionStatus(blockchainElectionId);
             
-            // Show success message
-            toast({
-              title: "Election Status Updated",
-              description: "The election has been successfully activated on the blockchain. You can now vote.",
-              variant: "default",
-              duration: 5000,
-            });
+            // Verify the status was actually updated
+            const updatedDetails = await web3Service.getElectionDetails(blockchainElectionId);
             
-            console.log(`Successfully updated election ${blockchainElectionId} status on blockchain`);
+            if (updatedDetails.status === 1) {
+              // Status successfully updated to Active
+              toast({
+                title: "Election Status Updated",
+                description: "The election has been successfully activated on the blockchain. You can now vote.",
+                variant: "default",
+                duration: 5000,
+              });
+              
+              console.log(`Successfully updated election ${blockchainElectionId} status on blockchain to Active (1)`);
+            } else {
+              // Status update transaction went through but status still not Active
+              toast({
+                title: "Status Update Issue",
+                description: `The election status is now ${updatedDetails.status} instead of Active (1). Attempting to vote anyway.`,
+                variant: "warning",
+                duration: 5000,
+              });
+              
+              console.warn(`Election ${blockchainElectionId} status update incomplete: status is now ${updatedDetails.status} instead of 1 (Active)`);
+            }
           } catch (updateError: any) {
             console.error("Error updating election status:", updateError);
             
@@ -182,7 +199,31 @@ export function VoteForTicketButton({
         } else if (electionDetails.status !== 1) { // Not active (0=pending, 2=completed, 3=cancelled)
           // Check if it should be active based on time
           if (currentTime >= electionDetails.startTime && currentTime <= electionDetails.endTime) {
-            throw new Error(`The election time period is active (${new Date(electionDetails.startTime * 1000).toLocaleString()} - ${new Date(electionDetails.endTime * 1000).toLocaleString()}), but the status on blockchain is not set to active. Please contact an administrator.`);
+            // Attempt one more time to update status as this is critical timing
+            try {
+              console.log(`Election ${blockchainElectionId} time period is currently active but status is ${electionDetails.status}. Making one more attempt to update...`);
+              await web3Service.autoUpdateElectionStatus(blockchainElectionId);
+              
+              // Verify the status was actually updated
+              const finalCheckDetails = await web3Service.getElectionDetails(blockchainElectionId);
+              
+              if (finalCheckDetails.status === 1) {
+                // Status successfully updated to Active
+                toast({
+                  title: "Election Activated",
+                  description: "The election has been successfully activated on the blockchain. Proceeding with vote.",
+                  variant: "default",
+                  duration: 5000,
+                });
+                
+                console.log(`Final attempt successfully updated election ${blockchainElectionId} status to Active (1)`);
+              } else {
+                throw new Error(`The election time period is active (${new Date(electionDetails.startTime * 1000).toLocaleString()} - ${new Date(electionDetails.endTime * 1000).toLocaleString()}), but the status on blockchain is still ${finalCheckDetails.status} instead of Active (1) after update attempt. Please contact an administrator.`);
+              }
+            } catch (finalAttemptError) {
+              // If this final attempt also fails, throw an error with detailed information
+              throw new Error(`The election time period is active (${new Date(electionDetails.startTime * 1000).toLocaleString()} - ${new Date(electionDetails.endTime * 1000).toLocaleString()}), but the status on blockchain (${electionDetails.status}) couldn't be updated to Active (1). Please contact an administrator.`);
+            }
           } else if (currentTime < electionDetails.startTime) {
             throw new Error(`This election hasn't started yet. It will begin at ${new Date(electionDetails.startTime * 1000).toLocaleString()}.`);
           } else {
@@ -196,6 +237,14 @@ export function VoteForTicketButton({
         }
         // For execution reverted, continue with the voting attempt as it might be a different issue
         console.warn("Received execution reverted during status check, continuing with vote attempt:", statusError);
+        
+        // Show warning toast for execution reverted but continue
+        toast({
+          title: "Status Check Warning",
+          description: "There was an issue checking the election status. Attempting to vote anyway.",
+          variant: "warning",
+          duration: 5000,
+        });
       }
       
       // Use the improved blockchain integration to cast the vote
