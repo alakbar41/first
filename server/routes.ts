@@ -1,8 +1,12 @@
-import type { Express, Request, Response } from "express";
+import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth.js";
 import bcrypt from "bcrypt";
+import crypto from "crypto";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 import { 
   insertElectionSchema, 
   insertCandidateSchema, 
@@ -13,8 +17,70 @@ import {
 import { z } from "zod";
 import { mailer } from "./mailer.js";
 
+// CSRF token middleware
+const csrfTokens = new Map<string, {token: string, expires: number}>();
+
+function generateCSRFToken(req: Request): string {
+  // Generate a random token
+  const token = crypto.randomBytes(32).toString('hex');
+  
+  // Store with 24 hour expiry
+  const expires = Date.now() + (24 * 60 * 60 * 1000);
+  
+  // Associate with session if available
+  const sessionId = req.sessionID || 'anonymous';
+  csrfTokens.set(sessionId, { token, expires });
+  
+  return token;
+}
+
+function validateCSRFToken(req: Request, res: Response, next: NextFunction) {
+  // Skip GET, HEAD, OPTIONS requests
+  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+    return next();
+  }
+  
+  const sessionId = req.sessionID || 'anonymous';
+  const storedData = csrfTokens.get(sessionId);
+  const userToken = req.headers['x-csrf-token'] || req.body?._csrf;
+  
+  // If no stored token or token expired
+  if (!storedData || Date.now() > storedData.expires) {
+    return res.status(403).json({ message: "CSRF token expired or invalid" });
+  }
+  
+  // If token doesn't match
+  if (!userToken || storedData.token !== userToken) {
+    return res.status(403).json({ message: "CSRF token validation failed" });
+  }
+  
+  // Clean up expired tokens periodically
+  if (Math.random() < 0.01) { // 1% chance to clean on each request
+    const now = Date.now();
+    for (const [key, data] of csrfTokens.entries()) {
+      if (now > data.expires) {
+        csrfTokens.delete(key);
+      }
+    }
+  }
+  
+  next();
+}
+
+// Security headers middleware
+function securityHeaders(req: Request, res: Response, next: NextFunction) {
+  // Security headers
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Content-Security-Policy', "default-src 'self'; connect-src 'self' ws: wss:; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; font-src 'self' data:");
+  res.setHeader('Referrer-Policy', 'same-origin');
+  
+  next();
+}
+
 // Middleware to check if user is admin
-function isAdmin(req: Request, res: Response, next: Function) {
+function isAdmin(req: Request, res: Response, next: NextFunction) {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ message: "Not authenticated" });
   }
@@ -33,8 +99,65 @@ async function hashPassword(password: string): Promise<string> {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Apply security middleware
+  app.use(securityHeaders);
+  
   // Set up authentication routes
   setupAuth(app);
+  
+  // Get CSRF token
+  app.get("/api/csrf-token", (req, res) => {
+    const token = generateCSRFToken(req);
+    res.json({ csrfToken: token });
+  });
+  
+  // Apply CSRF protection to all routes after this point
+  app.use(validateCSRFToken);
+  
+  // Set up secure file upload
+  const uploadsDir = path.join(process.cwd(), 'uploads');
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+  
+  // Configure multer storage with security restrictions
+  const multerStorage = multer.diskStorage({
+    destination: (_req, _file, cb) => {
+      cb(null, uploadsDir);
+    },
+    filename: (_req, file, cb) => {
+      // Generate a secure random filename with original extension
+      const randomName = crypto.randomBytes(16).toString('hex');
+      const originalExt = path.extname(file.originalname);
+      // Sanitize extension to prevent path traversal
+      const safeExt = originalExt.replace(/[^a-zA-Z0-9.]/g, '').toLowerCase();
+      
+      // Limit extensions to safe image formats
+      const allowedExts = ['.jpg', '.jpeg', '.png', '.gif'];
+      const finalExt = allowedExts.includes(safeExt) ? safeExt : '.jpg';
+      
+      cb(null, `${randomName}${finalExt}`);
+    }
+  });
+  
+  // File filter to only allow images
+  const fileFilter: multer.Options["fileFilter"] = (_req, file, cb) => {
+    // Accept only image files
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(null, false); // Reject file silently
+    }
+  };
+  
+  const upload = multer({ 
+    storage: multerStorage,
+    fileFilter,
+    limits: { 
+      fileSize: 5 * 1024 * 1024, // 5MB max file size
+      files: 1 // Only allow 1 file at a time
+    }
+  });
   
   // Election routes
   app.get("/api/elections", async (req, res) => {
@@ -776,6 +899,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Create HTTP server
+  // Secure file upload endpoint
+  app.post("/api/upload", isAdmin, upload.single('image'), (req: Request & { file?: Express.Multer.File }, res: Response) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+      
+      // Generate a URL for the file - remove leading slash from the path for URL formatting
+      const fileUrl = `/uploads/${req.file.filename}`;
+      
+      // Return the URL for the client to use
+      res.status(200).json({ 
+        url: fileUrl,
+        message: "File uploaded successfully" 
+      });
+    } catch (error) {
+      console.error("File upload error:", error);
+      
+      // Generic error response to prevent information disclosure
+      res.status(500).json({ message: "An error occurred during file upload" });
+    }
+  });
+  
+  // Serve static files from uploads directory with proper Content-Type headers
+  app.use('/uploads', (req: Request, res: Response, next: NextFunction) => {
+    // Check if file exists and is an image before serving
+    const requestedFile = path.join(uploadsDir, path.basename(req.path));
+    
+    // Prevent path traversal by normalizing and checking the path
+    const normalizedPath = path.normalize(requestedFile);
+    if (!normalizedPath.startsWith(uploadsDir)) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+    
+    // Ensure only image files are served
+    if (!req.path.match(/\.(jpg|jpeg|png|gif)$/i)) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+    
+    // Check if file exists
+    fs.access(normalizedPath, fs.constants.F_OK, (err) => {
+      if (err) {
+        return res.status(404).json({ message: "File not found" });
+      }
+      next();
+    });
+  }, express.static(uploadsDir));
+  
   const httpServer = createServer(app);
 
   return httpServer;
