@@ -99,14 +99,48 @@ async function hashPassword(password: string): Promise<string> {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Force HTTPS in production
+  if (process.env.NODE_ENV === 'production') {
+    app.use((req: Request, res: Response, next: NextFunction) => {
+      if (!req.secure) {
+        return res.redirect(301, `https://${req.headers.host}${req.url}`);
+      }
+      next();
+    });
+  }
+  
   // Apply security middleware
   app.use(securityHeaders);
   
   // Set up authentication routes
   setupAuth(app);
   
+  // Inactivity timeout middleware
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    // Skip for non-authenticated users
+    if (!req.session.lastActivity || !req.isAuthenticated()) {
+      req.session.lastActivity = Date.now();
+      return next();
+    }
+    
+    const inactivityLimit = 30 * 60 * 1000; // 30 minutes
+    const currentTime = Date.now();
+    
+    if (currentTime - req.session.lastActivity > inactivityLimit) {
+      // Session expired due to inactivity
+      return req.session.destroy((err) => {
+        if (err) console.error("Session destroy error:", err);
+        res.status(401).json({ message: "Session expired due to inactivity" });
+      });
+    }
+    
+    // Update last activity
+    req.session.lastActivity = currentTime;
+    next();
+  });
+  
   // Get CSRF token
-  app.get("/api/csrf-token", (req, res) => {
+  app.get("/api/csrf-token", (req: Request, res: Response) => {
     const token = generateCSRFToken(req);
     res.json({ csrfToken: token });
   });

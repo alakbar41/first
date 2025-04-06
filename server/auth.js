@@ -10,7 +10,8 @@ import { mailer } from "./mailer.js";
 export function setupAuth(app) {
   const SALT_ROUNDS = 10;
   const OTP_EXPIRY_TIME = 3 * 60 * 1000; // 3 minutes in milliseconds
-  const SESSION_SECRET = process.env.SESSION_SECRET || "ada-university-voting-system-secret";
+  // Stronger session secret with crypto-based fallback
+  const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
 
   // Rate limiting maps
   const loginAttempts = new Map();
@@ -23,6 +24,9 @@ export function setupAuth(app) {
     saveUninitialized: false,
     cookie: { 
       secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+      sameSite: 'lax', // Prevents CSRF in modern browsers
+      path: '/',       // Restrict cookies to root path
       maxAge: 24 * 60 * 60 * 1000 // 24 hours
     },
     store: storage.sessionStore,
@@ -254,14 +258,31 @@ export function setupAuth(app) {
       // Delete pending user
       await storage.deletePendingUser(email);
       
-      // Log user in
+      // Log user in with session rotation for security
       req.login(newUser, (err) => {
         if (err) {
           console.error("Login error after OTP verification:", err);
           return res.status(500).json({ message: "An error occurred during login." });
         }
         
-        res.status(200).json(newUser);
+        // Security enhancement: Regenerate session ID on new user login to prevent session fixation
+        req.session.regenerate((regErr) => {
+          if (regErr) {
+            console.error("Session regeneration error:", regErr);
+            return res.status(500).json({ message: "An error occurred during login." });
+          }
+          
+          // Need to re-login user after session regeneration
+          req.login(newUser, (loginErr) => {
+            if (loginErr) {
+              console.error("Re-login after session regeneration error:", loginErr);
+              return res.status(500).json({ message: "An error occurred during login." });
+            }
+            
+            console.log("New user login successful with session rotation");
+            res.status(200).json(newUser);
+          });
+        });
       });
     } catch (error) {
       console.error("OTP verification error:", error);
@@ -326,12 +347,28 @@ export function setupAuth(app) {
           return next(err);
         }
         
-        // Reset login attempts on successful login
-        loginAttempts.delete(key);
-        // Log success without revealing the email address
-        console.log("Login successful");
-        
-        return res.status(200).json(user);
+        // Security enhancement: Regenerate session ID on login to prevent session fixation
+        req.session.regenerate((regErr) => {
+          if (regErr) {
+            console.error("Session regeneration error:", regErr);
+            return next(regErr);
+          }
+          
+          // Need to re-login user after session regeneration
+          req.login(user, (loginErr) => {
+            if (loginErr) {
+              console.error("Re-login after session regeneration error:", loginErr);
+              return next(loginErr);
+            }
+            
+            // Reset login attempts on successful login
+            loginAttempts.delete(key);
+            // Log success without revealing the email address
+            console.log("Login successful with session rotation");
+            
+            return res.status(200).json(user);
+          });
+        });
       });
     })(req, res, next);
   });
