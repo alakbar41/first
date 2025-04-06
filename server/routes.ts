@@ -70,11 +70,55 @@ function validateCSRFToken(req: Request, res: Response, next: NextFunction) {
 // Security headers middleware
 function securityHeaders(req: Request, res: Response, next: NextFunction) {
   // Security headers
+  // Standard security headers
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('Content-Security-Policy', "default-src 'self'; connect-src 'self' ws: wss:; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; font-src 'self' data:");
   res.setHeader('Referrer-Policy', 'same-origin');
+  
+  // Strict Transport Security - tell browsers to always use HTTPS
+  if (process.env.NODE_ENV === 'production') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+  }
+  
+  // Enhanced Content Security Policy
+  // More restrictive CSP with specific domains for Polygon connections
+  const cspDirectives = [
+    // Default restriction - only allow from same origin
+    "default-src 'self'",
+    
+    // Allow connections to WebSockets and API endpoints
+    "connect-src 'self' ws: wss: https://*.polygon-amoy.infura.io wss://*.polygon-amoy.infura.io https://polygonscan.com https://amoy.polygonscan.com https://polygon-amoy.infura.io",
+    
+    // Allow images from our domain, data URLs, and blobs
+    "img-src 'self' data: blob: https://polygonscan.com https://amoy.polygonscan.com",
+    
+    // Allow styles from our domain and inline (needed for shadcn)
+    "style-src 'self' 'unsafe-inline'",
+    
+    // Allow scripts from our domain and inline (needed for React dev)
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+    
+    // Allow fonts from our domain and data URLs
+    "font-src 'self' data:",
+    
+    // Allow frames from same origin only
+    "frame-src 'self'",
+    
+    // Block form submissions to external URLs
+    "form-action 'self'",
+    
+    // Allow object/embed from same origin only
+    "object-src 'none'",
+    
+    // Restrict base URI to our domain
+    "base-uri 'self'",
+    
+    // Restrict manifest files to our domain
+    "manifest-src 'self'"
+  ];
+  
+  res.setHeader('Content-Security-Policy', cspDirectives.join('; '));
   
   next();
 }

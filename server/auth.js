@@ -391,4 +391,83 @@ export function setupAuth(app) {
     
     res.status(200).json(req.user);
   });
+  
+  // Password change endpoint for logged-in users with session rotation
+  app.post("/api/password/change", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+    
+    try {
+      const { currentPassword, newPassword } = req.body;
+      
+      // Validate input using schema (imported from shared/schema.ts)
+      if (!newPassword || newPassword.length < 8) {
+        return res.status(400).json({ message: "New password must be at least 8 characters" });
+      }
+      
+      // Check if new password contains at least one uppercase letter
+      if (!/[A-Z]/.test(newPassword)) {
+        return res.status(400).json({ message: "New password must contain at least one uppercase letter" });
+      }
+      
+      // Check if new password contains at least one lowercase letter
+      if (!/[a-z]/.test(newPassword)) {
+        return res.status(400).json({ message: "New password must contain at least one lowercase letter" });
+      }
+      
+      // Check if new password contains at least one number
+      if (!/[0-9]/.test(newPassword)) {
+        return res.status(400).json({ message: "New password must contain at least one number" });
+      }
+      
+      // Check if new password contains at least one special character
+      if (!/[^A-Za-z0-9]/.test(newPassword)) {
+        return res.status(400).json({ message: "New password must contain at least one special character" });
+      }
+      
+      // Get user
+      const user = await storage.getUserByEmail(req.user.email);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Verify current password
+      const passwordMatches = await comparePasswords(currentPassword, user.password);
+      if (!passwordMatches) {
+        return res.status(401).json({ message: "Current password is incorrect" });
+      }
+      
+      // Hash new password
+      const hashedPassword = await hashPassword(newPassword);
+      
+      // Update password
+      await storage.updateUserPassword(user.email, hashedPassword);
+      
+      // Security enhancement: Regenerate session after password change
+      req.session.regenerate((regErr) => {
+        if (regErr) {
+          console.error("Session regeneration error:", regErr);
+          return res.status(500).json({ message: "An error occurred during password change" });
+        }
+        
+        // Need to re-login user after session regeneration
+        req.login(user, (loginErr) => {
+          if (loginErr) {
+            console.error("Re-login after session regeneration error:", loginErr);
+            return res.status(500).json({ message: "An error occurred during password change" });
+          }
+          
+          // Update last activity timestamp for inactivity timeout
+          req.session.lastActivity = Date.now();
+          console.log("Password successfully changed with session rotation");
+          
+          res.status(200).json({ message: "Password updated successfully" });
+        });
+      });
+    } catch (error) {
+      console.error("Password change error:", error);
+      res.status(500).json({ message: "An error occurred during password change" });
+    }
+  });
 }

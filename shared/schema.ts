@@ -2,6 +2,15 @@ import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Strong password validation schema
+// Requires at least 8 characters, 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character
+export const strongPasswordSchema = z.string()
+  .min(8, "Password must be at least 8 characters")
+  .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+  .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+  .regex(/[0-9]/, "Password must contain at least one number")
+  .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character");
+
 // Constants for dropdown options
 export const FACULTY_ABBREVIATIONS = {
   "SITE": "School of IT and Engineering",
@@ -105,6 +114,9 @@ export const electionCandidates = pgTable("election_candidates", {
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
+}).extend({
+  // Apply strong password validation for new user registrations
+  password: strongPasswordSchema,
 });
 
 export const insertPendingUserSchema = createInsertSchema(pendingUsers)
@@ -152,6 +164,12 @@ export const loginSchema = z.object({
   isAdmin: z.boolean().optional()
 });
 
+// Schema for validating password update
+export const passwordUpdateSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: strongPasswordSchema,
+});
+
 // OTP verification schema
 export const otpVerifySchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -177,12 +195,15 @@ export type InsertElectionCandidate = z.infer<typeof insertElectionCandidateSche
 export type LoginData = z.infer<typeof loginSchema>;
 export type OtpVerifyData = z.infer<typeof otpVerifySchema>;
 export type SendOtpData = z.infer<typeof sendOtpSchema>;
+export type PasswordUpdateData = z.infer<typeof passwordUpdateSchema>;
 
-// Reset/forgot password schema
+
+
+// Reset/forgot password schema with enhanced validation
 export const resetPasswordSchema = z.object({
   email: z.string().email("Invalid email address"),
   otp: z.string().length(6, "OTP must be 6 digits"),
-  newPassword: z.string().min(8, "Password must be at least 8 characters"),
+  newPassword: strongPasswordSchema,
 });
 
 export type ResetPasswordData = z.infer<typeof resetPasswordSchema>;
