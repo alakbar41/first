@@ -660,35 +660,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Email is required" });
       }
       
+      // Check if a real user exists with this email
       const user = await storage.getUserByEmail(email);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
+      
+      // Only proceed with the actual reset if the user exists
+      if (user) {
+        // Generate OTP
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        
+        // Check if pending user exists
+        const pendingUser = await storage.getPendingUserByEmail(email);
+        if (pendingUser) {
+          // Update existing pending user with new OTP
+          await storage.updatePendingUserOtp(email, otp);
+        } else {
+          // Create a new pending user for password reset with minimum required fields
+          await storage.createPendingUser({
+            email,
+            otp,
+            type: "reset",
+            password: "temporary", // This will be replaced when reset is complete
+            faculty: "none", // Not relevant for password reset
+            createdAt: new Date()
+          });
+        }
+        
+        // Send OTP to email
+        await mailer.sendOtp(email, otp);
       }
       
-      // Generate OTP
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
-      
-      // Check if pending user exists
-      const pendingUser = await storage.getPendingUserByEmail(email);
-      if (pendingUser) {
-        // Update existing pending user with new OTP
-        await storage.updatePendingUserOtp(email, otp);
-      } else {
-        // Create a new pending user for password reset with minimum required fields
-        await storage.createPendingUser({
-          email,
-          otp,
-          type: "reset",
-          password: "temporary", // This will be replaced when reset is complete
-          faculty: "none", // Not relevant for password reset
-          createdAt: new Date()
-        });
-      }
-      
-      // Send OTP to email
-      await mailer.sendOtp(email, otp);
-      
-      res.status(200).json({ message: "OTP sent to email for password reset" });
+      // Always return the same success message, whether the user exists or not
+      // This prevents user enumeration attacks
+      res.status(200).json({ message: "If the email exists in our system, a verification code has been sent. Please check your inbox." });
     } catch (error) {
       console.error("Password reset error:", error);
       res.status(500).json({ message: "Failed to initiate password reset" });
@@ -710,8 +713,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Verify OTP
       const pendingUser = await storage.getPendingUserByEmail(email);
+      
       if (!pendingUser || pendingUser.otp !== otp) {
-        return res.status(400).json({ message: "Invalid OTP" });
+        // Security best practice: Use a generic error message to prevent user enumeration
+        // This message does not reveal if the email exists or if just the OTP is wrong
+        return res.status(400).json({ 
+          message: "Verification failed. Please ensure your email and verification code are correct."
+        });
+      }
+      
+      // Verify user actually exists before updating password
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        // This should rarely happen (only if user was deleted between reset request and verification)
+        // Still using generic message to avoid leaking information
+        return res.status(400).json({ 
+          message: "Verification failed. Please ensure your email and verification code are correct."
+        });
       }
       
       // Hash the new password 

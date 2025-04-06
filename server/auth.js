@@ -38,7 +38,7 @@ export function setupAuth(app) {
   }
 
   async function comparePasswords(plainPassword, hashedPassword) {
-    console.log(`Comparing passwords: plain (length ${plainPassword.length}), hashed (length ${hashedPassword.length})`);
+    // Removed detailed logging of sensitive information
     
     // Check if the stored password is already a bcrypt hash
     const isBcryptHash = hashedPassword.startsWith('$2b$') || hashedPassword.startsWith('$2a$');
@@ -49,7 +49,6 @@ export function setupAuth(app) {
     }
     
     const result = await bcrypt.compare(plainPassword, hashedPassword);
-    console.log(`Password comparison result: ${result}`);
     return result;
   }
 
@@ -120,14 +119,22 @@ export function setupAuth(app) {
       const { email, password, faculty } = req.body;
       
       // Validate email is from ADA University
-      if (!email.endsWith('@ada.edu.az')) {
+      // Convert email to lowercase for case-insensitive checking
+      const normalizedEmail = email.toLowerCase();
+      if (!normalizedEmail.endsWith('@ada.edu.az')) {
         return res.status(400).json({ message: "Registration requires an ADA University email address." });
       }
       
-      // Check if user already exists
+      // Check if user already exists, but DON'T reveal this information
+      // Just silently handle it differently
       const existingUser = await storage.getUserByEmail(email);
       if (existingUser) {
-        return res.status(400).json({ message: "Email is already registered." });
+        // To prevent user enumeration, don't disclose that this email exists
+        // instead, send a generic success message as if we sent OTP
+        console.log("Registration attempt for existing email - security measure activated");
+        return res.status(200).json({ 
+          message: "Registration initiated. Please verify your email. Check your inbox for verification code."
+        });
       }
       
       // Generate OTP and create pending user
@@ -184,8 +191,13 @@ export function setupAuth(app) {
       
       // Get pending user
       const pendingUser = await storage.getPendingUserByEmail(email);
+      
+      // Security improvement: Don't reveal if no pending registration exists
       if (!pendingUser) {
-        return res.status(404).json({ message: "No pending registration found for this email." });
+        // Return a generic success message, even though we didn't actually send anything
+        // This prevents attackers from determining which emails have pending registrations
+        console.log("OTP requested for non-existent pending user - security measure activated");
+        return res.status(200).json({ message: "If a verification is pending for this email, a new code has been sent." });
       }
       
       // Generate new OTP
@@ -211,19 +223,24 @@ export function setupAuth(app) {
       // Get pending user
       const pendingUser = await storage.getPendingUserByEmail(email);
       
+      // Security improvement: Use a consistent error message for all verification failures
+      const genericErrorMessage = "Verification failed. Please ensure your email and verification code are correct.";
+      
       if (!pendingUser) {
-        return res.status(404).json({ message: "No pending registration found for this email." });
+        // Don't reveal that no pending registration exists
+        console.log("OTP verification attempted for non-existent pending user");
+        return res.status(401).json({ message: genericErrorMessage });
       }
       
       // Check if OTP expired (3 minutes)
       if (Date.now() - pendingUser.createdAt.getTime() > OTP_EXPIRY_TIME) {
         await storage.deletePendingUser(email);
-        return res.status(401).json({ message: "Verification code has expired. Please request a new one." });
+        return res.status(401).json({ message: genericErrorMessage });
       }
       
       // Verify OTP
       if (pendingUser.otp !== otp) {
-        return res.status(401).json({ message: "Invalid verification code." });
+        return res.status(401).json({ message: genericErrorMessage });
       }
       
       // Create verified user
@@ -255,19 +272,12 @@ export function setupAuth(app) {
   app.post("/api/login", async (req, res, next) => {
     const { email, password } = req.body;
     
-    console.log(`Login attempt for: ${email}`);
+    // Reduce verbosity of logs to prevent leaking sensitive information
+    // Just log that an attempt was made without the actual email
+    console.log("Login attempt received");
     
     if (!email) {
       return res.status(400).json({ message: "Email is required" });
-    }
-    
-    // For debugging purposes, get the user directly
-    const user = await storage.getUserByEmail(email);
-    if (user) {
-      console.log(`User found with ID: ${user.id}`);
-      console.log(`Stored password length: ${user.password.length}`);
-    } else {
-      console.log(`No user found with email: ${email}`);
     }
     
     // Use email as the rate limiting key instead of IP
@@ -277,8 +287,10 @@ export function setupAuth(app) {
     const limit = rateLimit(key, loginAttempts, 5, 5 * 60 * 1000); // 5 attempts per 5 minutes
     
     if (limit.limited) {
+      // Note: We're still showing the remaining time, which could be used to confirm a user exists
+      // In a real high-security system, you might want to use a generic error without timing info
       return res.status(429).json({ 
-        message: `Too many failed login attempts for this account. Please try again in ${Math.floor(limit.secondsRemaining / 60)} minutes and ${limit.secondsRemaining % 60} seconds.`,
+        message: `Too many login attempts. Please try again in ${Math.floor(limit.secondsRemaining / 60)} minutes and ${limit.secondsRemaining % 60} seconds.`,
         retryAfter: limit.secondsRemaining
       });
     }
@@ -292,7 +304,8 @@ export function setupAuth(app) {
       if (!user) {
         // Increment failed attempts count
         rateLimit(key, loginAttempts, 5, 5 * 60 * 1000);
-        console.log(`Authentication failed for ${email}`);
+        // Log failed authentication without the email to improve security
+        console.log("Authentication failed - invalid credentials");
         return res.status(401).json({ message: info?.message || "Invalid login credentials" });
       }
       
@@ -302,7 +315,8 @@ export function setupAuth(app) {
       if (isAdmin !== undefined && isAdmin !== user.isAdmin) {
         // User is trying to login with wrong account type
         rateLimit(key, loginAttempts, 5, 5 * 60 * 1000);
-        console.log(`User tried to log in to wrong account type. isAdmin expected: ${user.isAdmin}, got: ${isAdmin}`);
+        // Log wrong account type attempt without details
+        console.log("User attempted to log in with wrong account type");
         return res.status(401).json({ message: "Invalid login credentials" });
       }
       
@@ -314,7 +328,8 @@ export function setupAuth(app) {
         
         // Reset login attempts on successful login
         loginAttempts.delete(key);
-        console.log(`Login successful for ${email}`);
+        // Log success without revealing the email address
+        console.log("Login successful");
         
         return res.status(200).json(user);
       });

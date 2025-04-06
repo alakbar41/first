@@ -645,6 +645,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateUserPassword(email: string, newPassword: string): Promise<void> {
+    // First check if the user exists to provide a better error message
+    const user = await this.getUserByEmail(email);
+    if (!user) {
+      // In production, you might want to log this but not throw an error for security reasons
+      // However, for debugging purposes, we'll throw an error but without user enumeration
+      throw new Error("Password update failed - account verification error");
+    }
+    
     await db.update(users)
       .set({ password: newPassword })
       .where(eq(users.email, email));
