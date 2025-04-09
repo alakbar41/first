@@ -57,9 +57,9 @@ export function SimpleVoteButton({
       const functionSignature = '0x0121b93f';
       
       // Convert parameters to 32-byte hex strings
-      function toHex32(num) {
-        return num.toString(16).padStart(64, '0');
-      }
+      const toHex32 = (num: number): string => {
+        return Math.floor(num).toString(16).padStart(64, '0');
+      };
       
       // Construct data manually for maximum compatibility
       const data = functionSignature + 
@@ -75,13 +75,15 @@ export function SimpleVoteButton({
         duration: 10000,
       });
       
-      // Let MetaMask handle all gas estimation and parameters
+      // Use explicit low gas settings to reduce costs
       const txHash = await window.ethereum.request({
         method: 'eth_sendTransaction',
         params: [{
           from: account,
           to: '0xb74F07812B45dBEc4eC3E577194F6a798a060e5D',
-          data: data
+          data: data,
+          gas: '0x00F4240', // 1,000,000 gas limit in hex (providing extra gas but that doesn't mean it will use all of it)
+          gasPrice: '0x03B9ACA00' // 1 gwei in hex (using legacy gasPrice which is more compatible)
         }],
       });
       
@@ -94,11 +96,11 @@ export function SimpleVoteButton({
       if (onVoteSuccess && txHash) {
         onVoteSuccess(txHash);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Vote failed:', error);
       
       // Extract the message from the error object
-      const errorMessage = error.message || 'Unknown error';
+      const errorMessage = error?.message || 'Unknown error';
       
       if (errorMessage.includes('user rejected')) {
         toast({
