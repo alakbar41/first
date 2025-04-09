@@ -50,7 +50,7 @@ export function SimpleVoteButton({
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
       const account = accounts[0];
       
-      // Use the blockchain ID if provided, otherwise fallback to database ID
+      // IMPORTANT: We must use the blockchain ID if provided, as the database ID won't match what's on the blockchain
       const actualElectionId = blockchainId || electionId;
       
       // Function signature for vote(uint256,uint256,uint256)
@@ -68,6 +68,8 @@ export function SimpleVoteButton({
                   toHex32(0); // nonce = 0
       
       console.log("Voting for election ID:", actualElectionId, "candidate ID:", candidateId);
+      console.log("Database election ID:", electionId, "Blockchain election ID:", blockchainId || "same as database");
+      console.log("Contract address:", '0xb74F07812B45dBEc4eC3E577194F6a798a060e5D');
       
       toast({
         title: "Submitting vote...",
@@ -122,6 +124,13 @@ export function SimpleVoteButton({
           description: "There was a problem with the network connection. You may need testnet MATIC tokens or to adjust gas settings manually.",
           variant: "destructive",
           duration: 10000,
+        });
+      } else if (errorMessage.includes('execution reverted')) {
+        toast({
+          title: "Vote rejected by contract",
+          description: "Your transaction was sent but rejected by the smart contract. Common reasons: 1) You've already voted in this election, 2) The election is not active on the blockchain yet, 3) The blockchain ID doesn't match.",
+          variant: "destructive",
+          duration: 15000,
         });
       } else {
         toast({
