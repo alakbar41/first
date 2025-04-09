@@ -98,13 +98,13 @@ function securityHeaders(req: Request, res: Response, next: NextFunction) {
   }
   
   // Enhanced Content Security Policy
-  // More restrictive CSP with specific domains for Polygon connections
+  // More permissive CSP for Polygon blockchain connections
   const cspDirectives = [
     // Default restriction - only allow from same origin
     "default-src 'self'",
     
-    // Allow connections to WebSockets and API endpoints
-    "connect-src 'self' ws: wss: https://*.polygon-amoy.infura.io wss://*.polygon-amoy.infura.io https://polygonscan.com https://amoy.polygonscan.com https://polygon-amoy.infura.io",
+    // Allow connections to WebSockets, API endpoints, and Polygon RPC
+    "connect-src 'self' ws: wss: https://*.polygon.technology https://rpc-amoy.polygon.technology https://*.polygon-amoy.infura.io wss://*.polygon-amoy.infura.io https://polygonscan.com https://amoy.polygonscan.com https://polygon-amoy.infura.io",
     
     // Allow images from our domain, data URLs, and blobs
     "img-src 'self' data: blob: https://polygonscan.com https://amoy.polygonscan.com",
