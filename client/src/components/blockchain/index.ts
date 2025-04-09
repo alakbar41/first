@@ -1,5 +1,4 @@
 export * from './ConnectWalletButton';
-export * from './VoteForSenatorButton';
-export * from './VoteForTicketButton';
+export * from './SimpleVoteButton';
 export * from './BlockchainElectionDetails';
 export * from './CandidateVoteCount';

@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { useWeb3 } from "@/hooks/use-web3";
 import { useToast } from "@/hooks/use-toast";
-import { voteForSenator, checkIfVoted, voteForSenatorWithCustomGas } from '@/lib/improved-blockchain-integration';
-import { Loader2, Check, VoteIcon } from "lucide-react";
+import { Loader2, VoteIcon } from "lucide-react";
+import { ethers } from 'ethers';
+
+// Contract address on Polygon Amoy
+const CONTRACT_ADDRESS = '0xb74f07812b45DBEc4eC3E577194F6a798a060e5D';
+// Vote function ABI signature
+const VOTE_FUNCTION_ABI = ['function vote(uint256 electionId, uint256 candidateId)'];
 
 interface VoteForSenatorButtonProps {
   electionId: number;
@@ -13,16 +17,18 @@ interface VoteForSenatorButtonProps {
   className?: string;
   disabled?: boolean;
   onVoteSuccess?: (txHash: string) => void;
+  blockchainId?: number; // Optional blockchain ID if different from database ID
 }
 
 export function VoteForSenatorButton({ 
   electionId,
   candidateId,
-  variant = "secondary", 
+  variant = "default", 
   size = "sm",
   className = "",
   disabled = false,
-  onVoteSuccess
+  onVoteSuccess,
+  blockchainId
 }: VoteForSenatorButtonProps) {
   // All hooks must be at the top level of the component
   const { isWalletConnected, connectWallet } = useWeb3();
