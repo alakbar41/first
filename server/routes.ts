@@ -12,6 +12,8 @@ import {
   insertCandidateSchema, 
   insertElectionCandidateSchema,
   resetPasswordSchema,
+  tokenRequestSchema,
+  tokenVerifySchema,
   Election
 } from "@shared/schema";
 import { z } from "zod";
