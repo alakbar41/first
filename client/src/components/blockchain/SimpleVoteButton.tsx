@@ -5,7 +5,7 @@ import { Loader2, VoteIcon } from "lucide-react";
 import { ethers } from 'ethers';
 
 // Contract address on Polygon Amoy
-const CONTRACT_ADDRESS = '0xb74f07812b45DBEc4eC3E577194F6a798a060e5D';
+const RAW_CONTRACT_ADDRESS = '0xb74F07812B45dBEc4eC3E577194F6a798a060e5D';
 // Vote function ABI signature
 const VOTE_FUNCTION_ABI = ['function vote(uint256 electionId, uint256 candidateId, uint256 nonce)'];
 
@@ -55,13 +55,6 @@ export function SimpleVoteButton({
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
       const account = accounts[0];
       
-      // Use ethers.js to create a Web3Provider
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
-      
-      // Create contract instance
-      const contract = new ethers.Contract(CONTRACT_ADDRESS, VOTE_FUNCTION_ABI, signer);
-      
       // Use the blockchain ID if provided, otherwise fallback to database ID
       const actualElectionId = blockchainId || electionId;
       
@@ -71,20 +64,32 @@ export function SimpleVoteButton({
         duration: 10000,
       });
       
-      // Execute vote function with explicit gas settings
-      const tx = await contract.vote(
-        actualElectionId, 
-        candidateId,
-        0, // nonce parameter (always 0 for typical voting)
-        {
-          // Use minimal gas settings
-          gasLimit: 80000,
-          // For EIP-1559 transactions (type 2)
-          maxPriorityFeePerGas: ethers.parseUnits("0.5", "gwei"),
-          maxFeePerGas: ethers.parseUnits("3", "gwei"),
-          type: 2
-        }
-      );
+      // Helper to convert a number to a 32-byte hex string with proper padding
+      const numberTo32ByteHex = (num: number): string => {
+        return Math.floor(num).toString(16).padStart(64, '0');
+      };
+      
+      // Vote method ID (first 4 bytes of keccak256("vote(uint256,uint256,uint256)"))
+      const VOTE_METHOD_ID = '0x0121b93f';
+      
+      // Manually construct the transaction data
+      // Function selector (4 bytes) + encoded parameters (3 x 32 bytes each)
+      const data = VOTE_METHOD_ID + 
+                  numberTo32ByteHex(actualElectionId) + 
+                  numberTo32ByteHex(candidateId) + 
+                  numberTo32ByteHex(0); // nonce parameter is 0
+      
+      // Direct low-level call to MetaMask
+      const txHash = await window.ethereum.request({
+        method: 'eth_sendTransaction',
+        params: [{
+          from: account,
+          to: '0xb74F07812B45dBEc4eC3E577194F6a798a060e5D', // Contract address hard-coded
+          data,
+          value: '0x0',
+          gas: '0x013880', // 80,000 in hex
+        }],
+      });
       
       toast({
         title: "Transaction submitted",
@@ -92,17 +97,14 @@ export function SimpleVoteButton({
         duration: 5000,
       });
       
-      // Wait for transaction confirmation
-      const receipt = await tx.wait();
-      
       toast({
         title: "Vote successful!",
         description: "Your vote has been recorded on the blockchain.",
         duration: 5000,
       });
       
-      if (onVoteSuccess) {
-        onVoteSuccess(receipt.hash);
+      if (onVoteSuccess && txHash) {
+        onVoteSuccess(txHash);
       }
     } catch (error: any) {
       console.error('Vote failed:', error);
