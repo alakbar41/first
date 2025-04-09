@@ -7,7 +7,6 @@ declare module './auth.js' {
 declare module './mailer.js' {
   export const mailer: {
     sendOtp(to: string, otp: string): Promise<void>;
-    sendPasswordResetLink(to: string, resetToken: string, resetUrl: string): Promise<void>;
   };
 }
 

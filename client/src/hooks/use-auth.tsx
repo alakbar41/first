@@ -4,16 +4,7 @@ import {
   useMutation,
   UseMutationResult,
 } from "@tanstack/react-query";
-import { 
-  User, 
-  InsertUser, 
-  LoginData, 
-  OtpVerifyData, 
-  SendOtpData, 
-  ResetPasswordData, 
-  ResetTokenVerifyData,
-  ResetPasswordWithTokenData
-} from "@shared/schema";
+import { User, InsertUser, LoginData, OtpVerifyData, SendOtpData, ResetPasswordData } from "@shared/schema";
 import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -26,15 +17,8 @@ type AuthContextType = {
   registerMutation: UseMutationResult<void, Error, InsertUser>;
   sendOtpMutation: UseMutationResult<void, Error, SendOtpData>;
   verifyOtpMutation: UseMutationResult<User, Error, OtpVerifyData>;
-  
-  // Legacy OTP-based password reset
   resetPasswordSendOtpMutation: UseMutationResult<void, Error, SendOtpData>;
   resetPasswordVerifyMutation: UseMutationResult<void, Error, ResetPasswordData>;
-  
-  // Token-based password reset
-  resetPasswordTokenMutation: UseMutationResult<void, Error, SendOtpData>;
-  verifyResetTokenMutation: UseMutationResult<void, Error, ResetTokenVerifyData>;
-  setNewPasswordMutation: UseMutationResult<void, Error, ResetPasswordWithTokenData>;
 };
 
 export const AuthContext = createContext<AuthContextType | null>(null);
@@ -153,10 +137,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
-  // Legacy OTP-based password reset mutations
+  // Password reset mutations
   const resetPasswordSendOtpMutation = useMutation({
     mutationFn: async (data: SendOtpData) => {
-      const res = await apiRequest("POST", "/api/reset-password/send-otp", data);
+      const res = await apiRequest("POST", "/api/reset-password", data);
       const result = await res.json();
       return result;
     },
@@ -184,62 +168,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       toast({
         title: "Password Reset Successful",
         description: "Your password has been reset. You can now log in with your new password.",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Password Reset Failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-  
-  // Token-based password reset mutations
-  const resetPasswordTokenMutation = useMutation({
-    mutationFn: async (data: SendOtpData) => {
-      const res = await apiRequest("POST", "/api/reset-password", data);
-      const result = await res.json();
-      return result;
-    },
-    onSuccess: () => {
-      toast({
-        title: "Password Reset Email Sent",
-        description: "If your email exists in our system, you will receive a password reset link shortly.",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Failed to send reset link",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const verifyResetTokenMutation = useMutation({
-    mutationFn: async (data: ResetTokenVerifyData) => {
-      const res = await apiRequest("POST", "/api/reset-password/verify-token", data);
-      await res.json();
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Invalid Reset Link",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-  
-  const setNewPasswordMutation = useMutation({
-    mutationFn: async (data: ResetPasswordWithTokenData) => {
-      const res = await apiRequest("POST", "/api/reset-password/set-password", data);
-      await res.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Password Reset Successful",
-        description: "Your password has been reset successfully. You can now log in with your new password.",
       });
     },
     onError: (error: Error) => {

@@ -12,8 +12,6 @@ import {
   insertCandidateSchema, 
   insertElectionCandidateSchema,
   resetPasswordSchema,
-  resetTokenVerifySchema,
-  resetPasswordWithTokenSchema,
   Election
 } from "@shared/schema";
 import { z } from "zod";
@@ -201,137 +199,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     next();
   });
   
-  // Test endpoints for reset password flow - NO CSRF VALIDATION, only for testing
-  
-  // Test token generation
-  app.post("/api/test/reset-password", async (req, res) => {
-    try {
-      const { email } = req.body;
-      
-      if (!email) {
-        return res.status(400).json({ message: "Email is required" });
-      }
-      
-      // Check if a real user exists with this email
-      const user = await storage.getUserByEmail(email);
-      
-      // Only proceed with the actual reset if the user exists
-      if (user) {
-        // Generate a secure random token for password reset
-        const resetToken = crypto.randomBytes(32).toString('hex');
-        
-        // Set expiration time (30 minutes from now)
-        const tokenExpiry = new Date();
-        tokenExpiry.setMinutes(tokenExpiry.getMinutes() + 30);
-        
-        // Check if pending user exists
-        const pendingUser = await storage.getPendingUserByEmail(email);
-        if (pendingUser) {
-          // Update existing pending user with new reset token
-          await storage.updatePendingUserResetToken(email, resetToken, tokenExpiry);
-        } else {
-          // Create a new pending user for password reset with minimum required fields
-          await storage.createPendingUser({
-            email,
-            resetToken,
-            tokenExpiry,
-            otp: "000000", // Not used for token-based reset
-            type: "reset",
-            password: "temporary", // This will be replaced when reset is complete
-            faculty: "none", // Not relevant for password reset
-            createdAt: new Date(),
-            isAdmin: user.isAdmin // Preserve admin status
-          });
-        }
-        
-        // Create reset URL that client will use
-        const host = req.get('host') || 'localhost:3000';
-        const protocol = req.secure ? 'https' : 'http';
-        const resetUrl = `${protocol}://${host}/auth/reset-password?token=${resetToken}&email=${encodeURIComponent(email)}`;
-        
-        // Don't actually send email in test endpoint, just return the info for testing
-        return res.status(200).json({
-          message: "Reset token generated successfully",
-          resetToken,
-          tokenExpiry,
-          resetUrl,
-          pendingUser: await storage.getPendingUserByEmail(email)
-        });
-      }
-      
-      return res.status(404).json({ message: "User not found" });
-    } catch (error) {
-      console.error("Password reset error:", error);
-      res.status(500).json({ message: "Failed to initiate password reset" });
-    }
+  // Get CSRF token
+  app.get("/api/csrf-token", (req: Request, res: Response) => {
+    const token = generateCSRFToken(req);
+    res.json({ csrfToken: token });
   });
   
-  // Test token verification endpoint - No CSRF check
-  app.post("/api/test/verify-reset-token", async (req, res) => {
-    try {
-      const { email, token } = req.body;
-      
-      if (!email || !token) {
-        return res.status(400).json({ message: "Email and token are required" });
-      }
-      
-      // Verify token exists in the database
-      const pendingUser = await storage.getPendingUserByEmail(email);
-      
-      if (!pendingUser || pendingUser.type !== 'reset' || pendingUser.resetToken !== token) {
-        return res.status(400).json({ message: "Invalid or expired token" });
-      }
-      
-      // Check if token is expired
-      if (!pendingUser.tokenExpiry || new Date() > new Date(pendingUser.tokenExpiry)) {
-        return res.status(400).json({ message: "Token has expired" });
-      }
-      
-      // Token is valid
-      return res.status(200).json({ 
-        message: "Token is valid",
-        pendingUser
-      });
-    } catch (error) {
-      console.error("Token verification error:", error);
-      res.status(500).json({ message: "Failed to verify token" });
-    }
-  });
-  
-  // Test reset password endpoint - No CSRF check
-  app.post("/api/test/reset-password-complete", async (req, res) => {
-    try {
-      const { email, token, newPassword } = req.body;
-      
-      if (!email || !token || !newPassword) {
-        return res.status(400).json({ message: "Email, token and new password are required" });
-      }
-      
-      // Verify token exists and is valid
-      const pendingUser = await storage.getPendingUserByEmail(email);
-      
-      if (!pendingUser || pendingUser.type !== 'reset' || pendingUser.resetToken !== token) {
-        return res.status(400).json({ message: "Invalid or expired token" });
-      }
-      
-      // Check if token is expired
-      if (!pendingUser.tokenExpiry || new Date() > new Date(pendingUser.tokenExpiry)) {
-        return res.status(400).json({ message: "Token has expired" });
-      }
-      
-      // Set new password and update the user
-      const hashedPassword = await hashPassword(newPassword);
-      await storage.updateUserPassword(email, hashedPassword);
-      
-      // Remove the pending user entry for security
-      await storage.deletePendingUser(email);
-      
-      return res.status(200).json({ message: "Password has been reset successfully" });
-    } catch (error) {
-      console.error("Password reset completion error:", error);
-      res.status(500).json({ message: "Failed to reset password" });
-    }
-  });
+  // Apply CSRF protection to all routes after this point
+  app.use(validateCSRFToken);
   
   // Set up secure file upload
   const uploadsDir = path.join(process.cwd(), 'uploads');
@@ -993,161 +868,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Password Reset Routes - Email Link Method
+  // Password Reset Routes
   app.post("/api/reset-password", async (req, res) => {
-    try {
-      const { email } = req.body;
-      
-      if (!email) {
-        return res.status(400).json({ message: "Email is required" });
-      }
-      
-      // Check if a real user exists with this email
-      const user = await storage.getUserByEmail(email);
-      
-      // Only proceed with the actual reset if the user exists
-      if (user) {
-        // Generate a secure random token for password reset
-        const resetToken = crypto.randomBytes(32).toString('hex');
-        
-        // Set expiration time (30 minutes from now)
-        const tokenExpiry = new Date();
-        tokenExpiry.setMinutes(tokenExpiry.getMinutes() + 30);
-        
-        // Check if pending user exists
-        const pendingUser = await storage.getPendingUserByEmail(email);
-        if (pendingUser) {
-          // Update existing pending user with new reset token
-          await storage.updatePendingUserResetToken(email, resetToken, tokenExpiry);
-        } else {
-          // Create a new pending user for password reset with minimum required fields
-          await storage.createPendingUser({
-            email,
-            resetToken,
-            tokenExpiry,
-            otp: "000000", // Not used for token-based reset
-            type: "reset",
-            password: "temporary", // This will be replaced when reset is complete
-            faculty: "none", // Not relevant for password reset
-            createdAt: new Date(),
-            isAdmin: user.isAdmin // Preserve admin status
-          });
-        }
-        
-        // Create reset URL that client will use
-        const host = req.get('host') || 'localhost:3000';
-        const protocol = req.secure ? 'https' : 'http';
-        const resetUrl = `${protocol}://${host}/auth/reset-password?token=${resetToken}&email=${encodeURIComponent(email)}`;
-        
-        // Send reset link email
-        await mailer.sendPasswordResetLink(email, resetToken, resetUrl);
-      }
-      
-      // Always return the same success message, whether the user exists or not
-      // This prevents user enumeration attacks
-      res.status(200).json({ 
-        message: "If the email exists in our system, a password reset link has been sent. Please check your inbox."
-      });
-    } catch (error) {
-      console.error("Password reset error:", error);
-      res.status(500).json({ message: "Failed to initiate password reset" });
-    }
-  });
-  
-  // Endpoint to verify token before showing password reset form
-  app.post("/api/reset-password/verify-token", async (req, res) => {
-    try {
-      const result = resetTokenVerifySchema.safeParse(req.body);
-      
-      if (!result.success) {
-        return res.status(400).json({ 
-          message: "Invalid token data", 
-          errors: result.error.format() 
-        });
-      }
-      
-      const { email, token } = result.data;
-      
-      // Find pending user by reset token
-      const pendingUser = await storage.getPendingUserByResetToken(token);
-      
-      // Verify the token is valid and not expired
-      if (!pendingUser || pendingUser.email !== email || pendingUser.type !== 'reset' || 
-          !pendingUser.tokenExpiry || new Date() > new Date(pendingUser.tokenExpiry)) {
-        // Security best practice: Use a generic error message
-        return res.status(400).json({ 
-          message: "Invalid or expired password reset link. Please request a new link."
-        });
-      }
-      
-      // Verify user still exists
-      const user = await storage.getUserByEmail(email);
-      if (!user) {
-        return res.status(400).json({ 
-          message: "Invalid or expired password reset link. Please request a new link."
-        });
-      }
-      
-      // Token is valid
-      res.status(200).json({ message: "Token verified successfully" });
-    } catch (error) {
-      console.error("Token verification error:", error);
-      res.status(500).json({ message: "Failed to verify reset token" });
-    }
-  });
-  
-  // Endpoint to set new password using reset token
-  app.post("/api/reset-password/set-password", async (req, res) => {
-    try {
-      const result = resetPasswordWithTokenSchema.safeParse(req.body);
-      
-      if (!result.success) {
-        return res.status(400).json({ 
-          message: "Invalid password reset data", 
-          errors: result.error.format() 
-        });
-      }
-      
-      const { email, token, newPassword } = result.data;
-      
-      // Find pending user by reset token
-      const pendingUser = await storage.getPendingUserByResetToken(token);
-      
-      // Verify the token is valid and not expired
-      if (!pendingUser || pendingUser.email !== email || pendingUser.type !== 'reset' || 
-          !pendingUser.tokenExpiry || new Date() > new Date(pendingUser.tokenExpiry)) {
-        return res.status(400).json({ 
-          message: "Invalid or expired password reset link. Please request a new link."
-        });
-      }
-      
-      // Verify user actually exists before updating password
-      const user = await storage.getUserByEmail(email);
-      if (!user) {
-        return res.status(400).json({ 
-          message: "Invalid or expired password reset link. Please request a new link."
-        });
-      }
-      
-      // Hash the new password
-      const hashedPassword = await hashPassword(newPassword);
-      console.log(`Reset password: Generated hash for password (length ${hashedPassword.length})`);
-      
-      // Update password with the hashed version
-      await storage.updateUserPassword(email, hashedPassword);
-      
-      // Remove pending user
-      await storage.deletePendingUser(email);
-      
-      res.status(200).json({ message: "Password reset successful" });
-    } catch (error) {
-      console.error("Password reset verification error:", error);
-      res.status(500).json({ message: "Failed to reset password" });
-    }
-  });
-  
-  // Legacy OTP-based password reset endpoints (keeping for backward compatibility)
-  app.post("/api/reset-password/send-otp", async (req, res) => {
     try {
       const { email } = req.body;
       
@@ -1193,7 +915,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.post("/api/reset-password/verify-otp", async (req, res) => {
+  app.post("/api/reset-password/verify", async (req, res) => {
     try {
       const result = resetPasswordSchema.safeParse(req.body);
       

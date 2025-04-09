@@ -72,8 +72,6 @@ export const pendingUsers = pgTable("pending_users", {
   password: text("password").notNull(),
   faculty: text("faculty").notNull(),
   otp: text("otp").notNull(),
-  resetToken: text("reset_token"), // New field for password reset tokens
-  tokenExpiry: timestamp("token_expiry"), // New field for token expiration
   createdAt: timestamp("created_at").notNull(),
   isAdmin: boolean("is_admin").default(false).notNull(),
   type: text("type").notNull().default("registration"), // "registration" or "reset"
@@ -201,20 +199,7 @@ export type PasswordUpdateData = z.infer<typeof passwordUpdateSchema>;
 
 
 
-// Token verification schema for password reset links
-export const resetTokenVerifySchema = z.object({
-  email: z.string().email("Invalid email address"),
-  token: z.string().min(32, "Invalid reset token"),
-});
-
-// Reset password schema with token validation (for the link approach)
-export const resetPasswordWithTokenSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  token: z.string().min(32, "Invalid reset token"),
-  newPassword: strongPasswordSchema,
-});
-
-// Legacy reset password schema with OTP validation (kept for backward compatibility)
+// Reset/forgot password schema with enhanced validation
 export const resetPasswordSchema = z.object({
   email: z.string().email("Invalid email address"),
   otp: z.string().length(6, "OTP must be 6 digits"),
@@ -222,5 +207,3 @@ export const resetPasswordSchema = z.object({
 });
 
 export type ResetPasswordData = z.infer<typeof resetPasswordSchema>;
-export type ResetTokenVerifyData = z.infer<typeof resetTokenVerifySchema>;
-export type ResetPasswordWithTokenData = z.infer<typeof resetPasswordWithTokenSchema>;

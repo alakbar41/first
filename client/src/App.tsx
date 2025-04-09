@@ -5,7 +5,6 @@ import { Toaster } from "@/components/ui/toaster";
 import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth-page";
 import RegisterPage from "@/pages/register-page";
-import ResetPasswordPage from "@/pages/reset-password-page";
 import Dashboard from "@/pages/dashboard-redesigned"; // Using the redesigned dashboard
 import Results from "@/pages/results";
 import Guidelines from "@/pages/guidelines";
@@ -36,7 +35,6 @@ function Router() {
       {/* Auth routes */}
       <Route path="/auth" component={AuthPage} />
       <Route path="/register" component={RegisterPage} />
-      <Route path="/auth/reset-password" component={ResetPasswordPage} />
       
       {/* 404 route */}
       <Route component={NotFound} />
