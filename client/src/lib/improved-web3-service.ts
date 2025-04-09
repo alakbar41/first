@@ -440,7 +440,7 @@ Technical error: ${gasError.message}`);
     }
   }
 
-  // Start an election
+  // Start an election with enhanced gas and transaction handling
   async startElection(electionId: number): Promise<void> {
     try {
       if (!this.contract || !this.signer) {
@@ -469,29 +469,47 @@ Technical error: ${gasError.message}`);
         throw new Error(`Cannot activate election ${electionId} because it is already in ${electionDetails.status === ElectionStatus.Completed ? 'completed' : 'cancelled'} state.`);
       }
 
-      // Use higher gas settings to ensure transaction success on Polygon Amoy
+      // Use ultra-high gas settings to ensure transaction success on Polygon Amoy
       const options = {
-        gasLimit: 1000000, // Higher gas limit for better success chance
-        maxPriorityFeePerGas: ethers.parseUnits("20.0", "gwei"),
-        maxFeePerGas: ethers.parseUnits("50.0", "gwei"),
+        gasLimit: 2000000, // Ultra high gas limit for activation 
+        maxPriorityFeePerGas: ethers.parseUnits("30.0", "gwei"), // Very high priority fee
+        maxFeePerGas: ethers.parseUnits("70.0", "gwei"), // Very high max fee
         type: 2, // Use EIP-1559 transaction type
       };
       
       // Get nonce before transaction to ensure proper sequencing
       const nonce = await this.getNextNonce();
-      const optionsWithNonce = { ...options, nonce };
       
-      console.log(`Starting election ${electionId} with nonce ${nonce}`);
+      console.log(`Starting election ${electionId} with nonce ${nonce} and high gas settings`);
 
-      const tx = await this.contract.updateElectionStatus(
+      // Use populateTransaction to separate contract parameters from transaction options
+      const tx = await this.contract.updateElectionStatus.populateTransaction(
         electionId, 
-        ElectionStatus.Active,
-        optionsWithNonce
+        ElectionStatus.Active
       );
       
-      console.log(`Election activation transaction sent: ${tx.hash}`);
+      // Combine the function call with our transaction options
+      const transaction = {
+        ...tx,
+        ...options,
+        nonce
+      };
       
-      const receipt = await tx.wait(2); // Wait for 2 confirmations
+      console.log(`Sending activation transaction with options:`, options);
+      
+      // Send the transaction with the signer
+      const txResponse = await this.signer.sendTransaction(transaction);
+      
+      console.log(`Election activation transaction sent: ${txResponse.hash}`);
+      
+      // Wait for the transaction to be mined with a longer timeout
+      const receipt = await txResponse.wait(3); // Wait for 3 confirmations for better reliability
+      
+      // Add null check to satisfy TypeScript
+      if (!receipt) {
+        throw new Error("Transaction was sent but no receipt was returned");
+      }
+      
       console.log(`Election activation confirmed in block ${receipt.blockNumber}`);
       
       // Verify the status was updated correctly
@@ -501,9 +519,22 @@ Technical error: ${gasError.message}`);
       } else {
         console.warn(`Election ${electionId} status is ${updatedDetails.status} after activation attempt. Expected ${ElectionStatus.Active}.`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Failed to start election ${electionId}:`, error);
-      throw error;
+      
+      // Enhanced error handling for different error cases
+      if (error.message?.includes("Internal JSON-RPC error") || error.message?.includes("insufficient funds")) {
+        throw new Error("Transaction failed due to network congestion or insufficient funds. Please ensure you have enough testnet MATIC and try again with higher gas settings in MetaMask: Gas limit=2000000, Max priority fee=30 gwei, Max fee=70 gwei.");
+      } else if (error.message?.includes("execution reverted")) {
+        throw new Error("Election activation was rejected by the smart contract. This could be because the election status has changed or there's an issue with the contract implementation.");
+      } else if (error.code === "CALL_EXCEPTION") {
+        throw new Error("Contract call exception. This usually indicates a problem with the contract's implementation or validation logic. Please contact the system administrator.");
+      } else if (error.message?.includes("replacement fee too low") || error.message?.includes("transaction underpriced")) {
+        throw new Error("Transaction fee too low. Please try again with higher gas fees in MetaMask settings.");
+      } else {
+        // For any other errors, throw with the original message
+        throw error;
+      }
     }
   }
   
@@ -539,20 +570,37 @@ Technical error: ${gasError.message}`);
       
       // Get nonce before transaction to ensure proper sequencing
       const nonce = await this.getNextNonce();
-      const optionsWithNonce = { ...customGasOptions, nonce };
       
       console.log(`Starting election ${electionId} with custom gas settings and nonce ${nonce}`);
 
-      const tx = await this.contract.updateElectionStatus(
+      // Use populateTransaction to separate contract parameters from transaction options
+      const tx = await this.contract.updateElectionStatus.populateTransaction(
         electionId, 
-        ElectionStatus.Active,
-        optionsWithNonce
+        ElectionStatus.Active
       );
       
-      console.log(`Election activation transaction sent with custom gas: ${tx.hash}`);
+      // Combine the function call with custom gas options and nonce
+      const transaction = {
+        ...tx,
+        ...customGasOptions,
+        nonce
+      };
       
-      // Wait for 3 confirmations with custom gas settings (more reliable)
-      const receipt = await tx.wait(3);
+      console.log(`Sending activation transaction with custom gas options:`, customGasOptions);
+      
+      // Send the transaction with the signer
+      const txResponse = await this.signer.sendTransaction(transaction);
+      
+      console.log(`Election activation transaction sent: ${txResponse.hash}`);
+      
+      // Wait for the transaction to be mined with a longer timeout
+      const receipt = await txResponse.wait(3); // Wait for 3 confirmations for better reliability
+      
+      // Add null check to satisfy TypeScript
+      if (!receipt) {
+        throw new Error("Transaction was sent but no receipt was returned");
+      }
+      
       console.log(`Election activation confirmed in block ${receipt.blockNumber}`);
       
       // Verify the status was updated correctly
@@ -562,13 +610,26 @@ Technical error: ${gasError.message}`);
       } else {
         console.warn(`Election ${electionId} status is ${updatedDetails.status} after activation attempt with custom gas. Expected ${ElectionStatus.Active}.`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Failed to start election ${electionId} with custom gas:`, error);
-      throw error;
+      
+      // Enhanced error handling for different error cases
+      if (error.message?.includes("Internal JSON-RPC error") || error.message?.includes("insufficient funds")) {
+        throw new Error("Transaction failed due to network congestion or insufficient funds. Please ensure you have enough testnet MATIC and try these ultra-high settings in MetaMask: Gas limit=3000000, Max priority fee=50 gwei, Max fee=100 gwei.");
+      } else if (error.message?.includes("execution reverted")) {
+        throw new Error("Election activation was rejected by the smart contract. This could be because the election status has changed or there's an issue with the contract implementation.");
+      } else if (error.code === "CALL_EXCEPTION") {
+        throw new Error("Contract call exception. This usually indicates a problem with the contract's implementation or validation logic. Please contact the system administrator.");
+      } else if (error.message?.includes("replacement fee too low") || error.message?.includes("transaction underpriced")) {
+        throw new Error("Transaction fee too low. Please try again with even higher gas fees in MetaMask settings.");
+      } else {
+        // For any other errors, throw with the original message
+        throw error;
+      }
     }
   }
 
-  // Stop an election
+  // Stop an election (with improved transaction handling)
   async stopElection(electionId: number): Promise<void> {
     try {
       if (!this.contract || !this.signer) {
@@ -580,27 +641,74 @@ Technical error: ${gasError.message}`);
         throw new Error('Wallet not connected');
       }
 
-      // Use optimized gas settings with higher limits for Polygon Amoy
+      // Use ultra-high gas settings to ensure transaction success on Polygon Amoy
       const options = {
-        gasLimit: 500000,
-        maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"),
-        maxFeePerGas: ethers.parseUnits("35.0", "gwei"),
+        gasLimit: 2000000, // Ultra high gas limit for better success chance
+        maxPriorityFeePerGas: ethers.parseUnits("30.0", "gwei"), // Very high priority fee
+        maxFeePerGas: ethers.parseUnits("70.0", "gwei"), // Very high max fee
         type: 2, // Use EIP-1559 transaction type
       };
 
-      const tx = await this.contract.updateElectionStatus(
-        electionId, 
-        ElectionStatus.Completed,
-        options
+      // Get nonce before transaction to ensure proper sequencing
+      const nonce = await this.getNextNonce();
+      
+      // Use populateTransaction pattern for better transaction handling
+      const tx = await this.contract.updateElectionStatus.populateTransaction(
+        electionId,
+        ElectionStatus.Completed
       );
-      await tx.wait();
-    } catch (error) {
+      
+      // Combine the function call with our transaction options
+      const transaction = {
+        ...tx,
+        ...options,
+        nonce
+      };
+      
+      console.log(`Sending stop election transaction with options:`, options);
+      
+      // Send the transaction with the signer
+      const txResponse = await this.signer.sendTransaction(transaction);
+      
+      console.log(`Stop election transaction sent: ${txResponse.hash}`);
+      
+      // Wait for the transaction to be mined with a longer timeout
+      const receipt = await txResponse.wait(3); // Wait for 3 confirmations for better reliability
+      
+      // Add null check to satisfy TypeScript
+      if (!receipt) {
+        throw new Error("Transaction was sent but no receipt was returned");
+      }
+      
+      console.log(`Stop election confirmed in block ${receipt.blockNumber}`);
+      
+      // Verify the status was updated correctly
+      const updatedDetails = await this.getElectionDetails(electionId);
+      if (updatedDetails.status === ElectionStatus.Completed) {
+        console.log(`Election ${electionId} successfully stopped.`);
+      } else {
+        console.warn(`Election ${electionId} status is ${updatedDetails.status} after stop attempt. Expected ${ElectionStatus.Completed}.`);
+      }
+    } catch (error: any) {
       console.error(`Failed to stop election ${electionId}:`, error);
-      throw error;
+      
+      // Enhanced error handling for different error cases
+      if (error.message?.includes("Internal JSON-RPC error") || error.message?.includes("insufficient funds")) {
+        throw new Error("Transaction failed due to network congestion or insufficient funds. Please ensure you have enough testnet MATIC and try again with higher gas settings in MetaMask.");
+      } else if (error.message?.includes("execution reverted")) {
+        throw new Error("Election stop was rejected by the smart contract. This could be because the election is already completed or there's an issue with the contract implementation.");
+      } else if (error.code === "CALL_EXCEPTION") {
+        throw new Error("Contract call exception. This usually indicates a problem with the contract's implementation or validation logic.");
+      } else if (error.message?.includes("replacement fee too low") || error.message?.includes("transaction underpriced")) {
+        throw new Error("Transaction fee too low. Please try again with higher gas fees in MetaMask settings.");
+      } else {
+        // For any other errors, throw with the original message
+        throw error;
+      }
     }
   }
 
-  // Auto-update an election's status based on time
+  // Auto-update an election's status based on time (improved transaction handling)
   async autoUpdateElectionStatus(electionId: number): Promise<void> {
     try {
       if (!this.contract || !this.signer) {
@@ -649,22 +757,45 @@ Technical error: ${gasError.message}`);
 
       console.log(`Updating election ${electionId} status from ${electionDetails.status} to target status ${targetStatus}`);
 
-      // Use significantly higher gas settings to ensure the transaction goes through
+      // Use ultra-high gas settings to ensure transaction success on Polygon Amoy
       const options = {
-        gasLimit: 1000000, // High gas limit for better chance of success
-        maxPriorityFeePerGas: ethers.parseUnits("20.0", "gwei"),
-        maxFeePerGas: ethers.parseUnits("50.0", "gwei"),
+        gasLimit: 2000000, // Ultra high gas limit for better success chance
+        maxPriorityFeePerGas: ethers.parseUnits("30.0", "gwei"), // Very high priority fee
+        maxFeePerGas: ethers.parseUnits("70.0", "gwei"), // Very high max fee
         type: 2, // Use EIP-1559 transaction type
       };
 
       // Get nonce before transaction to ensure proper sequencing
       const nonce = await this.getNextNonce();
-      const optionsWithNonce = { ...options, nonce };
       
-      const tx = await this.contract.autoUpdateElectionStatus(electionId, optionsWithNonce);
-      console.log(`Election status update transaction sent: ${tx.hash} with nonce ${nonce}`);
+      // Use populateTransaction pattern for better transaction handling
+      const tx = await this.contract.updateElectionStatus.populateTransaction(
+        electionId,
+        targetStatus
+      );
       
-      const receipt = await tx.wait(2); // Wait for 2 confirmations
+      // Combine the function call with our transaction options
+      const transaction = {
+        ...tx,
+        ...options,
+        nonce
+      };
+      
+      console.log(`Sending status update transaction with options:`, options);
+      
+      // Send the transaction with the signer
+      const txResponse = await this.signer.sendTransaction(transaction);
+      
+      console.log(`Election status update transaction sent: ${txResponse.hash}`);
+      
+      // Wait for the transaction to be mined with a longer timeout
+      const receipt = await txResponse.wait(3); // Wait for 3 confirmations for better reliability
+      
+      // Add null check to satisfy TypeScript
+      if (!receipt) {
+        throw new Error("Transaction was sent but no receipt was returned");
+      }
+      
       console.log(`Election status update confirmed in block ${receipt.blockNumber}`);
       
       // Check the updated status to verify it was correctly updated
@@ -687,19 +818,25 @@ Technical error: ${gasError.message}`);
       // Log detailed error for debugging
       console.error(`Failed to auto-update election status for ${electionId}:`, error);
       
-      // Check for specific errors and handle accordingly
-      if (error.message && error.message.includes("execution reverted")) {
-        console.warn(`Contract execution reverted when updating election ${electionId}. This may indicate the election status cannot be changed due to contract restrictions.`);
-      } else if (error.message && error.message.includes("nonce too low")) {
-        console.error(`Nonce too low error when updating election ${electionId}. This suggests a transaction sequencing issue.`);
+      // Enhanced error handling for different error cases
+      if (error.message?.includes("Internal JSON-RPC error") || error.message?.includes("insufficient funds")) {
+        throw new Error("Transaction failed due to network congestion or insufficient funds. Please ensure you have enough testnet MATIC and try again with higher gas settings in MetaMask: Gas limit=2000000, Max priority fee=30 gwei, Max fee=70 gwei.");
+      } else if (error.message?.includes("execution reverted")) {
+        throw new Error("Status update was rejected by the smart contract. This could be because the election status has changed or there's an issue with the contract implementation.");
+      } else if (error.code === "CALL_EXCEPTION") {
+        throw new Error("Contract call exception. This usually indicates a problem with the contract's implementation or validation logic. Please contact the system administrator.");
+      } else if (error.message?.includes("replacement fee too low") || error.message?.includes("transaction underpriced")) {
+        throw new Error("Transaction fee too low. Please try again with higher gas fees in MetaMask settings.");
+      } else if (error.message?.includes("nonce too low")) {
+        throw new Error("Transaction nonce too low. This suggests a transaction sequencing issue. Please try reconnecting your wallet and try again.");
+      } else {
+        // For any other errors, throw with the original message
+        throw error;
       }
-      
-      // Re-throw the error for the calling function to handle
-      throw error;
     }
   }
 
-  // Finalize election results
+  // Finalize election results (with improved transaction handling)
   async finalizeResults(electionId: number): Promise<void> {
     try {
       if (!this.contract || !this.signer) {
@@ -711,19 +848,69 @@ Technical error: ${gasError.message}`);
         throw new Error('Wallet not connected');
       }
 
-      // Use optimized gas settings with higher limits for Polygon Amoy
+      // Use ultra-high gas settings to ensure transaction success on Polygon Amoy
       const options = {
-        gasLimit: 500000,
-        maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"),
-        maxFeePerGas: ethers.parseUnits("35.0", "gwei"),
+        gasLimit: 2000000, // Ultra high gas limit for better success chance
+        maxPriorityFeePerGas: ethers.parseUnits("30.0", "gwei"), // Very high priority fee
+        maxFeePerGas: ethers.parseUnits("70.0", "gwei"), // Very high max fee
         type: 2, // Use EIP-1559 transaction type
       };
 
-      const tx = await this.contract.finalizeResults(electionId, options);
-      await tx.wait();
-    } catch (error) {
+      // Get nonce before transaction to ensure proper sequencing
+      const nonce = await this.getNextNonce();
+      
+      // Use populateTransaction pattern for better transaction handling
+      const tx = await this.contract.finalizeResults.populateTransaction(
+        electionId
+      );
+      
+      // Combine the function call with our transaction options
+      const transaction = {
+        ...tx,
+        ...options,
+        nonce
+      };
+      
+      console.log(`Sending finalize results transaction with options:`, options);
+      
+      // Send the transaction with the signer
+      const txResponse = await this.signer.sendTransaction(transaction);
+      
+      console.log(`Finalize results transaction sent: ${txResponse.hash}`);
+      
+      // Wait for the transaction to be mined with a longer timeout
+      const receipt = await txResponse.wait(3); // Wait for 3 confirmations for better reliability
+      
+      // Add null check to satisfy TypeScript
+      if (!receipt) {
+        throw new Error("Transaction was sent but no receipt was returned");
+      }
+      
+      console.log(`Finalize results confirmed in block ${receipt.blockNumber}`);
+      
+      // Verify the results were finalized
+      const updatedDetails = await this.getElectionDetails(electionId);
+      if (updatedDetails.resultsFinalized) {
+        console.log(`Election ${electionId} results successfully finalized.`);
+      } else {
+        console.warn(`Election ${electionId} results finalization attempted, but resultsFinalized flag is still false.`);
+      }
+    } catch (error: any) {
       console.error(`Failed to finalize results for election ${electionId}:`, error);
-      throw error;
+      
+      // Enhanced error handling for different error cases
+      if (error.message?.includes("Internal JSON-RPC error") || error.message?.includes("insufficient funds")) {
+        throw new Error("Transaction failed due to network congestion or insufficient funds. Please ensure you have enough testnet MATIC and try again with higher gas settings in MetaMask.");
+      } else if (error.message?.includes("execution reverted")) {
+        throw new Error("Results finalization was rejected by the smart contract. This could be because the election is not completed yet or there's an issue with the contract implementation.");
+      } else if (error.code === "CALL_EXCEPTION") {
+        throw new Error("Contract call exception. This usually indicates a problem with the contract's implementation or validation logic.");
+      } else if (error.message?.includes("replacement fee too low") || error.message?.includes("transaction underpriced")) {
+        throw new Error("Transaction fee too low. Please try again with higher gas fees in MetaMask settings.");
+      } else {
+        // For any other errors, throw with the original message
+        throw error;
+      }
     }
   }
 
@@ -931,15 +1118,18 @@ Technical error: ${gasError.message}`);
   // Get next nonce for voter
   async getNextNonce(): Promise<number> {
     try {
-      if (!this.contract) {
-        throw new Error('Contract not initialized');
+      if (!this.provider || !this.walletAddress) {
+        throw new Error('Provider or wallet not initialized');
       }
 
-      const nonce = await this.contract.getNextNonce();
-      return Number(nonce);
+      // Get the transaction count (nonce) from the provider
+      const nonce = await this.provider.getTransactionCount(this.walletAddress);
+      console.log(`Retrieved nonce ${nonce} for wallet ${this.walletAddress}`);
+      return nonce;
     } catch (error) {
       console.error('Failed to get next nonce:', error);
-      throw error;
+      // Return 0 as a fallback value to avoid blocking the transaction
+      return 0;
     }
   }
 
