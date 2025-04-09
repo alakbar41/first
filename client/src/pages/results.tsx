@@ -1,4 +1,5 @@
 import { useAuth } from "@/hooks/use-auth";
+import { useWeb3 } from "@/hooks/use-web3";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { StudentSidebar } from "@/components/student/student-sidebar";
@@ -6,7 +7,7 @@ import { Candidate, Election, ElectionCandidate, getFacultyName } from "@shared/
 import { ChartBarIcon, ListOrderedIcon, Award, UserCircle, Trophy } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 
@@ -83,37 +84,75 @@ export default function Results() {
     enabled: !!electionCandidates && electionCandidates.length > 0,
   });
   
-  // Combine election candidates with their details and add vote counts
-  const candidatesWithVotes: CandidateWithVotes[] = useMemo(() => {
-    if (!electionCandidates || !candidatesData) return [];
-    
-    // First pass: create candidates with vote counts
-    const candidates = electionCandidates.map(ec => {
-      const fullCandidate = candidatesData.find(c => c.id === ec.candidateId);
-      if (!fullCandidate) return null;
+  // For blockchain vote counts
+  const { isInitialized, getCandidateVoteCount } = useWeb3();
+  const [candidatesWithVotes, setCandidatesWithVotes] = useState<CandidateWithVotes[]>([]);
+  const [isLoadingVotes, setIsLoadingVotes] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  
+  // Effect to load vote counts from blockchain
+  useEffect(() => {
+    const loadBlockchainVotes = async () => {
+      if (!electionCandidates || !candidatesData || !isInitialized || !selectedElection?.blockchainId) {
+        return;
+      }
       
-      // Simulated vote count (replace with blockchain data in the future)
-      const voteCount = Math.floor(Math.random() * 100);
+      setIsLoadingVotes(true);
+      setLoadError(null);
       
-      return {
-        ...fullCandidate,
-        voteCount,
-        percentage: 0, // Will calculate after getting total
-      };
-    }).filter((c): c is CandidateWithVotes => c !== null);
+      try {
+        // First pass: create candidates with blockchain vote counts
+        const candidatesWithoutVotes = electionCandidates.map(ec => {
+          const fullCandidate = candidatesData.find(c => c.id === ec.candidateId);
+          if (!fullCandidate) return null;
+          
+          return {
+            ...fullCandidate,
+            voteCount: 0, // Will be updated with blockchain data
+            percentage: 0, // Will calculate after getting total
+          };
+        }).filter((c): c is CandidateWithVotes => c !== null);
+        
+        // Second pass: fetch vote counts from blockchain for each candidate
+        const candidatesWithVotePromises = await Promise.all(
+          candidatesWithoutVotes.map(async (candidate) => {
+            try {
+              // Fetch the actual vote count from blockchain
+              const voteCount = await getCandidateVoteCount(candidate.id);
+              return {
+                ...candidate,
+                voteCount: voteCount
+              };
+            } catch (error) {
+              console.error(`Error getting vote count for candidate ${candidate.id}:`, error);
+              // If there's an error, return candidate with 0 votes
+              return candidate;
+            }
+          })
+        );
+        
+        // Calculate percentages
+        const totalVotes = candidatesWithVotePromises.reduce((sum, c) => sum + c.voteCount, 0);
+        
+        const finalCandidates = candidatesWithVotePromises.map(c => ({
+          ...c,
+          percentage: totalVotes > 0 ? Math.round((c.voteCount / totalVotes) * 100) : 0
+        }));
+        
+        // Sort by vote count (highest first)
+        const sortedCandidates = finalCandidates.sort((a, b) => b.voteCount - a.voteCount);
+        
+        setCandidatesWithVotes(sortedCandidates);
+      } catch (error) {
+        console.error("Error loading blockchain vote counts:", error);
+        setLoadError("Failed to load vote counts from blockchain. Please try again later.");
+      } finally {
+        setIsLoadingVotes(false);
+      }
+    };
     
-    // Calculate percentages
-    const totalVotes = candidates.reduce((sum, c) => sum + c.voteCount, 0);
-    
-    if (totalVotes > 0) {
-      candidates.forEach(c => {
-        c.percentage = Math.round((c.voteCount / totalVotes) * 100);
-      });
-    }
-    
-    // Sort by vote count (highest first)
-    return candidates.sort((a, b) => b.voteCount - a.voteCount);
-  }, [electionCandidates, candidatesData]);
+    loadBlockchainVotes();
+  }, [electionCandidates, candidatesData, isInitialized, selectedElection, getCandidateVoteCount]);
   
   // Identify President/VP pairs for President/VP elections
   const isPresidentVPElection = selectedElection?.position === "President/VP";
@@ -139,6 +178,7 @@ export default function Results() {
   }, [isPresidentVPElection, candidatesWithVotes]);
   
   const isLoading = isLoadingElections || isLoadingCandidates || isLoadingCandidatesData;
+  const isLoadingBlockchainData = isLoadingVotes && !isLoading;
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -195,129 +235,25 @@ export default function Results() {
                   
                   <TabsContent value="charts" className="space-y-4">
                     <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
-                      <h2 className="text-lg font-semibold text-gray-800 mb-4">
+                      <h2 className="text-lg font-semibold text-gray-800 mb-1">
                         {selectedElection.name} - Results Visualization
                       </h2>
+                      <div className="flex items-center text-sm text-green-600 mb-4">
+                        <div className="bg-green-100 p-1 rounded-full mr-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                        <span>All vote counts are verified from the blockchain</span>
+                      </div>
                       
                       <div className="h-80 bg-white rounded-md border border-gray-200 p-4">
-                        {candidatesWithVotes && candidatesWithVotes.length > 0 ? (
-                          isPresidentVPElection && candidatePairs.length > 0 ? (
-                            // President/VP election results visualization
-                            <div className="h-full flex flex-col justify-center space-y-6">
-                              {candidatePairs.map((candidate, index) => (
-                                <div key={candidate.id} className="flex items-center space-x-4">
-                                  <div className="w-8 text-right text-gray-600 text-sm font-medium">
-                                    {index + 1}
-                                  </div>
-                                  <div className="w-16 flex-shrink-0">
-                                    {candidate.pictureUrl ? (
-                                      <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-purple-100">
-                                        <img 
-                                          src={candidate.pictureUrl} 
-                                          alt={candidate.fullName} 
-                                          className="w-full h-full object-cover"
-                                          onError={(e) => {
-                                            const target = e.target as HTMLImageElement;
-                                            target.style.display = 'none';
-                                          }}
-                                        />
-                                      </div>
-                                    ) : (
-                                      <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
-                                        <UserCircle className="text-gray-400 w-8 h-8" />
-                                      </div>
-                                    )}
-                                  </div>
-                                  <div className="flex-grow">
-                                    <div className="flex items-center mb-1">
-                                      <div className="text-sm font-medium text-gray-900 mr-2">
-                                        {candidate.fullName}
-                                        {index === 0 && <span className="text-yellow-500 ml-1">👑</span>}
-                                      </div>
-                                      {candidate.runningMate && (
-                                        <Badge variant="outline" className="border-purple-300 text-purple-600 text-xs">
-                                          with {candidate.runningMate.fullName}
-                                        </Badge>
-                                      )}
-                                    </div>
-                                    <div className="w-full bg-gray-200 rounded-full h-6 overflow-hidden">
-                                      <div 
-                                        className={`h-full flex items-center rounded-full pl-2 ${
-                                          index === 0 ? "bg-purple-600" : 
-                                          index === 1 ? "bg-purple-400" : 
-                                          "bg-purple-300"
-                                        }`}
-                                        style={{ width: `${candidate.percentage}%` }}
-                                      >
-                                        <span className="text-xs font-medium text-white">
-                                          {candidate.percentage}%
-                                        </span>
-                                      </div>
-                                    </div>
-                                    <div className="flex justify-between mt-1 text-xs text-gray-500">
-                                      <span>0</span>
-                                      <span>{candidate.voteCount} votes</span>
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            // Standard election results visualization
-                            <div className="h-full flex flex-col justify-center space-y-4">
-                              {candidatesWithVotes.map((candidate, index) => (
-                                <div key={candidate.id} className="flex items-center space-x-4">
-                                  <div className="w-8 text-right text-gray-600 text-sm font-medium">
-                                    {index + 1}
-                                  </div>
-                                  <div className="w-16 flex-shrink-0">
-                                    {candidate.pictureUrl ? (
-                                      <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-purple-100">
-                                        <img 
-                                          src={candidate.pictureUrl} 
-                                          alt={candidate.fullName} 
-                                          className="w-full h-full object-cover"
-                                          onError={(e) => {
-                                            const target = e.target as HTMLImageElement;
-                                            target.style.display = 'none';
-                                          }}
-                                        />
-                                      </div>
-                                    ) : (
-                                      <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
-                                        <UserCircle className="text-gray-400 w-8 h-8" />
-                                      </div>
-                                    )}
-                                  </div>
-                                  <div className="flex-grow">
-                                    <div className="text-sm font-medium text-gray-900 mb-1">
-                                      {candidate.fullName}
-                                      {index === 0 && <span className="text-yellow-500 ml-1">👑</span>}
-                                    </div>
-                                    <div className="w-full bg-gray-200 rounded-full h-6 overflow-hidden">
-                                      <div 
-                                        className={`h-full flex items-center rounded-full pl-2 ${
-                                          index === 0 ? "bg-purple-600" : 
-                                          index === 1 ? "bg-purple-400" : 
-                                          "bg-purple-300"
-                                        }`}
-                                        style={{ width: `${candidate.percentage}%` }}
-                                      >
-                                        <span className="text-xs font-medium text-white">
-                                          {candidate.percentage}%
-                                        </span>
-                                      </div>
-                                    </div>
-                                    <div className="flex justify-between mt-1 text-xs text-gray-500">
-                                      <span>0</span>
-                                      <span>{candidate.voteCount} votes</span>
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )
-                        ) : (
+                        {isLoadingBlockchainData ? (
+                          <div className="h-full flex flex-col items-center justify-center text-center p-4">
+                            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-700 mb-4"></div>
+                            <p className="text-gray-600">Loading blockchain vote data...</p>
+                          </div>
+                        ) : candidatesWithVotes.length === 0 ? (
                           <div className="h-full flex items-center justify-center">
                             <div className="text-center p-4">
                               <ChartBarIcon className="h-16 w-16 mx-auto text-gray-400 mb-4" />
@@ -326,6 +262,121 @@ export default function Results() {
                               </p>
                             </div>
                           </div>
+                        ) : isPresidentVPElection && candidatePairs.length > 0 ? (
+                          // President/VP election results visualization
+                          <div className="h-full flex flex-col justify-center space-y-6">
+                            {candidatePairs.map((candidate, index) => (
+                              <div key={candidate.id} className="flex items-center space-x-4">
+                                <div className="w-8 text-right text-gray-600 text-sm font-medium">
+                                  {index + 1}
+                                </div>
+                                <div className="w-16 flex-shrink-0">
+                                  {candidate.pictureUrl ? (
+                                    <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-purple-100">
+                                      <img 
+                                        src={candidate.pictureUrl} 
+                                        alt={candidate.fullName} 
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => {
+                                          const target = e.target as HTMLImageElement;
+                                          target.style.display = 'none';
+                                        }}
+                                      />
+                                    </div>
+                                  ) : (
+                                    <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
+                                      <UserCircle className="text-gray-400 w-8 h-8" />
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex-grow">
+                                  <div className="flex items-center mb-1">
+                                    <div className="text-sm font-medium text-gray-900 mr-2">
+                                      {candidate.fullName}
+                                      {index === 0 && <span className="text-yellow-500 ml-1">👑</span>}
+                                    </div>
+                                    {candidate.runningMate && (
+                                      <Badge variant="outline" className="border-purple-300 text-purple-600 text-xs">
+                                        with {candidate.runningMate.fullName}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <div className="w-full bg-gray-200 rounded-full h-6 overflow-hidden">
+                                    <div 
+                                      className={`h-full flex items-center rounded-full pl-2 ${
+                                        index === 0 ? "bg-purple-600" : 
+                                        index === 1 ? "bg-purple-400" : 
+                                        "bg-purple-300"
+                                      }`}
+                                      style={{ width: `${candidate.percentage}%` }}
+                                    >
+                                      <span className="text-xs font-medium text-white">
+                                        {candidate.percentage}%
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <div className="flex justify-between mt-1 text-xs text-gray-500">
+                                    <span>0</span>
+                                    <span>{candidate.voteCount} votes</span>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          // Standard election results visualization
+                          <div className="h-full flex flex-col justify-center space-y-4">
+                            {candidatesWithVotes.map((candidate, index) => (
+                              <div key={candidate.id} className="flex items-center space-x-4">
+                                <div className="w-8 text-right text-gray-600 text-sm font-medium">
+                                  {index + 1}
+                                </div>
+                                <div className="w-16 flex-shrink-0">
+                                  {candidate.pictureUrl ? (
+                                    <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-purple-100">
+                                      <img 
+                                        src={candidate.pictureUrl} 
+                                        alt={candidate.fullName} 
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => {
+                                          const target = e.target as HTMLImageElement;
+                                          target.style.display = 'none';
+                                        }}
+                                      />
+                                    </div>
+                                  ) : (
+                                    <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
+                                      <UserCircle className="text-gray-400 w-8 h-8" />
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex-grow">
+                                  <div className="text-sm font-medium text-gray-900 mb-1">
+                                    {candidate.fullName}
+                                    {index === 0 && <span className="text-yellow-500 ml-1">👑</span>}
+                                  </div>
+                                  <div className="w-full bg-gray-200 rounded-full h-6 overflow-hidden">
+                                    <div 
+                                      className={`h-full flex items-center rounded-full pl-2 ${
+                                        index === 0 ? "bg-purple-600" : 
+                                        index === 1 ? "bg-purple-400" : 
+                                        "bg-purple-300"
+                                      }`}
+                                      style={{ width: `${candidate.percentage}%` }}
+                                    >
+                                      <span className="text-xs font-medium text-white">
+                                        {candidate.percentage}%
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <div className="flex justify-between mt-1 text-xs text-gray-500">
+                                    <span>0</span>
+                                    <span>{candidate.voteCount} votes</span>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         )}
                       </div>
                     </div>
@@ -333,34 +384,51 @@ export default function Results() {
                   
                   <TabsContent value="table" className="space-y-4">
                     <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
-                      <h2 className="text-lg font-semibold text-gray-800 mb-4">
+                      <h2 className="text-lg font-semibold text-gray-800 mb-1">
                         {selectedElection.name} - Detailed Results
                       </h2>
+                      <div className="flex items-center text-sm text-green-600 mb-4">
+                        <div className="bg-green-100 p-1 rounded-full mr-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                        <span>All vote counts are verified from the blockchain</span>
+                      </div>
                       
                       <div className="overflow-hidden border border-gray-200 rounded-md">
-                        <table className="min-w-full divide-y divide-gray-200">
-                          <thead className="bg-gray-50">
-                            <tr>
-                              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Rank
-                              </th>
-                              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Candidate
-                              </th>
-                              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Position
-                              </th>
-                              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Faculty
-                              </th>
-                              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Votes
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
-                            {candidatesWithVotes && candidatesWithVotes.length > 0 ? (
-                              isPresidentVPElection && candidatePairs.length > 0 ? (
+                        {isLoadingBlockchainData ? (
+                          <div className="flex flex-col items-center justify-center text-center p-12">
+                            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-700 mb-4"></div>
+                            <p className="text-gray-600">Loading blockchain vote data...</p>
+                          </div>
+                        ) : candidatesWithVotes.length === 0 ? (
+                          <div className="text-center py-12">
+                            <p className="text-gray-500">No voting results available for this election yet.</p>
+                          </div>
+                        ) : (
+                          <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  Rank
+                                </th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  Candidate
+                                </th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  Position
+                                </th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  Faculty
+                                </th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  Votes
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                              {isPresidentVPElection && candidatePairs.length > 0 ? 
                                 // Display President/VP pairs
                                 candidatePairs.map((candidate, index) => (
                                   <tr key={candidate.id} className={index === 0 ? "bg-purple-50" : ""}>
@@ -410,7 +478,7 @@ export default function Results() {
                                     </td>
                                   </tr>
                                 ))
-                              ) : (
+                                : 
                                 // Standard candidate display for Senator elections
                                 candidatesWithVotes.map((candidate, index) => (
                                   <tr key={candidate.id} className={index === 0 ? "bg-purple-50" : ""}>
@@ -448,16 +516,10 @@ export default function Results() {
                                     </td>
                                   </tr>
                                 ))
-                              )
-                            ) : (
-                              <tr className="text-center">
-                                <td colSpan={5} className="px-6 py-8 text-sm text-gray-500">
-                                  <p>No results available for this election yet.</p>
-                                </td>
-                              </tr>
-                            )}
-                          </tbody>
-                        </table>
+                              }
+                            </tbody>
+                          </table>
+                        )}
                       </div>
                     </div>
                   </TabsContent>
