@@ -85,15 +85,28 @@ export function ViewElectionCandidatesDialog({
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Candidate
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Position
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {isPresidentVP ? "Vice President" : "Faculty"}
-                    </th>
+                    {isPresidentVP ? (
+                      <>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          President
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Vice President
+                        </th>
+                      </>
+                    ) : (
+                      <>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Candidate
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Position
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Faculty
+                        </th>
+                      </>
+                    )}
                     <th scope="col" className="relative px-6 py-3">
                       <span className="sr-only">Actions</span>
                     </th>
@@ -102,60 +115,86 @@ export function ViewElectionCandidatesDialog({
                 <tbody className="bg-white divide-y divide-gray-200">
                   {electionCandidates.map((ec: any) => (
                     <tr key={ec.id} className="hover:bg-gray-50">
-                      {/* Candidate */}
-                      <td className="px-6 py-4">
-                        <div className="flex items-center">
-                          <Avatar className="h-10 w-10 mr-3">
-                            {ec.candidate?.pictureUrl ? (
-                              <AvatarImage src={ec.candidate.pictureUrl} alt={ec.candidate.fullName} />
-                            ) : (
-                              <AvatarFallback>
-                                <UserRound className="h-5 w-5" />
-                              </AvatarFallback>
-                            )}
-                          </Avatar>
-                          <div className="flex flex-col">
-                            <span className="text-sm font-medium text-gray-900">{ec.candidate?.fullName}</span>
-                            <span className="text-sm text-gray-500">ID: {ec.candidate?.studentId}</span>
-                          </div>
-                        </div>
-                      </td>
-                      
-                      {/* Position */}
-                      <td className="px-6 py-4 text-sm text-gray-500">
-                        <Badge className="bg-purple-100 text-purple-800 border border-purple-200">
-                          {ec.candidate?.position}
-                        </Badge>
-                      </td>
-                      
-                      {/* Running Mate/Faculty */}
-                      <td className="px-6 py-4 text-sm text-gray-500">
-                        {isPresidentVP && ec.runningMate ? (
-                          <div className="flex items-center">
-                            <Avatar className="h-9 w-9 mr-3">
-                              {ec.runningMate?.pictureUrl ? (
-                                <AvatarImage src={ec.runningMate.pictureUrl} alt={ec.runningMate.fullName} />
-                              ) : (
-                                <AvatarFallback>
-                                  <UserRound className="h-5 w-5" />
-                                </AvatarFallback>
-                              )}
-                            </Avatar>
-                            <div className="flex flex-col">
-                              <span className="text-sm font-medium text-gray-900">{ec.runningMate?.fullName}</span>
-                              <span className="text-sm text-gray-500 flex space-x-1">
-                                <span>{ec.runningMate?.position}</span>
-                                <span>·</span>
-                                <span>ID: {ec.runningMate?.studentId}</span>
-                              </span>
+                      {isPresidentVP ? (
+                        <>
+                          {/* President column */}
+                          <td className="px-6 py-4">
+                            <div className="flex items-center">
+                              <Avatar className="h-10 w-10 mr-3">
+                                {ec.candidate?.pictureUrl ? (
+                                  <AvatarImage src={ec.candidate.pictureUrl} alt={ec.candidate.fullName} />
+                                ) : (
+                                  <AvatarFallback>
+                                    <UserRound className="h-5 w-5" />
+                                  </AvatarFallback>
+                                )}
+                              </Avatar>
+                              <div className="flex flex-col">
+                                <span className="text-sm font-medium text-gray-900">{ec.candidate?.fullName}</span>
+                                <span className="text-sm text-gray-500">ID: {ec.candidate?.studentId}</span>
+                              </div>
                             </div>
-                          </div>
-                        ) : (
-                          <span>{getFacultyName(ec.candidate?.faculty)}</span>
-                        )}
-                      </td>
+                          </td>
+                          
+                          {/* Vice President column */}
+                          <td className="px-6 py-4 text-sm text-gray-500">
+                            {ec.runningMate ? (
+                              <div className="flex items-center">
+                                <Avatar className="h-9 w-9 mr-3">
+                                  {ec.runningMate?.pictureUrl ? (
+                                    <AvatarImage src={ec.runningMate.pictureUrl} alt={ec.runningMate.fullName} />
+                                  ) : (
+                                    <AvatarFallback>
+                                      <UserRound className="h-5 w-5" />
+                                    </AvatarFallback>
+                                  )}
+                                </Avatar>
+                                <div className="flex flex-col">
+                                  <span className="text-sm font-medium text-gray-900">{ec.runningMate?.fullName}</span>
+                                  <span className="text-sm text-gray-500">ID: {ec.runningMate?.studentId}</span>
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-gray-400 italic">No running mate selected</span>
+                            )}
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          {/* Candidate */}
+                          <td className="px-6 py-4">
+                            <div className="flex items-center">
+                              <Avatar className="h-10 w-10 mr-3">
+                                {ec.candidate?.pictureUrl ? (
+                                  <AvatarImage src={ec.candidate.pictureUrl} alt={ec.candidate.fullName} />
+                                ) : (
+                                  <AvatarFallback>
+                                    <UserRound className="h-5 w-5" />
+                                  </AvatarFallback>
+                                )}
+                              </Avatar>
+                              <div className="flex flex-col">
+                                <span className="text-sm font-medium text-gray-900">{ec.candidate?.fullName}</span>
+                                <span className="text-sm text-gray-500">ID: {ec.candidate?.studentId}</span>
+                              </div>
+                            </div>
+                          </td>
+                          
+                          {/* Position */}
+                          <td className="px-6 py-4 text-sm text-gray-500">
+                            <Badge className="bg-purple-100 text-purple-800 border border-purple-200">
+                              {ec.candidate?.position}
+                            </Badge>
+                          </td>
+                          
+                          {/* Faculty */}
+                          <td className="px-6 py-4 text-sm text-gray-500">
+                            <span>{getFacultyName(ec.candidate?.faculty)}</span>
+                          </td>
+                        </>
+                      )}
                       
-                      {/* Actions */}
+                      {/* Actions column */}
                       <td className="px-6 py-4 text-right text-sm font-medium">
                         <Button 
                           variant="ghost" 
