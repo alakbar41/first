@@ -14,6 +14,7 @@ import AdminCandidates from "@/pages/admin-candidates";
 import { ProtectedRoute, AdminProtectedRoute } from "./lib/protected-route";
 import { AuthProvider } from "./hooks/use-auth";
 import { Web3Provider } from "./hooks/use-web3";
+import { CSRFProvider } from "./hooks/use-csrf";
 
 function Router() {
   return (
@@ -44,12 +45,14 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <Web3Provider>
-          <Router />
-          <Toaster />
-        </Web3Provider>
-      </AuthProvider>
+      <CSRFProvider>
+        <AuthProvider>
+          <Web3Provider>
+            <Router />
+            <Toaster />
+          </Web3Provider>
+        </AuthProvider>
+      </CSRFProvider>
     </QueryClientProvider>
   );
 }

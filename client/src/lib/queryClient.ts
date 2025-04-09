@@ -35,17 +35,94 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+// Global CSRF token cache for use when CSRF context isn't available
+let globalCsrfToken: string | null = null;
+
+// Helper to get the CSRF token via a dedicated call
+async function fetchCsrfToken(): Promise<string | null> {
+  try {
+    const res = await fetch('/api/csrf-token', {
+      credentials: 'include',
+      headers: {
+        "Cache-Control": "no-cache",
+      }
+    });
+    
+    if (!res.ok) {
+      console.error(`Failed to fetch CSRF token, status: ${res.status}`);
+      return null;
+    }
+    
+    const data = await res.json();
+    globalCsrfToken = data.csrfToken;
+    return data.csrfToken;
+  } catch (error) {
+    console.error('Error fetching CSRF token:', error);
+    return null;
+  }
+}
+
 export async function apiRequest(
   method: string,
   url: string,
   data?: unknown | undefined,
+  csrfToken?: string | null,
 ): Promise<Response> {
+  // Skip CSRF for GET, HEAD, OPTIONS
+  const needsCsrfToken = !['GET', 'HEAD', 'OPTIONS'].includes(method.toUpperCase());
+  
+  let token = csrfToken || globalCsrfToken;
+  
+  // If we need a token but don't have one, fetch it
+  if (needsCsrfToken && !token) {
+    token = await fetchCsrfToken();
+  }
+  
+  // Prepare headers
+  const headers: Record<string, string> = {};
+  
+  if (data) {
+    headers["Content-Type"] = "application/json";
+  }
+  
+  if (token && needsCsrfToken) {
+    headers["X-CSRF-Token"] = token;
+  }
+  
+  // Include token in body as fallback
+  let finalData = data;
+  if (data && typeof data === 'object' && needsCsrfToken && token) {
+    finalData = { ...data, _csrf: token };
+  } else if (needsCsrfToken && token && !data) {
+    // For DELETE requests with no body, create one with just the token
+    finalData = { _csrf: token };
+  }
+  
+  // Make the request
   const res = await fetch(url, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
-    body: data ? JSON.stringify(data) : undefined,
+    headers,
+    body: finalData ? JSON.stringify(finalData) : undefined,
     credentials: "include",
   });
+
+  // If we got a 403 with CSRF error, try to refresh the token and retry once
+  if (res.status === 403) {
+    try {
+      const errorData = await res.clone().json();
+      if (errorData.message?.includes('CSRF token')) {
+        console.log('CSRF token error, refreshing and retrying...');
+        // Refresh token
+        const newToken = await fetchCsrfToken();
+        if (newToken) {
+          // Retry with new token
+          return apiRequest(method, url, data, newToken);
+        }
+      }
+    } catch (e) {
+      // Failed to parse JSON, continue with normal error handling
+    }
+  }
 
   // Clone the response before checking it, so we can still use it later
   const resClone = res.clone();
