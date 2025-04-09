@@ -28,8 +28,10 @@ export interface IStorage {
   
   // Pending user methods
   getPendingUserByEmail(email: string): Promise<PendingUser | undefined>;
+  getPendingUserByResetToken(token: string): Promise<PendingUser | undefined>;
   createPendingUser(user: InsertPendingUser): Promise<PendingUser>;
   updatePendingUserOtp(email: string, otp: string): Promise<void>;
+  updatePendingUserResetToken(email: string, token: string, tokenExpiry: Date): Promise<void>;
   deletePendingUser(email: string): Promise<void>;
   
   // Election methods
@@ -137,6 +139,12 @@ export class MemStorage implements IStorage {
   async getPendingUserByEmail(email: string): Promise<PendingUser | undefined> {
     return this.pendingUsers.get(email);
   }
+  
+  async getPendingUserByResetToken(token: string): Promise<PendingUser | undefined> {
+    return Array.from(this.pendingUsers.values()).find(
+      (user) => user.resetToken === token && user.type === 'reset'
+    );
+  }
 
   async createPendingUser(user: InsertPendingUser): Promise<PendingUser> {
     const pendingUser: PendingUser = {
@@ -144,6 +152,8 @@ export class MemStorage implements IStorage {
       password: user.password,
       faculty: user.faculty,
       otp: user.otp,
+      resetToken: user.resetToken,
+      tokenExpiry: user.tokenExpiry,
       type: user.type || 'registration',
       createdAt: user.createdAt instanceof Date ? user.createdAt : new Date(user.createdAt),
       isAdmin: user.isAdmin ?? false
@@ -156,6 +166,16 @@ export class MemStorage implements IStorage {
     const pendingUser = this.pendingUsers.get(email);
     if (pendingUser) {
       pendingUser.otp = otp;
+      pendingUser.createdAt = new Date();
+      this.pendingUsers.set(email, pendingUser);
+    }
+  }
+  
+  async updatePendingUserResetToken(email: string, token: string, tokenExpiry: Date): Promise<void> {
+    const pendingUser = this.pendingUsers.get(email);
+    if (pendingUser) {
+      pendingUser.resetToken = token;
+      pendingUser.tokenExpiry = tokenExpiry;
       pendingUser.createdAt = new Date();
       this.pendingUsers.set(email, pendingUser);
     }
@@ -663,6 +683,15 @@ export class DatabaseStorage implements IStorage {
     const result = await db.select().from(pendingUsers).where(eq(pendingUsers.email, email));
     return result[0];
   }
+  
+  async getPendingUserByResetToken(token: string): Promise<PendingUser | undefined> {
+    const result = await db.select().from(pendingUsers)
+      .where(and(
+        eq(pendingUsers.resetToken, token),
+        eq(pendingUsers.type, 'reset')
+      ));
+    return result[0];
+  }
 
   async createPendingUser(user: InsertPendingUser): Promise<PendingUser> {
     // If a pending user with this email already exists, delete it first
@@ -671,7 +700,15 @@ export class DatabaseStorage implements IStorage {
       await this.deletePendingUser(user.email);
     }
     
-    const result = await db.insert(pendingUsers).values(user).returning();
+    // Ensure that resetToken and tokenExpiry are properly handled
+    const pendingUserData = {
+      ...user,
+      // Use null instead of undefined for proper database storage
+      resetToken: user.resetToken || null,
+      tokenExpiry: user.tokenExpiry || null
+    };
+    
+    const result = await db.insert(pendingUsers).values(pendingUserData).returning();
     return result[0];
   }
 
@@ -679,6 +716,17 @@ export class DatabaseStorage implements IStorage {
     await db.update(pendingUsers)
       .set({ 
         otp: otp,
+        createdAt: new Date()
+      })
+      .where(eq(pendingUsers.email, email));
+  }
+  
+  async updatePendingUserResetToken(email: string, token: string, tokenExpiry: Date): Promise<void> {
+    await db.update(pendingUsers)
+      .set({ 
+        resetToken: token || null,
+        tokenExpiry: tokenExpiry || null,
+        type: "reset",
         createdAt: new Date()
       })
       .where(eq(pendingUsers.email, email));
