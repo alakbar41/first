@@ -14,7 +14,23 @@ export default function OtpInput({ value, onChange, length = 6 }: OtpInputProps)
   // Initialize input refs
   useEffect(() => {
     inputRefs.current = inputRefs.current.slice(0, length);
-  }, [length]);
+    
+    // Clear all inputs on mount
+    if (value && value.length > 0) {
+      onChange("");
+    }
+  }, []);
+  
+  // Focus the first input after component mounts
+  useEffect(() => {
+    // Small delay to ensure the component is fully mounted
+    const timer = setTimeout(() => {
+      if (inputRefs.current[0]) {
+        inputRefs.current[0].focus();
+      }
+    }, 50);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Focus the next input after input change
   useEffect(() => {

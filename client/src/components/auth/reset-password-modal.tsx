@@ -94,8 +94,7 @@ export function ResetPasswordModal({ open, onOpenChange }: ResetPasswordModalPro
     onOpenChange(false);
     setStep("email");
     emailForm.reset();
-    resetForm.reset();
-    setOtpValue("");
+    resetResetForm();
   };
 
   // Handle OTP input change
@@ -104,13 +103,22 @@ export function ResetPasswordModal({ open, onOpenChange }: ResetPasswordModalPro
     resetForm.setValue("otp", value);
   };
 
+  // Reset the reset form (for step 2)
+  const resetResetForm = () => {
+    resetForm.reset({
+      otp: "",
+      newPassword: "",
+      confirmPassword: ""
+    });
+    setOtpValue("");
+  };
+
   // Handle form close
   const handleClose = () => {
     onOpenChange(false);
     setStep("email");
     emailForm.reset();
-    resetForm.reset();
-    setOtpValue("");
+    resetResetForm();
   };
 
   return (
@@ -186,6 +194,7 @@ export function ResetPasswordModal({ open, onOpenChange }: ResetPasswordModalPro
                   type={showPassword ? "text" : "password"}
                   placeholder="Enter new password"
                   className="pr-10"
+                  autoComplete="new-password"
                   {...resetForm.register("newPassword")}
                 />
                 <button
@@ -210,6 +219,7 @@ export function ResetPasswordModal({ open, onOpenChange }: ResetPasswordModalPro
                 type={showPassword ? "text" : "password"}
                 placeholder="Confirm new password"
                 className="pr-10"
+                autoComplete="new-password"
                 {...resetForm.register("confirmPassword")}
               />
               {resetForm.formState.errors.confirmPassword && (
