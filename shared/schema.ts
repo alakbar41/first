@@ -111,6 +111,18 @@ export const electionCandidates = pgTable("election_candidates", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// Table for one-time voting tokens
+// This provides secure blockchain voting by requiring a valid token in addition to wallet signature
+export const votingTokens = pgTable("voting_tokens", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(), // Reference to user id
+  electionId: integer("election_id").notNull(), // Reference to election id
+  token: text("token").notNull().unique(), // Unique token generated per student per election
+  used: boolean("used").notNull().default(false), // Whether the token has been used
+  expiresAt: timestamp("expires_at").notNull(), // Token expiration time
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -207,3 +219,28 @@ export const resetPasswordSchema = z.object({
 });
 
 export type ResetPasswordData = z.infer<typeof resetPasswordSchema>;
+
+// Voting token schema and type
+export const votingTokenSchema = createInsertSchema(votingTokens)
+  .omit({
+    id: true,
+    createdAt: true,
+    used: true,
+  });
+
+export type VotingToken = typeof votingTokens.$inferSelect;
+export type InsertVotingToken = z.infer<typeof votingTokenSchema>;
+
+// Schema for token request and verification
+export const tokenRequestSchema = z.object({
+  electionId: z.number(),
+});
+
+export const tokenVerifySchema = z.object({
+  token: z.string(),
+  electionId: z.number(),
+  candidateId: z.number(),
+});
+
+export type TokenRequestData = z.infer<typeof tokenRequestSchema>;
+export type TokenVerifyData = z.infer<typeof tokenVerifySchema>;

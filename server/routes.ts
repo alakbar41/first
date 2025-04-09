@@ -139,6 +139,14 @@ function securityHeaders(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
+// Middleware to check if user is authenticated
+function isAuthenticated(req: Request, res: Response, next: NextFunction) {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ message: "Not authenticated" });
+  }
+  next();
+}
+
 // Middleware to check if user is admin
 function isAdmin(req: Request, res: Response, next: NextFunction) {
   if (!req.isAuthenticated()) {
@@ -1040,6 +1048,131 @@ export async function registerRoutes(app: Express): Promise<Server> {
       next();
     });
   }, express.static(uploadsDir));
+  
+  // Voting token endpoints for secure blockchain voting
+  
+  // Request a one-time voting token for a specific election
+  app.post("/api/voting-tokens", isAuthenticated, async (req, res) => {
+    try {
+      const result = tokenRequestSchema.safeParse(req.body);
+      
+      if (!result.success) {
+        return res.status(400).json({ 
+          message: "Invalid request", 
+          errors: result.error.format() 
+        });
+      }
+      
+      const { electionId } = result.data;
+      
+      // Check if the election exists and is active
+      const election = await storage.getElection(electionId);
+      if (!election) {
+        return res.status(404).json({ message: "Election not found" });
+      }
+      
+      if (election.status !== "active") {
+        return res.status(400).json({ 
+          message: "Voting tokens can only be generated for active elections", 
+          status: election.status 
+        });
+      }
+      
+      // Check if user has already voted in this election
+      if (await storage.hasUserVoted(req.user.id, electionId)) {
+        return res.status(400).json({ message: "You have already voted in this election" });
+      }
+      
+      // Create a new voting token
+      const token = await storage.createVotingToken(req.user.id, electionId);
+      
+      // Return only the token string, not the full object (for security)
+      res.status(201).json({ token: token.token });
+    } catch (error) {
+      console.error("Error generating voting token:", error);
+      res.status(500).json({ message: "Failed to generate voting token" });
+    }
+  });
+  
+  // Verify a token (used by the client before submitting to blockchain)
+  app.post("/api/voting-tokens/verify", isAuthenticated, async (req, res) => {
+    try {
+      const result = tokenVerifySchema.safeParse(req.body);
+      
+      if (!result.success) {
+        return res.status(400).json({ 
+          message: "Invalid request", 
+          errors: result.error.format() 
+        });
+      }
+      
+      const { token, electionId } = result.data;
+      
+      // Validate the token
+      const isValid = await storage.validateVotingToken(token, electionId);
+      
+      if (!isValid) {
+        return res.status(400).json({ message: "Invalid or expired token" });
+      }
+      
+      res.status(200).json({ valid: true });
+    } catch (error) {
+      console.error("Error verifying voting token:", error);
+      res.status(500).json({ message: "Failed to verify voting token" });
+    }
+  });
+  
+  // Mark a token as used after successful blockchain vote
+  app.post("/api/voting-tokens/use", isAuthenticated, async (req, res) => {
+    try {
+      const result = tokenVerifySchema.safeParse(req.body);
+      
+      if (!result.success) {
+        return res.status(400).json({ 
+          message: "Invalid request", 
+          errors: result.error.format() 
+        });
+      }
+      
+      const { token, electionId } = result.data;
+      
+      // Validate the token first
+      const isValid = await storage.validateVotingToken(token, electionId);
+      
+      if (!isValid) {
+        return res.status(400).json({ message: "Invalid or expired token" });
+      }
+      
+      // Mark the token as used
+      await storage.markTokenAsUsed(token);
+      
+      // Record the vote in our database (for backup tracking)
+      await storage.recordVote(req.user.id, electionId);
+      
+      res.status(200).json({ message: "Vote recorded successfully" });
+    } catch (error) {
+      console.error("Error recording vote:", error);
+      res.status(500).json({ message: "Failed to record vote" });
+    }
+  });
+  
+  // Check if a user has already voted in an election
+  app.get("/api/elections/:electionId/has-voted", isAuthenticated, async (req, res) => {
+    try {
+      const electionId = parseInt(req.params.electionId);
+      
+      if (isNaN(electionId)) {
+        return res.status(400).json({ message: "Invalid election ID" });
+      }
+      
+      const hasVoted = await storage.hasUserVoted(req.user.id, electionId);
+      
+      res.status(200).json({ hasVoted });
+    } catch (error) {
+      console.error("Error checking vote status:", error);
+      res.status(500).json({ message: "Failed to check vote status" });
+    }
+  });
   
   const httpServer = createServer(app);
 

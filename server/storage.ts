@@ -1,9 +1,10 @@
-import { users, pendingUsers, elections, candidates, electionCandidates, 
+import { users, pendingUsers, elections, candidates, electionCandidates, votingTokens,
   type User, type InsertUser, 
   type PendingUser, type InsertPendingUser, 
   type Election, type InsertElection,
   type Candidate, type InsertCandidate,
-  type ElectionCandidate, type InsertElectionCandidate
+  type ElectionCandidate, type InsertElectionCandidate,
+  type VotingToken, type InsertVotingToken
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, asc } from "drizzle-orm";
@@ -63,6 +64,12 @@ export interface IStorage {
   // Vote history tracking (optional, blockchain is the main source of truth)
   recordVote?(userId: number, electionId: number): Promise<void>;
   hasUserVoted?(userId: number, electionId: number): Promise<boolean>;
+  
+  // Voting token methods (for secure blockchain voting)
+  createVotingToken(userId: number, electionId: number): Promise<VotingToken>;
+  getVotingToken(userId: number, electionId: number): Promise<VotingToken | undefined>;
+  validateVotingToken(token: string, electionId: number): Promise<boolean>;
+  markTokenAsUsed(token: string): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -582,6 +589,96 @@ export class MemStorage implements IStorage {
         await this.updateCandidateActiveStatus(runningMateId);
       }
     }
+  }
+  
+  // Voting token implementation
+  private votingTokens: Map<string, VotingToken> = new Map();
+  private currentVotingTokenId: number = 1;
+  
+  async createVotingToken(userId: number, electionId: number): Promise<VotingToken> {
+    // Check if user already has a valid token for this election
+    const existingToken = await this.getVotingToken(userId, electionId);
+    if (existingToken && !existingToken.used && existingToken.expiresAt > new Date()) {
+      return existingToken;
+    }
+    
+    // Generate a unique random token
+    const tokenString = Array(48).fill(0).map(() => 
+      Math.round(Math.random() * 35).toString(36)
+    ).join('');
+    
+    // Set expiration to 10 minutes from now
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 10);
+    
+    const token: VotingToken = {
+      id: this.currentVotingTokenId++,
+      userId,
+      electionId,
+      token: tokenString,
+      used: false,
+      expiresAt,
+      createdAt: new Date()
+    };
+    
+    this.votingTokens.set(tokenString, token);
+    return token;
+  }
+  
+  async getVotingToken(userId: number, electionId: number): Promise<VotingToken | undefined> {
+    return Array.from(this.votingTokens.values()).find(
+      token => token.userId === userId && token.electionId === electionId && !token.used
+    );
+  }
+  
+  async validateVotingToken(token: string, electionId: number): Promise<boolean> {
+    const votingToken = this.votingTokens.get(token);
+    
+    if (!votingToken) {
+      return false;
+    }
+    
+    if (votingToken.electionId !== electionId) {
+      return false;
+    }
+    
+    if (votingToken.used) {
+      return false;
+    }
+    
+    if (votingToken.expiresAt < new Date()) {
+      return false;
+    }
+    
+    return true;
+  }
+  
+  async markTokenAsUsed(token: string): Promise<void> {
+    const votingToken = this.votingTokens.get(token);
+    if (votingToken) {
+      votingToken.used = true;
+      this.votingTokens.set(token, votingToken);
+    }
+  }
+  
+  // Optional vote history tracking methods
+  async recordVote(userId: number, electionId: number): Promise<void> {
+    // Mark any tokens as used
+    const tokens = Array.from(this.votingTokens.values()).filter(
+      token => token.userId === userId && token.electionId === electionId
+    );
+    
+    for (const token of tokens) {
+      token.used = true;
+      this.votingTokens.set(token.token, token);
+    }
+  }
+  
+  async hasUserVoted(userId: number, electionId: number): Promise<boolean> {
+    // Check if any tokens are marked as used
+    return Array.from(this.votingTokens.values()).some(
+      token => token.userId === userId && token.electionId === electionId && token.used
+    );
   }
 }
 
@@ -1108,6 +1205,115 @@ export class DatabaseStorage implements IStorage {
     if (runningMateId && runningMateId > 0) {
       await this.updateCandidateActiveStatus(runningMateId);
     }
+  }
+  
+  // Voting token implementation for database storage
+  async createVotingToken(userId: number, electionId: number): Promise<VotingToken> {
+    // Check if user already has a valid token for this election
+    const existingToken = await this.getVotingToken(userId, electionId);
+    if (existingToken && !existingToken.used && existingToken.expiresAt > new Date()) {
+      return existingToken;
+    }
+    
+    // Generate a unique random token string
+    const tokenString = Array(48).fill(0).map(() => 
+      Math.round(Math.random() * 35).toString(36)
+    ).join('');
+    
+    // Set expiration to 10 minutes from now
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 10);
+    
+    // Create new token
+    const insertedTokens = await db.insert(votingTokens).values({
+      userId,
+      electionId,
+      token: tokenString,
+      used: false,
+      expiresAt,
+      createdAt: new Date()
+    }).returning();
+    
+    return insertedTokens[0];
+  }
+  
+  async getVotingToken(userId: number, electionId: number): Promise<VotingToken | undefined> {
+    const tokens = await db.select()
+      .from(votingTokens)
+      .where(
+        and(
+          eq(votingTokens.userId, userId),
+          eq(votingTokens.electionId, electionId),
+          eq(votingTokens.used, false),
+        )
+      );
+    
+    // Filter out expired tokens on the application side
+    const validTokens = tokens.filter(token => token.expiresAt > new Date());
+    
+    // Return the most recently created token if there are multiple
+    return validTokens.sort((a, b) => 
+      b.createdAt.getTime() - a.createdAt.getTime()
+    )[0];
+  }
+  
+  async validateVotingToken(token: string, electionId: number): Promise<boolean> {
+    const tokens = await db.select()
+      .from(votingTokens)
+      .where(
+        and(
+          eq(votingTokens.token, token),
+          eq(votingTokens.electionId, electionId),
+          eq(votingTokens.used, false)
+        )
+      );
+      
+    if (tokens.length === 0) {
+      return false;
+    }
+    
+    const votingToken = tokens[0];
+    
+    // Check if token is expired
+    if (votingToken.expiresAt < new Date()) {
+      return false;
+    }
+    
+    return true;
+  }
+  
+  async markTokenAsUsed(token: string): Promise<void> {
+    await db.update(votingTokens)
+      .set({ used: true })
+      .where(eq(votingTokens.token, token));
+  }
+  
+  // Vote history tracking (optional, blockchain is the main source of truth)
+  async recordVote(userId: number, electionId: number): Promise<void> {
+    // Mark any tokens for this user/election as used
+    await db.update(votingTokens)
+      .set({ used: true })
+      .where(
+        and(
+          eq(votingTokens.userId, userId),
+          eq(votingTokens.electionId, electionId)
+        )
+      );
+  }
+  
+  async hasUserVoted(userId: number, electionId: number): Promise<boolean> {
+    // Check if any tokens are marked as used
+    const usedTokens = await db.select()
+      .from(votingTokens)
+      .where(
+        and(
+          eq(votingTokens.userId, userId),
+          eq(votingTokens.electionId, electionId),
+          eq(votingTokens.used, true)
+        )
+      );
+      
+    return usedTokens.length > 0;
   }
 }
 
