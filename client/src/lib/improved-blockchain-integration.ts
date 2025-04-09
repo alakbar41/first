@@ -308,11 +308,12 @@ export const voteForSenatorWithCustomGas = async (
       throw electionError;
     }
     
-    // Define progressive gas settings (increasing with each retry)
+    // Define moderate gas settings for student voting (much lower than admin operations)
+    // Using conservative gas values that won't exceed student wallet funds
     const customGasOptions = {
-      gasLimit: 1500000 + (retryCount * 200000), // Increase gas limit with each retry
-      maxPriorityFeePerGas: ethers.parseUnits((20 + (retryCount * 5)).toString(), "gwei"),
-      maxFeePerGas: ethers.parseUnits((50 + (retryCount * 10)).toString(), "gwei"),
+      gasLimit: 300000 + (retryCount * 50000), // Moderate gas limit with small increase per retry
+      maxPriorityFeePerGas: ethers.parseUnits((5 + (retryCount * 1)).toString(), "gwei"), // Start lower, increase slightly
+      maxFeePerGas: ethers.parseUnits((20 + (retryCount * 5)).toString(), "gwei"), // Start moderate, increase more
       type: 2, // Use EIP-1559 transaction type
     };
     
@@ -392,11 +393,12 @@ export const voteForPresidentVPWithCustomGas = async (
       throw electionError;
     }
     
-    // Define progressive gas settings (increasing with each retry)
+    // Define moderate gas settings for student voting (much lower than admin operations)
+    // Using conservative gas values that won't exceed student wallet funds
     const customGasOptions = {
-      gasLimit: 1500000 + (retryCount * 200000), // Increase gas limit with each retry
-      maxPriorityFeePerGas: ethers.parseUnits((20 + (retryCount * 5)).toString(), "gwei"),
-      maxFeePerGas: ethers.parseUnits((50 + (retryCount * 10)).toString(), "gwei"),
+      gasLimit: 300000 + (retryCount * 50000), // Moderate gas limit with small increase per retry
+      maxPriorityFeePerGas: ethers.parseUnits((5 + (retryCount * 1)).toString(), "gwei"), // Start lower, increase slightly
+      maxFeePerGas: ethers.parseUnits((20 + (retryCount * 5)).toString(), "gwei"), // Start moderate, increase more
       type: 2, // Use EIP-1559 transaction type
     };
     

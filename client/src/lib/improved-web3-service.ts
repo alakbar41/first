@@ -1167,11 +1167,12 @@ Technical error: ${gasError.message}`);
       // Get next nonce for anti-replay protection
       const nonce = await this.getNextNonce();
 
-      // Use custom gas settings if provided, otherwise use default high settings
+      // Use custom gas settings if provided, otherwise use DEFAULT MODERATE settings for student voting
+      // IMPORTANT: These gas settings are much lower than admin functions to ensure they don't exceed student wallet funds
       const options = customGasOptions || {
-        gasLimit: 1500000, // Extremely high gas limit to ensure transaction success
-        maxPriorityFeePerGas: ethers.parseUnits("20.0", "gwei"), // Very high priority fee to prioritize transaction
-        maxFeePerGas: ethers.parseUnits("50.0", "gwei"), // Very high max fee to ensure acceptance
+        gasLimit: 300000, // Moderate gas limit for student voting (much lower than admin operations)
+        maxPriorityFeePerGas: ethers.parseUnits("5.0", "gwei"), // Moderate priority fee
+        maxFeePerGas: ethers.parseUnits("20.0", "gwei"), // Moderate max fee
         type: 2, // Use EIP-1559 transaction type
       };
       
@@ -1184,9 +1185,9 @@ Technical error: ${gasError.message}`);
 
       // Skip gas estimation and go straight to sending the transaction
       // This approach might help when the contract has issues with gas estimation but can still process transactions
-      console.log("Skipping gas estimation and sending transaction directly with high gas parameters");
+      console.log("Sending transaction with moderate gas parameters suitable for student voting");
       
-      // Send the vote transaction with extremely high gas settings
+      // Send the vote transaction with moderate gas settings
       // FIXED: Properly separate contract arguments from transaction options
       // The nonce is a function argument, options are transaction parameters
       const tx = await this.contract.voteForSenator.populateTransaction(electionId, candidateId, nonce);
@@ -1203,7 +1204,7 @@ Technical error: ${gasError.message}`);
       console.log("Transaction sent, awaiting confirmation:", txResponse.hash);
       
       // Wait for the transaction to be mined with a longer timeout
-      const receipt = await txResponse.wait(3); // Wait for 3 confirmations for better reliability
+      const receipt = await txResponse.wait(2); // Wait for 2 confirmations (reduced from 3 for student voting)
       
       // Add null check to satisfy TypeScript
       if (!receipt) {
@@ -1218,7 +1219,7 @@ Technical error: ${gasError.message}`);
       
       // Enhanced error handling for different error cases
       if (error.message?.includes("Internal JSON-RPC error") || error.message?.includes("insufficient funds")) {
-        throw new Error("Transaction failed due to network congestion or insufficient funds. Please ensure you have enough testnet MATIC and try these manual settings in MetaMask: Gas limit=1500000, Max priority fee=20 gwei, Max fee=50 gwei.");
+        throw new Error("Transaction failed due to network congestion or insufficient funds. Please ensure you have enough testnet MATIC and try again later.");
       } else if (error.message?.includes("execution reverted")) {
         throw new Error("Vote transaction was rejected by the smart contract. This could be because you've already voted, the election status has changed, or there's an issue with the contract implementation.");
       } else if (error.code === "CALL_EXCEPTION") {
@@ -1247,11 +1248,12 @@ Technical error: ${gasError.message}`);
       // Get next nonce for anti-replay protection
       const nonce = await this.getNextNonce();
 
-      // Use custom gas settings if provided, otherwise use default high settings
+      // Use custom gas settings if provided, otherwise use DEFAULT MODERATE settings for student voting
+      // IMPORTANT: These gas settings are much lower than admin functions to ensure they don't exceed student wallet funds
       const options = customGasOptions || {
-        gasLimit: 1500000, // Extremely high gas limit to ensure transaction success
-        maxPriorityFeePerGas: ethers.parseUnits("20.0", "gwei"), // Very high priority fee to prioritize transaction
-        maxFeePerGas: ethers.parseUnits("50.0", "gwei"), // Very high max fee to ensure acceptance
+        gasLimit: 300000, // Moderate gas limit for student voting (much lower than admin operations)
+        maxPriorityFeePerGas: ethers.parseUnits("5.0", "gwei"), // Moderate priority fee
+        maxFeePerGas: ethers.parseUnits("20.0", "gwei"), // Moderate max fee
         type: 2, // Use EIP-1559 transaction type
       };
       
@@ -1264,7 +1266,7 @@ Technical error: ${gasError.message}`);
 
       // Skip gas estimation and go straight to sending the transaction
       // This approach might help when the contract has issues with gas estimation but can still process transactions
-      console.log("Skipping gas estimation and sending transaction directly with high gas parameters");
+      console.log("Sending transaction with moderate gas parameters suitable for student voting");
       
       // FIXED: Apply the same correct pattern for President/VP voting 
       // Properly separate contract arguments from transaction options
@@ -1282,7 +1284,7 @@ Technical error: ${gasError.message}`);
       console.log("Transaction sent, awaiting confirmation:", txResponse.hash);
       
       // Wait for the transaction to be mined with a longer timeout
-      const receipt = await txResponse.wait(3); // Wait for 3 confirmations for better reliability
+      const receipt = await txResponse.wait(2); // Wait for 2 confirmations (reduced from 3 for student voting)
       
       // Add null check to satisfy TypeScript
       if (!receipt) {
@@ -1297,7 +1299,7 @@ Technical error: ${gasError.message}`);
       
       // Enhanced error handling for different error cases
       if (error.message?.includes("Internal JSON-RPC error") || error.message?.includes("insufficient funds")) {
-        throw new Error("Transaction failed due to network congestion or insufficient funds. Please ensure you have enough testnet MATIC and try these manual settings in MetaMask: Gas limit=1500000, Max priority fee=20 gwei, Max fee=50 gwei.");
+        throw new Error("Transaction failed due to network congestion or insufficient funds. Please ensure you have enough testnet MATIC and try again later.");
       } else if (error.message?.includes("execution reverted")) {
         throw new Error("Vote transaction was rejected by the smart contract. This could be because you've already voted, the election status has changed, or there's an issue with the contract implementation.");
       } else if (error.code === "CALL_EXCEPTION") {
