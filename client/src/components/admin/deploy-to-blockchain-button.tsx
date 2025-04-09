@@ -131,10 +131,16 @@ export function DeployToBlockchainButton({
       // Update the election in the database with the blockchain ID
       try {
         console.log(`Saving blockchain ID ${blockchainElectionId} for election ${election.id} to database`);
+        // Get the CSRF token
+        const csrfResponse = await fetch('/api/csrf-token');
+        const csrfData = await csrfResponse.json();
+        const csrfToken = csrfData.csrfToken;
+        
         const response = await fetch(`/api/elections/${election.id}/blockchain-id`, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken
           },
           body: JSON.stringify({ blockchainId: blockchainElectionId }),
         });

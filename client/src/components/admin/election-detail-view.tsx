@@ -44,10 +44,16 @@ export function AdminElectionDetailView({ election, className = "" }: ElectionDe
     // Update the election in the database with the blockchain ID
     try {
       console.log(`Updating election ${election.id} with blockchain ID ${id}`);
+      // Get the CSRF token
+      const csrfResponse = await fetch('/api/csrf-token');
+      const csrfData = await csrfResponse.json();
+      const csrfToken = csrfData.csrfToken;
+      
       const response = await fetch(`/api/elections/${election.id}/blockchain-id`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken
         },
         body: JSON.stringify({ blockchainId: id }),
       });

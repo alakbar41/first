@@ -42,7 +42,23 @@ function validateCSRFToken(req: Request, res: Response, next: NextFunction) {
   
   const sessionId = req.sessionID || 'anonymous';
   const storedData = csrfTokens.get(sessionId);
-  const userToken = req.headers['x-csrf-token'] || req.body?._csrf;
+  
+  // Check for CSRF token in various locations
+  const headerToken = req.headers['x-csrf-token'] as string;
+  const bodyToken = req.body?._csrf;
+  const xCSRFToken = req.headers['x-csrf-token'] as string; 
+  
+  // Use any available token (with preference order)
+  const userToken = headerToken || xCSRFToken || bodyToken;
+  
+  console.log('CSRF Validation:', {
+    method: req.method,
+    path: req.path,
+    hasStoredToken: !!storedData,
+    tokenExpired: storedData ? Date.now() > storedData.expires : null,
+    hasUserToken: !!userToken,
+    tokenMatch: storedData && userToken ? storedData.token === userToken : false
+  });
   
   // If no stored token or token expired
   if (!storedData || Date.now() > storedData.expires) {
