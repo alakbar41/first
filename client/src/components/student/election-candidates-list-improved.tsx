@@ -17,6 +17,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useWeb3 } from "@/hooks/use-web3";
 import { ConnectWalletButton, VoteForSenatorButton, VoteForTicketButton, CandidateVoteCount } from "@/components/blockchain";
 import { EmergencyVoteButton } from "@/components/blockchain/EmergencyVoteButton";
+import { LastResortVoteButton } from "@/components/blockchain/LastResortVoteButton";
 
 interface ElectionCandidatesListProps {
   election: Election;
@@ -583,14 +584,27 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                           />
                           {/* Emergency direct vote with minimal gas settings for deadline situations */}
                           {isElectionActive() && isUserEligible() && (
-                            <div className="mt-2">
+                            <div className="mt-2 space-y-2">
                               <EmergencyVoteButton 
                                 electionId={election.id}
-                                blockchainId={election.blockchainId}
+                                blockchainId={election.blockchainId || undefined}
                                 candidateId={candidate.id}
                                 onVoteSuccess={handleVoteSuccess}
                                 className="w-full text-xs sm:text-sm"
                               />
+                              
+                              {/* Last resort button with no gas settings - user must adjust manually */}
+                              <LastResortVoteButton 
+                                electionId={election.id}
+                                blockchainId={election.blockchainId || undefined}
+                                candidateId={candidate.id}
+                                onVoteSuccess={handleVoteSuccess}
+                                className="w-full text-xs sm:text-sm"
+                              />
+                              
+                              <div className="text-xs text-center p-1 bg-amber-50 rounded border border-amber-200 mt-1">
+                                <strong>Low MATIC?</strong> Try the emergency options above
+                              </div>
                             </div>
                           )}
                         </>

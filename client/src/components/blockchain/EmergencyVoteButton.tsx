@@ -9,7 +9,8 @@ const ABI_FRAGMENT = [
 ];
 
 // Contract address (same across the app)
-const CONTRACT_ADDRESS = '0xb74f07812b45DBEc4eC3E577194F6a798a060e5D';
+// Fixed checksum address for contract
+const CONTRACT_ADDRESS = '0xb74F07812B45dBEc4Ec3E577194F6a798A060e5D';
 
 interface EmergencyVoteButtonProps {
   electionId: number;
