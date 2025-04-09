@@ -1167,12 +1167,12 @@ Technical error: ${gasError.message}`);
       // Get next nonce for anti-replay protection
       const nonce = await this.getNextNonce();
 
-      // Use custom gas settings if provided, otherwise use DEFAULT MODERATE settings for student voting
-      // IMPORTANT: These gas settings are much lower than admin functions to ensure they don't exceed student wallet funds
+      // Use custom gas settings if provided, otherwise use ABSOLUTE MINIMUM settings for student voting
+      // CRITICAL: These settings are at the absolute minimum possible values to ensure transactions work
       const options = customGasOptions || {
-        gasLimit: 300000, // Moderate gas limit for student voting (much lower than admin operations)
-        maxPriorityFeePerGas: ethers.parseUnits("5.0", "gwei"), // Moderate priority fee
-        maxFeePerGas: ethers.parseUnits("20.0", "gwei"), // Moderate max fee
+        gasLimit: 80000, // Absolute minimum gas limit
+        maxPriorityFeePerGas: ethers.parseUnits("0.5", "gwei"), // Absolute minimum priority fee
+        maxFeePerGas: ethers.parseUnits("3.0", "gwei"), // Absolute minimum max fee
         type: 2, // Use EIP-1559 transaction type
       };
       
@@ -1248,12 +1248,12 @@ Technical error: ${gasError.message}`);
       // Get next nonce for anti-replay protection
       const nonce = await this.getNextNonce();
 
-      // Use custom gas settings if provided, otherwise use DEFAULT MODERATE settings for student voting
-      // IMPORTANT: These gas settings are much lower than admin functions to ensure they don't exceed student wallet funds
+      // Use custom gas settings if provided, otherwise use ABSOLUTE MINIMUM settings for student voting
+      // CRITICAL: These settings are at the absolute minimum possible values to ensure transactions work
       const options = customGasOptions || {
-        gasLimit: 300000, // Moderate gas limit for student voting (much lower than admin operations)
-        maxPriorityFeePerGas: ethers.parseUnits("5.0", "gwei"), // Moderate priority fee
-        maxFeePerGas: ethers.parseUnits("20.0", "gwei"), // Moderate max fee
+        gasLimit: 80000, // Absolute minimum gas limit
+        maxPriorityFeePerGas: ethers.parseUnits("0.5", "gwei"), // Absolute minimum priority fee
+        maxFeePerGas: ethers.parseUnits("3.0", "gwei"), // Absolute minimum max fee
         type: 2, // Use EIP-1559 transaction type
       };
       

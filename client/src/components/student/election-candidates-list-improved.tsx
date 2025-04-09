@@ -14,8 +14,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { useWeb3, ElectionType } from "@/hooks/use-web3";
+import { useWeb3 } from "@/hooks/use-web3";
 import { ConnectWalletButton, VoteForSenatorButton, VoteForTicketButton, CandidateVoteCount } from "@/components/blockchain";
+import { EmergencyVoteButton } from "@/components/blockchain/EmergencyVoteButton";
 
 interface ElectionCandidatesListProps {
   election: Election;
@@ -572,13 +573,27 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                           className="w-full text-xs sm:text-sm"
                         />
                       ) : (
-                        <VoteForSenatorButton
-                          electionId={election.id}
-                          candidateId={candidate.id}
-                          disabled={!isElectionActive() || !isUserEligible()}
-                          onVoteSuccess={handleVoteSuccess}
-                          className="w-full text-xs sm:text-sm"
-                        />
+                        <>
+                          <VoteForSenatorButton
+                            electionId={election.id}
+                            candidateId={candidate.id}
+                            disabled={!isElectionActive() || !isUserEligible()}
+                            onVoteSuccess={handleVoteSuccess}
+                            className="w-full text-xs sm:text-sm"
+                          />
+                          {/* Emergency direct vote with minimal gas settings for deadline situations */}
+                          {isElectionActive() && isUserEligible() && (
+                            <div className="mt-2">
+                              <EmergencyVoteButton 
+                                electionId={election.id}
+                                blockchainId={election.blockchainId}
+                                candidateId={candidate.id}
+                                onVoteSuccess={handleVoteSuccess}
+                                className="w-full text-xs sm:text-sm"
+                              />
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>

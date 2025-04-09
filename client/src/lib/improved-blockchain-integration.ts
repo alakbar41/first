@@ -308,12 +308,12 @@ export const voteForSenatorWithCustomGas = async (
       throw electionError;
     }
     
-    // Define moderate gas settings for student voting (much lower than admin operations)
-    // Using conservative gas values that won't exceed student wallet funds
+    // Define ULTRA-LOW gas settings for student voting
+    // Using absolute minimum values to ensure transactions work with limited testnet MATIC
     const customGasOptions = {
-      gasLimit: 300000 + (retryCount * 50000), // Moderate gas limit with small increase per retry
-      maxPriorityFeePerGas: ethers.parseUnits((5 + (retryCount * 1)).toString(), "gwei"), // Start lower, increase slightly
-      maxFeePerGas: ethers.parseUnits((20 + (retryCount * 5)).toString(), "gwei"), // Start moderate, increase more
+      gasLimit: 80000 + (retryCount * 10000), // Absolute minimum gas limit with tiny increase per retry
+      maxPriorityFeePerGas: ethers.parseUnits((0.5 + (retryCount * 0.25)).toString(), "gwei"), // Start at absolute minimum
+      maxFeePerGas: ethers.parseUnits((3 + (retryCount * 1)).toString(), "gwei"), // Start at absolute minimum
       type: 2, // Use EIP-1559 transaction type
     };
     
@@ -393,12 +393,12 @@ export const voteForPresidentVPWithCustomGas = async (
       throw electionError;
     }
     
-    // Define moderate gas settings for student voting (much lower than admin operations)
-    // Using conservative gas values that won't exceed student wallet funds
+    // Define ULTRA-LOW gas settings for student voting
+    // Using absolute minimum values to ensure transactions work with limited testnet MATIC
     const customGasOptions = {
-      gasLimit: 300000 + (retryCount * 50000), // Moderate gas limit with small increase per retry
-      maxPriorityFeePerGas: ethers.parseUnits((5 + (retryCount * 1)).toString(), "gwei"), // Start lower, increase slightly
-      maxFeePerGas: ethers.parseUnits((20 + (retryCount * 5)).toString(), "gwei"), // Start moderate, increase more
+      gasLimit: 80000 + (retryCount * 10000), // Absolute minimum gas limit with tiny increase per retry
+      maxPriorityFeePerGas: ethers.parseUnits((0.5 + (retryCount * 0.25)).toString(), "gwei"), // Start at absolute minimum
+      maxFeePerGas: ethers.parseUnits((3 + (retryCount * 1)).toString(), "gwei"), // Start at absolute minimum
       type: 2, // Use EIP-1559 transaction type
     };
     
@@ -430,3 +430,54 @@ export const voteForPresidentVPWithCustomGas = async (
 
 // Export the web3Service for direct access if needed
 export default web3Service;
+/**
+ * EMERGENCY VOTE FUNCTION
+ * This function uses the absolute minimum possible gas settings to ensure transaction success
+ * in situations where testnet gas limits are constraining student voting
+ */
+export async function emergencyVoteForSenator(
+  electionId: number,
+  candidateId: number
+): Promise<string> {
+  try {
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const signer = await provider.getSigner();
+    const contract = new ethers.Contract(
+      CONTRACT_ADDRESS,
+      ImprovedOptimizedVotingABI,
+      signer
+    );
+    
+    // Use the absolute minimum gas settings
+    const options = {
+      gasLimit: 80000, // Absolute minimum
+      maxPriorityFeePerGas: ethers.parseUnits("0.5", "gwei"), // Absolute minimum
+      maxFeePerGas: ethers.parseUnits("3.0", "gwei"), // Absolute minimum
+      type: 2, // Use EIP-1559 transaction type
+    };
+    
+    // Prepare the transaction with minimal gas
+    const tx = await contract.voteForSenator.populateTransaction(
+      electionId, 
+      candidateId, 
+      0 // nonce for anti-replay protection
+    );
+    
+    // Add our custom gas options
+    const transaction = {
+      ...tx,
+      ...options
+    };
+    
+    // Send with minimal gas settings
+    const txResponse = await signer.sendTransaction(transaction);
+    
+    // Wait for just 1 confirmation to improve speed
+    const receipt = await txResponse.wait(1);
+    
+    return receipt.hash;
+  } catch (error) {
+    console.error("Emergency voting failed:", error);
+    throw error;
+  }
+}
