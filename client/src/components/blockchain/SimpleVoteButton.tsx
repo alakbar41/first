@@ -2,12 +2,6 @@ import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, VoteIcon } from "lucide-react";
-import { ethers } from 'ethers';
-
-// Contract address on Polygon Amoy
-const RAW_CONTRACT_ADDRESS = '0xb74F07812B45dBEc4eC3E577194F6a798a060e5D';
-// Vote function ABI signature
-const VOTE_FUNCTION_ABI = ['function vote(uint256 electionId, uint256 candidateId, uint256 nonce)'];
 
 interface SimpleVoteButtonProps {
   electionId: number;
@@ -20,6 +14,7 @@ interface SimpleVoteButtonProps {
   onVoteSuccess?: (txHash: string) => void;
 }
 
+// Minimal voting implementation with only essential parameters
 export function SimpleVoteButton({ 
   electionId,
   candidateId,
@@ -33,7 +28,7 @@ export function SimpleVoteButton({
   const [isVoting, setIsVoting] = useState(false);
   const { toast } = useToast();
   
-  // Simple direct vote function that uses minimum gas
+  // Ultra-simplified vote function for maximum compatibility
   const handleVote = async () => {
     if (isVoting || disabled) return;
     
@@ -58,83 +53,78 @@ export function SimpleVoteButton({
       // Use the blockchain ID if provided, otherwise fallback to database ID
       const actualElectionId = blockchainId || electionId;
       
+      // Function signature for vote(uint256,uint256,uint256)
+      const functionSignature = '0x0121b93f';
+      
+      // Convert parameters to 32-byte hex strings
+      function toHex32(num) {
+        return num.toString(16).padStart(64, '0');
+      }
+      
+      // Construct data manually for maximum compatibility
+      const data = functionSignature + 
+                  toHex32(actualElectionId) + 
+                  toHex32(candidateId) + 
+                  toHex32(0); // nonce = 0
+      
+      console.log("Voting for election ID:", actualElectionId, "candidate ID:", candidateId);
+      
       toast({
         title: "Submitting vote...",
-        description: "Please confirm the transaction in your wallet. Set gas limit to 80,000 for best results.",
+        description: "Please approve the transaction in your wallet",
         duration: 10000,
       });
       
-      // Helper to convert a number to a 32-byte hex string with proper padding
-      const numberTo32ByteHex = (num: number): string => {
-        return Math.floor(num).toString(16).padStart(64, '0');
-      };
-      
-      // Vote method ID (first 4 bytes of keccak256("vote(uint256,uint256,uint256)"))
-      const VOTE_METHOD_ID = '0x0121b93f';
-      
-      // Manually construct the transaction data
-      // Function selector (4 bytes) + encoded parameters (3 x 32 bytes each)
-      const data = VOTE_METHOD_ID + 
-                  numberTo32ByteHex(actualElectionId) + 
-                  numberTo32ByteHex(candidateId) + 
-                  numberTo32ByteHex(0); // nonce parameter is 0
-      
-      // Direct low-level call to MetaMask
+      // Let MetaMask handle all gas estimation and parameters
       const txHash = await window.ethereum.request({
         method: 'eth_sendTransaction',
         params: [{
           from: account,
-          to: '0xb74F07812B45dBEc4eC3E577194F6a798a060e5D', // Contract address hard-coded
-          data,
-          value: '0x0',
-          gas: '0x013880', // 80,000 in hex
+          to: '0xb74F07812B45dBEc4eC3E577194F6a798a060e5D',
+          data: data
         }],
       });
       
       toast({
         title: "Transaction submitted",
-        description: "Your vote is being recorded on the blockchain. Please wait for confirmation.",
-        duration: 5000,
-      });
-      
-      toast({
-        title: "Vote successful!",
-        description: "Your vote has been recorded on the blockchain.",
+        description: "Your vote is being processed on the blockchain.",
         duration: 5000,
       });
       
       if (onVoteSuccess && txHash) {
         onVoteSuccess(txHash);
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Vote failed:', error);
       
-      // Handle specific error messages
-      if (error.message?.includes('user rejected')) {
+      // Extract the message from the error object
+      const errorMessage = error.message || 'Unknown error';
+      
+      if (errorMessage.includes('user rejected')) {
         toast({
           title: "Transaction rejected",
-          description: "You rejected the transaction in your wallet.",
+          description: "You cancelled the transaction in your wallet.",
           variant: "destructive",
           duration: 5000,
         });
-      } else if (error.message?.includes('insufficient funds')) {
+      } else if (errorMessage.includes('insufficient funds')) {
         toast({
           title: "Insufficient funds",
-          description: "You don't have enough MATIC to complete this transaction. Please get some testnet MATIC from a faucet.",
+          description: "You need testnet MATIC tokens to pay for this transaction. Please get some from a faucet.",
           variant: "destructive",
           duration: 10000,
         });
-      } else if (error.message?.includes('execution reverted')) {
+      } else if (errorMessage.includes('Internal JSON-RPC error')) {
         toast({
-          title: "Transaction failed",
-          description: "The vote was rejected by the smart contract. This usually happens if you've already voted or if the election is not active.",
+          title: "Network error",
+          description: "There was a problem with the network connection. You may need testnet MATIC tokens or to adjust gas settings manually.",
           variant: "destructive",
           duration: 10000,
         });
       } else {
         toast({
           title: "Error",
-          description: `Failed to vote: ${error.message || "Unknown error"}`,
+          description: `Failed to submit vote: ${errorMessage}`,
           variant: "destructive",
           duration: 10000,
         });
