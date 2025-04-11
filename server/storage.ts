@@ -1392,6 +1392,21 @@ export class DatabaseStorage implements IStorage {
     return usedTokens.length > 0;
   }
   
+  async resetVote(userId: number, electionId: number): Promise<void> {
+    // Reset any used voting tokens for this user and election
+    await db.update(votingTokens)
+      .set({ used: false })
+      .where(
+        and(
+          eq(votingTokens.userId, userId),
+          eq(votingTokens.electionId, electionId),
+          eq(votingTokens.used, true)
+        )
+      );
+    
+    console.log(`Reset vote for user ${userId} in election ${electionId}`);
+  }
+  
   // Ticket methods
   async getTickets(): Promise<Ticket[]> {
     return await db.select().from(tickets).orderBy(asc(tickets.id));

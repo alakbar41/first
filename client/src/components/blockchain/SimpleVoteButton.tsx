@@ -85,7 +85,8 @@ export function SimpleVoteButton({
       const response = await apiRequest('POST', '/api/voting-tokens/use', {
         token,
         electionId,
-        candidateId
+        candidateId,
+        txHash, // Include the transaction hash for verification
       });
       
       if (!response.ok) {
@@ -94,6 +95,24 @@ export function SimpleVoteButton({
     } catch (error) {
       console.error('Failed to mark token as used:', error);
       // We don't throw here since the vote was successful
+    }
+  };
+  
+  // Reset vote in the database if blockchain transaction failed
+  const resetVote = async (electionId: number, txHash: string): Promise<void> => {
+    try {
+      const response = await apiRequest('POST', '/api/votes/reset', {
+        electionId,
+        txHash
+      });
+      
+      if (response.ok) {
+        console.log('Vote reset successfully');
+      } else {
+        console.warn('Failed to reset vote, user may not be able to vote again');
+      }
+    } catch (error) {
+      console.error('Failed to reset vote:', error);
     }
   };
 
@@ -337,9 +356,15 @@ export function SimpleVoteButton({
               return; // Success case, exit the function
             } else {
               console.error('Transaction status indicated failure:', receipt);
+              
+              // Reset the vote in our database since the blockchain transaction failed
+              await resetVote(electionId, txHash);
+              
               throw new Error('Transaction failed with status: ' + (receipt.status ?? 'unknown'));
             }
           } else {
+            // Reset the vote since we couldn't get a receipt
+            await resetVote(electionId, txHash);
             throw new Error('No receipt returned');
           }
         } catch (waitError) {
@@ -369,9 +394,14 @@ export function SimpleVoteButton({
               }
               
               return; // Exit with success
+            } else {
+              // Reset the vote since the transaction wasn't found in a block
+              await resetVote(electionId, txHash);
             }
           } catch (backupError) {
             console.error('Backup transaction check also failed:', backupError);
+            // Reset the vote since the backup check failed
+            await resetVote(electionId, txHash);
           }
           
           // If we get here, both checks failed
@@ -381,9 +411,16 @@ export function SimpleVoteButton({
         console.error("Transaction receipt error:", receiptError);
         
         // If we get here, the transaction failed or we couldn't get a receipt
+        // Make sure we reset the vote in our database
+        try {
+          await resetVote(electionId, txHash);
+        } catch (resetError) {
+          console.error("Failed to reset vote:", resetError);
+        }
+        
         toast({
           title: "Vote failed",
-          description: "The blockchain transaction failed. You can try voting again.",
+          description: "The blockchain transaction failed. You can try voting again (the system has automatically reset your voting status).",
           variant: "destructive",
           duration: 10000,
         });
