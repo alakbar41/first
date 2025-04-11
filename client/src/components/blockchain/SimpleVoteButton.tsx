@@ -82,8 +82,6 @@ export function SimpleVoteButton({
   // Mark token as used after successful vote
   const markTokenAsUsed = async (token: string, txHash: string): Promise<void> => {
     try {
-      setVoteState('recording-vote');
-      
       const response = await apiRequest('POST', '/api/voting-tokens/use', {
         token,
         electionId,
@@ -136,6 +134,7 @@ export function SimpleVoteButton({
         }
         
         setVoteState('idle');
+        setVotingToken(null);
         return;
       }
       
@@ -150,6 +149,7 @@ export function SimpleVoteButton({
         });
         
         setVoteState('idle');
+        setVotingToken(null);
         return;
       }
       
@@ -268,66 +268,23 @@ export function SimpleVoteButton({
       
       // Set ultra-minimal gas parameters to force a very low fee
       // We need to override MetaMask's estimates which are too high for test networks
-      // Let's try multiple approaches based on what the network supports
+      const txParams = {
+        from: account,
+        to: '0xb74F07812B45dBEc4eC3E577194F6a798a060e5D',
+        data: data,
+        // Use absolute minimum gas price the network will accept
+        gasPrice: '0x174876E800', // 0.1 Gwei (100,000,000 wei) in hex - absolute minimum
+        // Ultra low gas limit - bare minimum for vote function
+        gas: '0x186A0' // 100,000 in hex - enough for a vote
+      };
       
-      // First try: Use EIP-1559 transaction type (maxFeePerGas & maxPriorityFeePerGas)
-      let eip1559TxParams;
-      let legacyTxParams;
+      console.log("Sending transaction with optimized parameters:", txParams);
       
-      try {
-        // EIP-1559 style transaction (Type 2)
-        eip1559TxParams = {
-          from: account,
-          to: '0xb74F07812B45dBEc4eC3E577194F6a798a060e5D',
-          data: data,
-          // Parameters for EIP-1559 transactions
-          maxFeePerGas: '0x3B9ACA00', // 1 Gwei in hex (low but reasonable)
-          maxPriorityFeePerGas: '0x3B9ACA00', // 1 Gwei in hex
-          gas: '0x186A0' // 100,000 in hex - minimal safety cushion
-        };
-        
-        // Legacy style transaction (Type 0)
-        legacyTxParams = {
-          from: account,
-          to: '0xb74F07812B45dBEc4eC3E577194F6a798a060e5D',
-          data: data,
-          // Old style parameters
-          gasPrice: '0x174876E800', // 0.1 Gwei in hex - absolute minimal that should work
-          gas: '0x186A0' // 100,000 in hex - minimal safety cushion
-        };
-        
-        console.log("First attempting EIP-1559 transaction with parameters:", eip1559TxParams);
-        
-        // First try the modern EIP-1559 transaction
-        try {
-          const txHash = await window.ethereum.request({
-            method: 'eth_sendTransaction',
-            params: [eip1559TxParams],
-          });
-          
-          console.log("EIP-1559 transaction successfully sent with hash:", txHash);
-          return txHash;
-        } catch (eip1559Error) {
-          // If EIP-1559 fails, fall back to legacy transaction
-          console.log("EIP-1559 transaction failed, falling back to legacy:", eip1559Error);
-          console.log("Attempting legacy transaction with parameters:", legacyTxParams);
-          
-          const txHash = await window.ethereum.request({
-            method: 'eth_sendTransaction',
-            params: [legacyTxParams],
-          });
-          
-          console.log("Legacy transaction successfully sent with hash:", txHash);
-          return txHash;
-        }
-      } catch (error) {
-        console.error("Both transaction types failed:", error);
-        throw error;
-      }
-      
-      // This code should be unreachable due to try-catch blocks above
-      // But TypeScript needs it to satisfy type checking
-      throw new Error("Unreachable code");
+      // Get transaction hash from MetaMask
+      const txHash = await window.ethereum.request({
+        method: 'eth_sendTransaction',
+        params: [txParams],
+      });
       
       // IMPORTANT: We need to wait for transaction confirmation before marking token as used
       // Show waiting message
@@ -349,38 +306,41 @@ export function SimpleVoteButton({
           const provider = new ethers.BrowserProvider(window.ethereum);
           const receipt = await provider.waitForTransaction(txHash);
           
-          console.log('Transaction receipt received:', receipt);
-          
-          // Log the type and value of receipt.status to debug
-          console.log('Receipt status type:', typeof receipt.status);
-          console.log('Receipt status value:', receipt.status);
-          
-          // More lenient success check - consider success unless explicitly failed
-          // For Amoy testnet, we'll accept any non-explicit failure as success
-          const succeeded = receipt != null && 
-                           receipt.status !== 0 && 
-                           receipt.status !== "0x0";
-          
-          if (succeeded) {
-            console.log('Transaction confirmed successfully!', receipt);
+          if (receipt) {
+            console.log('Transaction receipt received:', receipt);
             
-            // Only mark token as used if transaction succeeded
-            await markTokenAsUsed(token, txHash);
+            // Log the type and value of receipt.status to debug
+            console.log('Receipt status type:', typeof receipt.status);
+            console.log('Receipt status value:', receipt.status);
             
-            toast({
-              title: "Vote recorded!",
-              description: "Your vote has been successfully processed on the blockchain.",
-              duration: 5000,
-            });
+            // More lenient success check - consider success unless explicitly failed
+            // For Amoy testnet, we'll accept any non-explicit failure as success
+            const succeeded = receipt.status !== 0 && 
+                             (typeof receipt.status === 'string' ? receipt.status !== "0x0" : true);
             
-            if (onVoteSuccess) {
-              onVoteSuccess(txHash);
+            if (succeeded) {
+              console.log('Transaction confirmed successfully!', receipt);
+              
+              // Only mark token as used if transaction succeeded
+              await markTokenAsUsed(token, txHash);
+              
+              toast({
+                title: "Vote recorded!",
+                description: "Your vote has been successfully processed on the blockchain.",
+                duration: 5000,
+              });
+              
+              if (onVoteSuccess) {
+                onVoteSuccess(txHash);
+              }
+              
+              return; // Success case, exit the function
+            } else {
+              console.error('Transaction status indicated failure:', receipt);
+              throw new Error('Transaction failed with status: ' + (receipt.status ?? 'unknown'));
             }
-            
-            return; // Success case, exit the function
           } else {
-            console.error('Transaction status indicated failure:', receipt);
-            throw new Error('Transaction failed with status: ' + (receipt?.status ?? 'unknown'));
+            throw new Error('No receipt returned');
           }
         } catch (waitError) {
           console.error('Error waiting for transaction receipt:', waitError);
