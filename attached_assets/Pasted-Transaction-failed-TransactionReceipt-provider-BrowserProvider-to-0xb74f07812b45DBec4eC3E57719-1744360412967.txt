@@ -1,0 +1,113 @@
+Transaction failed: TransactionReceipt {provider: BrowserProvider, to: '0xb74f07812b45DBec4eC3E577194F6a798a060e5D', from: '0xDfcC716668DF29e0D187dD37574247341305030D', contractAddress: null, hash: '0x9a00db287904a5268ab4fb009cbe0049a0be37e60d946ca887fc9e21cc90fb0f', …}
+handleVote @ SimpleVoteButton.tsx:323
+setTimeout
+(anonymous) @ inpage.js:1
+write @ inpage.js:1
+j @ inpage.js:12
+(anonymous) @ inpage.js:12
+M.write @ inpage.js:12
+f @ inpage.js:12
+a.emit @ inpage.js:10
+A @ inpage.js:12
+j @ inpage.js:12
+M.push @ inpage.js:12
+_write @ inpage.js:1
+j @ inpage.js:12
+(anonymous) @ inpage.js:12
+M.write @ inpage.js:12
+f @ inpage.js:12
+a.emit @ inpage.js:10
+A @ inpage.js:12
+j @ inpage.js:12
+M.push @ inpage.js:12
+_onData @ inpage.js:1
+_onMessage @ inpage.js:1
+postMessage
+_postMessage @ contentscript.js:1
+_write @ contentscript.js:1
+T @ contentscript.js:54
+(anonymous) @ contentscript.js:54
+_.write @ contentscript.js:54
+h @ contentscript.js:54
+a.emit @ contentscript.js:43
+k @ contentscript.js:54
+T @ contentscript.js:54
+_.push @ contentscript.js:54
+_write @ contentscript.js:1
+T @ contentscript.js:54
+(anonymous) @ contentscript.js:54
+_.write @ contentscript.js:54
+h @ contentscript.js:54
+a.emit @ contentscript.js:43
+k @ contentscript.js:54
+T @ contentscript.js:54
+_.push @ contentscript.js:54
+_write @ contentscript.js:1
+T @ contentscript.js:54
+(anonymous) @ contentscript.js:54
+_.write @ contentscript.js:54
+d @ contentscript.js:43
+a.emit @ contentscript.js:43
+Z @ contentscript.js:43
+Y @ contentscript.js:43
+X.push @ contentscript.js:43
+_onMessage @ contentscript.js:43
+(anonymous) @ contentscript.js:43Understand this error
+SimpleVoteButton.tsx:327 Transaction receipt error: Error: Transaction failed on the blockchain
+    at handleVote (SimpleVoteButton.tsx:324:17)
+handleVote @ SimpleVoteButton.tsx:327
+setTimeout
+(anonymous) @ inpage.js:1
+write @ inpage.js:1
+j @ inpage.js:12
+(anonymous) @ inpage.js:12
+M.write @ inpage.js:12
+f @ inpage.js:12
+a.emit @ inpage.js:10
+A @ inpage.js:12
+j @ inpage.js:12
+M.push @ inpage.js:12
+_write @ inpage.js:1
+j @ inpage.js:12
+(anonymous) @ inpage.js:12
+M.write @ inpage.js:12
+f @ inpage.js:12
+a.emit @ inpage.js:10
+A @ inpage.js:12
+j @ inpage.js:12
+M.push @ inpage.js:12
+_onData @ inpage.js:1
+_onMessage @ inpage.js:1
+postMessage
+_postMessage @ contentscript.js:1
+_write @ contentscript.js:1
+T @ contentscript.js:54
+(anonymous) @ contentscript.js:54
+_.write @ contentscript.js:54
+h @ contentscript.js:54
+a.emit @ contentscript.js:43
+k @ contentscript.js:54
+T @ contentscript.js:54
+_.push @ contentscript.js:54
+_write @ contentscript.js:1
+T @ contentscript.js:54
+(anonymous) @ contentscript.js:54
+_.write @ contentscript.js:54
+h @ contentscript.js:54
+a.emit @ contentscript.js:43
+k @ contentscript.js:54
+T @ contentscript.js:54
+_.push @ contentscript.js:54
+_write @ contentscript.js:1
+T @ contentscript.js:54
+(anonymous) @ contentscript.js:54
+_.write @ contentscript.js:54
+d @ contentscript.js:43
+a.emit @ contentscript.js:43
+Z @ contentscript.js:43
+Y @ contentscript.js:43
+X.push @ contentscript.js:43
+_onMessage @ contentscript.js:43
+(anonymous) @ contentscript.js:43Understand this error
+SimpleVoteButton.tsx:341 Vote failed: Error: Transaction confirmation failed
+    at handleVote (SimpleVoteButton.tsx:338:15)
