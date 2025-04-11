@@ -70,6 +70,13 @@ export interface IStorage {
   getVotingToken(userId: number, electionId: number): Promise<VotingToken | undefined>;
   validateVotingToken(token: string, electionId: number): Promise<boolean>;
   markTokenAsUsed(token: string): Promise<void>;
+  
+  // Ticket methods
+  getTickets(): Promise<Ticket[]>;
+  getUserTickets(userId: number): Promise<Ticket[]>;
+  getTicket(id: number): Promise<Ticket | undefined>;
+  createTicket(userId: number, ticket: InsertTicket): Promise<Ticket>;
+  updateTicketStatus(id: number, status: string): Promise<Ticket>;
 }
 
 export class MemStorage implements IStorage {

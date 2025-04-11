@@ -244,3 +244,39 @@ export const tokenVerifySchema = z.object({
 
 export type TokenRequestData = z.infer<typeof tokenRequestSchema>;
 export type TokenVerifyData = z.infer<typeof tokenVerifySchema>;
+
+// Support ticket system
+export const tickets = pgTable("tickets", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(), // Reference to user id
+  title: text("title").notNull(), // Ticket title
+  description: text("description").notNull(), // Detailed description
+  type: text("type").notNull(), // Ticket type: 'concern', 'suggestion', 'other'
+  status: text("status").notNull().default("open"), // Status: 'open', 'in_progress', 'resolved'
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Ticket schema and types
+export const insertTicketSchema = createInsertSchema(tickets)
+  .omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+    status: true, // Status is set automatically for new tickets
+    userId: true, // UserId is set from the current user
+  })
+  .extend({
+    // Add type validation
+    type: z.enum(["concern", "suggestion", "other"]),
+  });
+
+export type Ticket = typeof tickets.$inferSelect;
+export type InsertTicket = z.infer<typeof insertTicketSchema>;
+
+// Schema for updating ticket status (admin only)
+export const updateTicketStatusSchema = z.object({
+  status: z.enum(["open", "in_progress", "resolved"]),
+});
+
+export type UpdateTicketStatus = z.infer<typeof updateTicketStatusSchema>;
