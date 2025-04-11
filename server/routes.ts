@@ -14,6 +14,8 @@ import {
   resetPasswordSchema,
   tokenRequestSchema,
   tokenVerifySchema,
+  insertTicketSchema,
+  updateTicketStatusSchema,
   Election
 } from "@shared/schema";
 import { z } from "zod";

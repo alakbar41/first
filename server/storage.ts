@@ -1,13 +1,14 @@
-import { users, pendingUsers, elections, candidates, electionCandidates, votingTokens,
+import { users, pendingUsers, elections, candidates, electionCandidates, votingTokens, tickets,
   type User, type InsertUser, 
   type PendingUser, type InsertPendingUser, 
   type Election, type InsertElection,
   type Candidate, type InsertCandidate,
   type ElectionCandidate, type InsertElectionCandidate,
-  type VotingToken, type InsertVotingToken
+  type VotingToken, type InsertVotingToken,
+  type Ticket, type InsertTicket
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, asc } from "drizzle-orm";
+import { eq, and, asc, desc } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import createMemoryStore from "memorystore";
@@ -668,6 +669,59 @@ export class MemStorage implements IStorage {
     }
   }
   
+  // Tickets system implementation
+  private tickets: Map<number, Ticket> = new Map();
+  private currentTicketId: number = 1;
+  
+  async getTickets(): Promise<Ticket[]> {
+    return Array.from(this.tickets.values());
+  }
+  
+  async getUserTickets(userId: number): Promise<Ticket[]> {
+    return Array.from(this.tickets.values()).filter(
+      (ticket) => ticket.userId === userId
+    );
+  }
+  
+  async getTicket(id: number): Promise<Ticket | undefined> {
+    return this.tickets.get(id);
+  }
+  
+  async createTicket(userId: number, ticket: InsertTicket): Promise<Ticket> {
+    const id = this.currentTicketId++;
+    const now = new Date();
+    
+    const newTicket: Ticket = {
+      id,
+      userId,
+      title: ticket.title,
+      description: ticket.description,
+      type: ticket.type,
+      status: "open", // Default status for new tickets
+      createdAt: now,
+      updatedAt: now,
+    };
+    
+    this.tickets.set(id, newTicket);
+    return newTicket;
+  }
+  
+  async updateTicketStatus(id: number, status: string): Promise<Ticket> {
+    const ticket = this.tickets.get(id);
+    if (!ticket) {
+      throw new Error(`Ticket with id ${id} not found`);
+    }
+    
+    const updatedTicket: Ticket = {
+      ...ticket,
+      status,
+      updatedAt: new Date(),
+    };
+    
+    this.tickets.set(id, updatedTicket);
+    return updatedTicket;
+  }
+  
   // Optional vote history tracking methods
   async recordVote(userId: number, electionId: number): Promise<void> {
     // Mark any tokens as used
@@ -1321,6 +1375,55 @@ export class DatabaseStorage implements IStorage {
       );
       
     return usedTokens.length > 0;
+  }
+  
+  // Ticket methods
+  async getTickets(): Promise<Ticket[]> {
+    return await db.select().from(tickets).orderBy(asc(tickets.id));
+  }
+  
+  async getUserTickets(userId: number): Promise<Ticket[]> {
+    return await db.select()
+      .from(tickets)
+      .where(eq(tickets.userId, userId))
+      .orderBy(desc(tickets.createdAt));
+  }
+  
+  async getTicket(id: number): Promise<Ticket | undefined> {
+    const result = await db.select().from(tickets).where(eq(tickets.id, id));
+    return result[0];
+  }
+  
+  async createTicket(userId: number, ticket: InsertTicket): Promise<Ticket> {
+    const now = new Date();
+    const result = await db.insert(tickets).values({
+      userId,
+      title: ticket.title,
+      description: ticket.description,
+      type: ticket.type,
+      status: "open", // Default status for new tickets
+      createdAt: now,
+      updatedAt: now
+    }).returning();
+    
+    return result[0];
+  }
+  
+  async updateTicketStatus(id: number, status: string): Promise<Ticket> {
+    const now = new Date();
+    const result = await db.update(tickets)
+      .set({ 
+        status, 
+        updatedAt: now 
+      })
+      .where(eq(tickets.id, id))
+      .returning();
+      
+    if (!result.length) {
+      throw new Error(`Ticket with id ${id} not found`);
+    }
+    
+    return result[0];
   }
 }
 
