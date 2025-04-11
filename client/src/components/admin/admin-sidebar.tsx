@@ -8,7 +8,8 @@ import {
   Settings, 
   LogOut,
   ChevronRight,
-  ChevronLeft
+  ChevronLeft,
+  MessageSquare
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -43,6 +44,12 @@ export function AdminSidebar({ user }: SidebarProps) {
       icon: Users,
       path: "/admin/candidates",
       active: location.includes("/admin/candidates")
+    },
+    {
+      title: "Tickets",
+      icon: MessageSquare,
+      path: "/admin/tickets",
+      active: location.includes("/admin/tickets")
     },
     {
       title: "Voters",
