@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { Candidate, Election, ElectionCandidate } from "@shared/schema";
 import { Button } from "@/components/ui/button";
-import { UserCircle, Award, Check, Info, Clock, Calendar, AlertTriangle } from "lucide-react";
+import { UserCircle, Award, Check, Info, Clock, Calendar, AlertTriangle, RefreshCw } from "lucide-react";
 import { getFacultyName } from "@shared/schema";
 import { useState, useEffect, useRef } from "react";
 import {
@@ -17,6 +17,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useWeb3 } from "@/hooks/use-web3";
 import { ConnectWalletButton, CandidateVoteCount } from "@/components/blockchain";
 import { SimpleVoteButton } from "@/components/blockchain/SimpleVoteButton";
+import { ResetUserVoteButton } from "@/components/admin/reset-user-vote-button";
 
 interface ElectionCandidatesListProps {
   election: Election;
@@ -465,12 +466,18 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                       </Badge>
                     </div>
                     
-                    <div className="flex justify-center sm:justify-end">
+                    <div className="flex justify-center sm:justify-end gap-2">
                       {hasVotedInElection ? (
-                        <Button disabled className="w-full sm:w-auto bg-green-500 hover:bg-green-600 shadow-md text-xs sm:text-sm">
-                          <Check className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                          Voted Successfully
-                        </Button>
+                        <>
+                          <Button disabled className="w-full sm:w-auto bg-green-500 hover:bg-green-600 shadow-md text-xs sm:text-sm">
+                            <Check className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                            Voted Successfully
+                          </Button>
+                          <ResetUserVoteButton 
+                            electionId={election.id}
+                            className="text-xs sm:text-sm"
+                          />
+                        </>
                       ) : !isWalletConnected ? (
                         <ConnectWalletButton className="w-full sm:w-auto" />
                       ) : (
@@ -565,10 +572,16 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                       />
                     
                       {hasVotedInElection ? (
-                        <Button disabled className="w-full bg-green-500 hover:bg-green-600 shadow-md text-xs sm:text-sm">
-                          <Check className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                          Voted Successfully
-                        </Button>
+                        <div className="flex flex-col sm:flex-row w-full gap-2">
+                          <Button disabled className="w-full bg-green-500 hover:bg-green-600 shadow-md text-xs sm:text-sm">
+                            <Check className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                            Voted Successfully
+                          </Button>
+                          <ResetUserVoteButton 
+                            electionId={election.id}
+                            className="text-xs sm:text-sm"
+                          />
+                        </div>
                       ) : !isWalletConnected ? (
                         <ConnectWalletButton 
                           className="w-full text-xs sm:text-sm"

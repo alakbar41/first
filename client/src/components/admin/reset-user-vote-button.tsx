@@ -9,6 +9,7 @@ interface ResetUserVoteButtonProps {
   variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link" | null | undefined;
   size?: "default" | "sm" | "lg" | "icon" | null | undefined;
   className?: string;
+  onResetSuccess?: () => void;
 }
 
 export function ResetUserVoteButton({
@@ -16,6 +17,7 @@ export function ResetUserVoteButton({
   variant = "outline",
   size = "sm",
   className = "",
+  onResetSuccess
 }: ResetUserVoteButtonProps) {
   const [isResetting, setIsResetting] = useState(false);
   const { toast } = useToast();
