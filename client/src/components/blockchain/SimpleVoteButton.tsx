@@ -171,7 +171,11 @@ export function SimpleVoteButton({
       
       // Step 4.5: Check if we're on the correct network (Polygon Amoy)
       const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-      if (chainId !== '0x13882') { // 80002 in hex
+      
+      // If already on Polygon Amoy, continue without prompt
+      if (chainId === '0x13882') { // 80002 in hex
+        console.log('Already on Polygon Amoy network, chainId: 0x13882 (80002)');
+      } else {
         toast({
           title: "Network check",
           description: "Checking if we're on the Polygon Amoy network...",
@@ -179,15 +183,23 @@ export function SimpleVoteButton({
         });
         
         try {
+          console.log('Current chainId:', chainId, 'Need to switch to Polygon Amoy: 0x13882');
+          
           // First try to switch to the network if it's already added
           try {
+            console.log('Attempting to switch to Polygon Amoy network');
             await window.ethereum.request({
               method: 'wallet_switchEthereumChain',
               params: [{ chainId: '0x13882' }], // 80002 in hex
             });
+            console.log('Successfully switched to Polygon Amoy network');
           } catch (switchError: any) {
-            // This error code means the chain has not been added to MetaMask
+            console.log('Switch network error:', switchError.code, switchError.message);
+            
+            // This error code (4902) means the chain has not been added to MetaMask
             if (switchError.code === 4902 || switchError.message?.includes('Unrecognized chain ID')) {
+              console.log('Polygon Amoy network not found in wallet, attempting to add it');
+              
               // Try to add the network
               await window.ethereum.request({
                 method: 'wallet_addEthereumChain',
@@ -205,6 +217,7 @@ export function SimpleVoteButton({
                   },
                 ],
               });
+              console.log('Successfully added Polygon Amoy network');
             } else {
               throw switchError;
             }
@@ -252,12 +265,16 @@ export function SimpleVoteButton({
         duration: 10000,
       });
       
-      // This approach uses minimal parameters and lets MetaMask calculate gas
-      // Focus on making a clean transaction that works on the Amoy testnet
+      // This approach uses minimal parameters with explicit ultra-low gas settings 
+      // Focus on making a clean transaction that works on the Amoy testnet with minimal costs
       const txParams = {
         from: account,
         to: '0xb74F07812B45dBEc4eC3E577194F6a798a060e5D',
-        data: data
+        data: data,
+        // Ultra-low gas parameters for Polygon Amoy testnet
+        gasLimit: '0x15F90', // 90,000 in hex (extremely conservative limit)
+        maxFeePerGas: '0x59682F00', // 1.5 gwei in hex
+        maxPriorityFeePerGas: '0x1DCD6500' // 0.5 gwei in hex
       };
       
       console.log("Sending transaction with optimized parameters:", txParams);

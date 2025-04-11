@@ -37,7 +37,7 @@ export interface VoteCounter {
 }
 
 class ImprovedWeb3Service {
-  private provider: ethers.JsonRpcProvider | null = null;
+  private provider: ethers.BrowserProvider | null = null;
   private contract: any = null;
   private signer: ethers.Signer | null = null;
   private isInitialized = false;
