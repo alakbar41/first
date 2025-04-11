@@ -7,6 +7,20 @@ const POLYGON_AMOY_RPC_URL = 'https://rpc-amoy.polygon.technology';
 const POLYGON_AMOY_FALLBACK = 'https://polygon-amoy.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161';
 const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || '0xb74f07812b45DBec4eC3E577194F6a798a060e5D'; // Deployer: 0x0E6ED3EB1acc94F03006b326C939CeaF8d0953D5
 
+// Polygon Amoy testnet chain ID and configuration
+const POLYGON_AMOY_CHAIN_ID = '0x13881'; // 80001 in decimal
+const POLYGON_AMOY_NETWORK = {
+  chainId: POLYGON_AMOY_CHAIN_ID,
+  chainName: 'Polygon Amoy Testnet',
+  nativeCurrency: {
+    name: 'MATIC',
+    symbol: 'MATIC',
+    decimals: 18
+  },
+  rpcUrls: [POLYGON_AMOY_RPC_URL, POLYGON_AMOY_FALLBACK],
+  blockExplorerUrls: ['https://www.oklink.com/amoy']
+};
+
 // Contract enums
 export enum ElectionType {
   Senator = 0,
@@ -905,11 +919,65 @@ Technical error: ${gasError.message}`);
   }
 
   // Connect to MetaMask
+  // Verify and switch to Polygon Amoy Testnet if needed
+  private async verifyPolygonAmoyNetwork(): Promise<boolean> {
+    try {
+      if (!window.ethereum) return false;
+      
+      // First check current chain ID
+      const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+      console.log('Current chain ID:', chainId);
+      
+      // If already on Polygon Amoy, we're good
+      if (chainId === POLYGON_AMOY_CHAIN_ID) {
+        console.log('Already connected to Polygon Amoy Testnet');
+        return true;
+      }
+      
+      // Need to switch networks
+      console.log('Not on Polygon Amoy Testnet, attempting to switch...');
+      
+      try {
+        // Try to switch to Polygon Amoy
+        await window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: POLYGON_AMOY_CHAIN_ID }]
+        });
+        console.log('Successfully switched to Polygon Amoy Testnet');
+        return true;
+      } catch (switchError: any) {
+        // This error code indicates that the chain has not been added to MetaMask
+        if (switchError.code === 4902) {
+          try {
+            await window.ethereum.request({
+              method: 'wallet_addEthereumChain',
+              params: [POLYGON_AMOY_NETWORK]
+            });
+            console.log('Added Polygon Amoy Testnet to MetaMask');
+            return true;
+          } catch (addError) {
+            console.error('Failed to add Polygon Amoy network:', addError);
+            throw new Error('Please add the Polygon Amoy Testnet to your MetaMask manually.');
+          }
+        } else {
+          console.error('Failed to switch to Polygon Amoy network:', switchError);
+          throw new Error('Failed to switch networks. Please switch to Polygon Amoy Testnet manually in MetaMask.');
+        }
+      }
+    } catch (error) {
+      console.error('Network verification failed:', error);
+      throw error;
+    }
+  }
+
   async connectWallet(): Promise<string> {
     try {
       if (!window.ethereum) {
         throw new Error('MetaMask is not installed');
       }
+      
+      // Verify and switch to Polygon Amoy Testnet
+      await this.verifyPolygonAmoyNetwork();
       
       // Check if already connected
       if (this.walletAddress && this.signer) {
@@ -1096,6 +1164,15 @@ Technical error: ${gasError.message}`);
       if (!this.contract && window.ethereum) {
         try {
           console.log('Contract not initialized, trying to connect using MetaMask...');
+          
+          // Verify and switch to Polygon Amoy Testnet first
+          try {
+            await this.verifyPolygonAmoyNetwork();
+          } catch (networkError) {
+            console.warn('Could not verify or switch to Polygon Amoy network:', networkError);
+            // Continue anyway, as we'll check the contract below
+          }
+          
           const ethersProvider = new ethers.BrowserProvider(window.ethereum);
           const signer = await ethersProvider.getSigner();
           this.signer = signer;
@@ -1106,6 +1183,20 @@ Technical error: ${gasError.message}`);
             IMPROVED_CONTRACT_ABI,
             signer
           );
+          
+          // Verify the contract exists at the specified address
+          try {
+            const code = await ethersProvider.getCode(CONTRACT_ADDRESS);
+            if (code === '0x' || code === '0x0') {
+              console.error(`❌ No contract found at address ${CONTRACT_ADDRESS} on the current network.`);
+              throw new Error(`No contract found at address ${CONTRACT_ADDRESS}. Make sure you're connected to the Polygon Amoy testnet.`);
+            }
+            console.log(`✅ Contract found at address ${CONTRACT_ADDRESS} on the current network.`);
+          } catch (contractError) {
+            console.error('Contract verification failed:', contractError);
+            // Return 0 as fallback rather than throwing an error
+            return 0;
+          }
           
           console.log('Contract initialized on-demand for vote count');
         } catch (initError) {
@@ -1152,6 +1243,15 @@ Technical error: ${gasError.message}`);
       if (!this.contract && window.ethereum) {
         try {
           console.log('Contract not initialized, trying to connect using MetaMask...');
+          
+          // Verify and switch to Polygon Amoy Testnet first
+          try {
+            await this.verifyPolygonAmoyNetwork();
+          } catch (networkError) {
+            console.warn('Could not verify or switch to Polygon Amoy network:', networkError);
+            // Continue anyway, as we'll check the contract below
+          }
+          
           const ethersProvider = new ethers.BrowserProvider(window.ethereum);
           const signer = await ethersProvider.getSigner();
           this.signer = signer;
@@ -1162,6 +1262,20 @@ Technical error: ${gasError.message}`);
             IMPROVED_CONTRACT_ABI,
             signer
           );
+          
+          // Verify the contract exists at the specified address
+          try {
+            const code = await ethersProvider.getCode(CONTRACT_ADDRESS);
+            if (code === '0x' || code === '0x0') {
+              console.error(`❌ No contract found at address ${CONTRACT_ADDRESS} on the current network.`);
+              throw new Error(`No contract found at address ${CONTRACT_ADDRESS}. Make sure you're connected to the Polygon Amoy testnet.`);
+            }
+            console.log(`✅ Contract found at address ${CONTRACT_ADDRESS} on the current network.`);
+          } catch (contractError) {
+            console.error('Contract verification failed:', contractError);
+            // Return 0 as fallback rather than throwing an error
+            return 0;
+          }
           
           console.log('Contract initialized on-demand for ticket vote count');
         } catch (initError) {
@@ -1229,6 +1343,15 @@ Technical error: ${gasError.message}`);
       if (!this.contract && window.ethereum) {
         try {
           console.log('Contract not initialized, trying to connect using MetaMask...');
+          
+          // Verify and switch to Polygon Amoy Testnet first
+          try {
+            await this.verifyPolygonAmoyNetwork();
+          } catch (networkError) {
+            console.warn('Could not verify or switch to Polygon Amoy network:', networkError);
+            // Continue anyway, as we'll check the contract below
+          }
+          
           const ethersProvider = new ethers.BrowserProvider(window.ethereum);
           const signer = await ethersProvider.getSigner();
           this.signer = signer;
@@ -1239,6 +1362,20 @@ Technical error: ${gasError.message}`);
             IMPROVED_CONTRACT_ABI,
             signer
           );
+          
+          // Verify the contract exists at the specified address
+          try {
+            const code = await ethersProvider.getCode(CONTRACT_ADDRESS);
+            if (code === '0x' || code === '0x0') {
+              console.error(`❌ No contract found at address ${CONTRACT_ADDRESS} on the current network.`);
+              throw new Error(`No contract found at address ${CONTRACT_ADDRESS}. Make sure you're connected to the Polygon Amoy testnet.`);
+            }
+            console.log(`✅ Contract found at address ${CONTRACT_ADDRESS} on the current network.`);
+          } catch (contractError) {
+            console.error('Contract verification failed:', contractError);
+            // Return false as fallback rather than throwing an error
+            return false;
+          }
           
           console.log('Contract initialized on-demand for vote check');
         } catch (initError) {
@@ -1438,6 +1575,15 @@ Technical error: ${gasError.message}`);
       if (!this.contract && window.ethereum) {
         try {
           console.log('Contract not initialized, trying to connect using MetaMask...');
+          
+          // Verify and switch to Polygon Amoy Testnet first
+          try {
+            await this.verifyPolygonAmoyNetwork();
+          } catch (networkError) {
+            console.warn('Could not verify or switch to Polygon Amoy network:', networkError);
+            // Continue anyway, as we'll check the contract below
+          }
+          
           const ethersProvider = new ethers.BrowserProvider(window.ethereum);
           const signer = await ethersProvider.getSigner();
           this.signer = signer;
@@ -1448,6 +1594,20 @@ Technical error: ${gasError.message}`);
             IMPROVED_CONTRACT_ABI,
             signer
           );
+          
+          // Verify the contract exists at the specified address
+          try {
+            const code = await ethersProvider.getCode(CONTRACT_ADDRESS);
+            if (code === '0x' || code === '0x0') {
+              console.error(`❌ No contract found at address ${CONTRACT_ADDRESS} on the current network.`);
+              throw new Error(`No contract found at address ${CONTRACT_ADDRESS}. Make sure you're connected to the Polygon Amoy testnet.`);
+            }
+            console.log(`✅ Contract found at address ${CONTRACT_ADDRESS} on the current network.`);
+          } catch (contractError) {
+            console.error('Contract verification failed:', contractError);
+            // Return false as fallback rather than throwing an error
+            return false;
+          }
           
           console.log('Contract initialized on-demand for voter check');
         } catch (initError) {
