@@ -130,19 +130,22 @@ export default function AdminTicketsPage() {
   }, [tickets]);
 
   return (
-    <div className="container py-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-800 to-purple-600 bg-clip-text text-transparent">
+    <div className="container py-6 relative">
+      {/* Full-width background gradient */}
+      <div className="absolute top-0 left-0 right-0 h-64 bg-gradient-to-r from-purple-600 to-purple-400 -mx-6 -z-10"></div>
+      
+      <div className="mb-8 relative z-10">
+        <h1 className="text-3xl font-bold text-white">
           Support Ticket Management
         </h1>
-        <p className="text-muted-foreground mt-2">
+        <p className="text-white/80 mt-2">
           Review and respond to student concerns, suggestions, and feedback
         </p>
       </div>
 
       {/* Tabs for filtering */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
-        <div className="border-b">
+        <div className="border-b bg-white rounded-t-lg shadow-sm">
           <TabsList className="w-full justify-start rounded-none h-12 bg-transparent border-b-0 mb-[-1px]">
             <TabsTrigger 
               value="open" 
@@ -187,111 +190,97 @@ export default function AdminTicketsPage() {
           </TabsList>
         </div>
         
-        <TabsContent value={activeTab} className="mt-8">
-          {isLoading ? (
-            <div className="flex flex-col items-center justify-center h-64 bg-gray-50 rounded-lg border border-gray-100">
-              <Loader2 className="h-10 w-10 animate-spin text-purple-600 mb-3" />
-              <p className="text-muted-foreground">Loading tickets...</p>
-            </div>
-          ) : error ? (
-            <div className="flex flex-col items-center justify-center h-64 bg-red-50 rounded-lg border border-red-100">
-              <div className="bg-red-100 p-3 rounded-full mb-3">
-                <AlertCircle className="h-8 w-8 text-red-600" />
+        <TabsContent value={activeTab} className="mt-6">
+          <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center h-64">
+                <Loader2 className="h-10 w-10 animate-spin text-purple-600 mb-3" />
+                <p className="text-muted-foreground">Loading tickets...</p>
               </div>
-              <p className="text-red-600 font-medium mb-1">Failed to load tickets</p>
-              <p className="text-red-500 text-sm">Please try refreshing the page</p>
-            </div>
-          ) : filteredTickets.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-6 py-16 text-center bg-gradient-to-b from-gray-50 to-white rounded-xl border border-gray-100 shadow-sm">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
-                {activeTab === "open" && <AlertCircle className="h-8 w-8 text-gray-400" />}
-                {activeTab === "in_progress" && <Clock className="h-8 w-8 text-gray-400" />}
-                {activeTab === "resolved" && <CheckCircle className="h-8 w-8 text-gray-400" />}
-                {activeTab === "all" && <HelpCircle className="h-8 w-8 text-gray-400" />}
-              </div>
-              <div className="max-w-md space-y-2">
-                <h3 className="text-xl font-semibold text-gray-800">No {activeTab !== "all" ? activeTab : ""} tickets found</h3>
-                <p className="text-muted-foreground">
-                  {activeTab === "open" && "There are no open tickets requiring attention."}
-                  {activeTab === "in_progress" && "There are no tickets currently being processed."}
-                  {activeTab === "resolved" && "There are no resolved tickets at this time."}
-                  {activeTab === "all" && "There are no tickets in the system."}
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="grid gap-4">
-              {filteredTickets.map((ticket: any) => (
-                <div 
-                  key={ticket.id} 
-                  className="border rounded-lg p-5 hover:border-purple-300 hover:shadow-md cursor-pointer transition-all duration-200 bg-white"
-                  onClick={() => handleTicketClick(ticket)}
-                >
-                  <div className="flex justify-between items-start">
-                    <div className="space-y-1.5">
-                      <div className="flex items-center gap-3">
-                        <h3 className="font-medium text-lg text-gray-800">
-                          {ticket.title}
-                        </h3>
-                        <span className="text-xs font-mono bg-gray-100 text-gray-500 px-2 py-0.5 rounded-md">
-                          #{ticket.id}
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <User className="h-3.5 w-3.5" />
-                          <span>User ID: {ticket.userId}</span>
-                        </div>
-                        <span>•</span>
-                        <div className="flex items-center gap-1">
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <path d="M12 6v6l4 2"></path>
-                          </svg>
-                          {formatDate(ticket.createdAt)}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <TicketTypeBadge type={ticket.type} />
-                      {ticket.status === "open" && (
-                        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">Open</Badge>
-                      )}
-                      {ticket.status === "in_progress" && (
-                        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">In Progress</Badge>
-                      )}
-                      {ticket.status === "resolved" && (
-                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Resolved</Badge>
-                      )}
-                    </div>
-                  </div>
-                  <p className="mt-3 text-sm line-clamp-2 text-gray-600">{ticket.description}</p>
-                  
-                  <div className="flex justify-between items-center mt-4 pt-3 border-t border-gray-100">
-                    <div className="flex items-center gap-1 text-xs text-gray-500">
-                      <MoreHorizontal className="h-3 w-3" />
-                      <span>Click to manage ticket</span>
-                    </div>
-                    {ticket.status === "open" && (
-                      <Badge variant="outline" className="text-xs bg-gray-50 border-gray-200 text-gray-600">
-                        Needs attention
-                      </Badge>
-                    )}
-                    {ticket.status === "in_progress" && (
-                      <Badge variant="outline" className="text-xs bg-yellow-50 border-yellow-200 text-yellow-700">
-                        Processing
-                      </Badge>
-                    )}
-                    {ticket.status === "resolved" && (
-                      <Badge variant="outline" className="text-xs bg-green-50 border-green-200 text-green-700">
-                        Completed
-                      </Badge>
-                    )}
-                  </div>
+            ) : error ? (
+              <div className="flex flex-col items-center justify-center h-64 bg-red-50 rounded-lg border border-red-100">
+                <div className="bg-red-100 p-3 rounded-full mb-3">
+                  <AlertCircle className="h-8 w-8 text-red-600" />
                 </div>
-              ))}
-            </div>
-          )}
+                <p className="text-red-600 font-medium mb-1">Failed to load tickets</p>
+                <p className="text-red-500 text-sm">Please try refreshing the page</p>
+              </div>
+            ) : filteredTickets.length === 0 ? (
+              <div className="flex flex-col items-center justify-center gap-6 py-16 text-center">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
+                  {activeTab === "open" && <AlertCircle className="h-8 w-8 text-gray-400" />}
+                  {activeTab === "in_progress" && <Clock className="h-8 w-8 text-gray-400" />}
+                  {activeTab === "resolved" && <CheckCircle className="h-8 w-8 text-gray-400" />}
+                  {activeTab === "all" && <HelpCircle className="h-8 w-8 text-gray-400" />}
+                </div>
+                <div className="max-w-md space-y-2">
+                  <h3 className="text-xl font-semibold text-gray-800">No {activeTab !== "all" ? activeTab : ""} tickets found</h3>
+                  <p className="text-muted-foreground">
+                    {activeTab === "open" && "There are no open tickets requiring attention."}
+                    {activeTab === "in_progress" && "There are no tickets currently being processed."}
+                    {activeTab === "resolved" && "There are no resolved tickets at this time."}
+                    {activeTab === "all" && "There are no tickets in the system."}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-5">
+                {filteredTickets.map((ticket: any) => (
+                  <Card
+                    key={ticket.id} 
+                    className="overflow-hidden transition-all duration-200 hover:shadow-sm border-gray-200 hover:border-purple-300 cursor-pointer"
+                    onClick={() => handleTicketClick(ticket)}
+                  >
+                    <CardHeader className="pb-2 pt-4 bg-gradient-to-r from-purple-50/70 to-white">
+                      <div className="flex justify-between items-start">
+                        <div className="space-y-1">
+                          <CardTitle className="flex items-center gap-2 text-gray-800">
+                            <span>{ticket.title}</span>
+                            <span className="text-sm text-muted-foreground font-normal font-mono">#{ticket.id}</span>
+                          </CardTitle>
+                          <CardDescription className="flex flex-wrap items-center gap-2">
+                            <div className="flex items-center gap-1">
+                              <User className="h-3.5 w-3.5" />
+                              <span>User ID: {ticket.userId}</span>
+                            </div>
+                            <span>•</span>
+                            <div className="flex items-center gap-1">
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <path d="M12 6v6l4 2"></path>
+                              </svg>
+                              {formatDate(ticket.createdAt)}
+                            </div>
+                          </CardDescription>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <TicketTypeBadge type={ticket.type} />
+                          {ticket.status === "open" && (
+                            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">Open</Badge>
+                          )}
+                          {ticket.status === "in_progress" && (
+                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">In Progress</Badge>
+                          )}
+                          {ticket.status === "resolved" && (
+                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Resolved</Badge>
+                          )}
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="py-3">
+                      <p className="text-sm line-clamp-2 text-gray-600">{ticket.description}</p>
+                    </CardContent>
+                    <CardFooter className="bg-gray-50 py-2 px-4 border-t border-gray-100">
+                      <div className="flex items-center gap-1 text-xs text-gray-500">
+                        <MoreHorizontal className="h-3 w-3" />
+                        <span>Click to manage ticket</span>
+                      </div>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
         </TabsContent>
       </Tabs>
 

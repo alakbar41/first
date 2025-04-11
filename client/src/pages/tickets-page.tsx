@@ -122,19 +122,22 @@ export default function TicketsPage() {
   };
 
   return (
-    <div className="container py-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+    <div className="container py-6 relative">
+      {/* Full-width background gradient */}
+      <div className="absolute top-0 left-0 right-0 h-64 bg-gradient-to-r from-purple-600 to-purple-400 -mx-6 -z-10"></div>
+      
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 relative z-10">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-800 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="text-3xl font-bold text-white">
             Support Tickets
           </h1>
-          <p className="text-muted-foreground mt-2">
+          <p className="text-white/80 mt-2">
             Submit and track your concerns, suggestions, or other feedback
           </p>
         </div>
         <Button 
           onClick={() => setIsCreateTicketDialogOpen(true)}
-          className="bg-gradient-to-r from-purple-700 to-purple-500 hover:from-purple-800 hover:to-purple-600 shadow-md hover:shadow-lg transition-all duration-200 px-5"
+          className="bg-white hover:bg-gray-50 text-purple-700 shadow-md hover:shadow-lg transition-all duration-200 px-5 border border-purple-100"
           size="lg"
         >
           <MessageSquare className="mr-2 h-5 w-5" />
@@ -246,98 +249,106 @@ export default function TicketsPage() {
       </Dialog>
 
       {/* Display Tickets */}
-      <div className="grid gap-6">
-        {isLoading ? (
-          <div className="flex flex-col items-center justify-center h-64 bg-gray-50 rounded-lg border border-gray-100">
-            <Loader2 className="h-10 w-10 animate-spin text-purple-600 mb-3" />
-            <p className="text-muted-foreground">Loading your tickets...</p>
-          </div>
-        ) : error ? (
-          <div className="flex flex-col items-center justify-center h-64 bg-red-50 rounded-lg border border-red-100">
-            <div className="bg-red-100 p-3 rounded-full mb-3">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 text-red-600">
-                <path d="M12 9v4"></path>
-                <path d="M12 17h.01"></path>
-                <circle cx="12" cy="12" r="10"></circle>
-              </svg>
+      <div className="grid gap-6 relative z-10">
+        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center h-64">
+              <Loader2 className="h-10 w-10 animate-spin text-purple-600 mb-3" />
+              <p className="text-muted-foreground">Loading your tickets...</p>
             </div>
-            <p className="text-red-600 font-medium mb-1">Failed to load tickets</p>
-            <p className="text-red-500 text-sm">Please try refreshing the page</p>
-          </div>
-        ) : tickets && tickets.length > 0 ? (
-          tickets.map((ticket: any) => (
-            <Card key={ticket.id} className="overflow-hidden transition-all duration-200 hover:shadow-md border-gray-200 hover:border-purple-200">
-              <CardHeader className="pb-3 pt-5 bg-gradient-to-r from-purple-50/70 to-white">
-                <div className="flex justify-between items-start">
-                  <div className="space-y-1">
-                    <CardTitle className="flex items-center gap-2 text-gray-800">
-                      <span>{ticket.title}</span>
-                      <span className="text-sm text-muted-foreground font-normal font-mono">#{ticket.id}</span>
-                    </CardTitle>
-                    <CardDescription className="flex flex-wrap items-center gap-2">
-                      <span className="flex items-center gap-1">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3">
-                          <circle cx="12" cy="12" r="10"></circle>
-                          <path d="M12 6v6l4 2"></path>
-                        </svg>
-                        {formatDate(ticket.createdAt)}
-                      </span>
-                      <span>•</span>
-                      <TicketTypeBadge type={ticket.type} />
-                    </CardDescription>
-                  </div>
-                  <TicketStatusBadge status={ticket.status} />
-                </div>
-              </CardHeader>
-              <CardContent className="py-4">
-                <p className="whitespace-pre-wrap text-sm text-gray-700 leading-relaxed">{ticket.description}</p>
-              </CardContent>
-              {ticket.status !== "open" && (
-                <CardFooter className="bg-gray-50 py-3 px-6 border-t border-gray-100">
-                  <div className="w-full flex justify-between items-center">
-                    <p className="text-sm text-muted-foreground flex items-center gap-1">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3">
-                        <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"></path>
-                        <path d="m9 12 2 2 4-4"></path>
-                      </svg>
-                      Updated: {formatDate(ticket.updatedAt)}
-                    </p>
-                    {ticket.status === "in_progress" && (
-                      <Badge variant="outline" className="text-xs bg-yellow-50 border-yellow-200 text-yellow-700 hover:bg-yellow-50">
-                        Staff is working on this
-                      </Badge>
-                    )}
-                    {ticket.status === "resolved" && (
-                      <Badge variant="outline" className="text-xs bg-green-50 border-green-200 text-green-700 hover:bg-green-50">
-                        Issue resolved
-                      </Badge>
-                    )}
-                  </div>
-                </CardFooter>
-              )}
-            </Card>
-          ))
-        ) : (
-          <div className="flex flex-col items-center justify-center gap-6 py-16 text-center bg-gradient-to-b from-purple-50/50 to-white rounded-xl border border-purple-100/50 shadow-sm">
-            <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center">
-              <MessageSquare className="h-10 w-10 text-purple-600" />
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center h-64 bg-red-50 rounded-lg border border-red-100">
+              <div className="bg-red-100 p-3 rounded-full mb-3">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 text-red-600">
+                  <path d="M12 9v4"></path>
+                  <path d="M12 17h.01"></path>
+                  <circle cx="12" cy="12" r="10"></circle>
+                </svg>
+              </div>
+              <p className="text-red-600 font-medium mb-1">Failed to load tickets</p>
+              <p className="text-red-500 text-sm">Please try refreshing the page</p>
             </div>
-            <div className="max-w-md space-y-2">
-              <h3 className="text-xl font-semibold text-gray-800">No tickets yet</h3>
-              <p className="text-muted-foreground">
-                You haven't submitted any support tickets. Need help or have a suggestion for improving the voting platform?
-              </p>
+          ) : tickets && tickets.length > 0 ? (
+            <div className="space-y-6">
+              {tickets.map((ticket: any) => (
+                <Card key={ticket.id} className="overflow-hidden transition-all duration-200 hover:shadow-sm border-gray-200 hover:border-purple-200">
+                  <CardHeader className="pb-3 pt-5 bg-gradient-to-r from-purple-50/70 to-white">
+                    <div className="flex justify-between items-start">
+                      <div className="space-y-1">
+                        <CardTitle className="flex items-center gap-2 text-gray-800">
+                          <span>{ticket.title}</span>
+                          <span className="text-sm text-muted-foreground font-normal font-mono">#{ticket.id}</span>
+                        </CardTitle>
+                        <CardDescription className="flex flex-wrap items-center gap-2">
+                          <span className="flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3">
+                              <circle cx="12" cy="12" r="10"></circle>
+                              <path d="M12 6v6l4 2"></path>
+                            </svg>
+                            {formatDate(ticket.createdAt)}
+                          </span>
+                          <span>•</span>
+                          <TicketTypeBadge type={ticket.type} />
+                        </CardDescription>
+                      </div>
+                      {ticket.status === "open" && (
+                        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">Open</Badge>
+                      )}
+                      {ticket.status === "in_progress" && (
+                        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">In Progress</Badge>
+                      )}
+                      {ticket.status === "resolved" && (
+                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Resolved</Badge>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent className="py-4">
+                    <p className="whitespace-pre-wrap text-sm text-gray-700 leading-relaxed">{ticket.description}</p>
+                  </CardContent>
+                  {ticket.status !== "open" && (
+                    <CardFooter className="bg-gray-50 py-3 px-6 border-t border-gray-100">
+                      <div className="w-full flex justify-between items-center">
+                        <p className="text-sm text-muted-foreground flex items-center gap-1">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3">
+                            <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"></path>
+                            <path d="m9 12 2 2 4-4"></path>
+                          </svg>
+                          Updated: {formatDate(ticket.updatedAt)}
+                        </p>
+                        {ticket.status === "in_progress" && (
+                          <span className="text-xs text-amber-700">Staff is working on this</span>
+                        )}
+                        {ticket.status === "resolved" && (
+                          <span className="text-xs text-green-700">Issue resolved</span>
+                        )}
+                      </div>
+                    </CardFooter>
+                  )}
+                </Card>
+              ))}
             </div>
-            <Button 
-              onClick={() => setIsCreateTicketDialogOpen(true)}
-              variant="default"
-              className="bg-gradient-to-r from-purple-700 to-purple-500 hover:from-purple-800 hover:to-purple-600 shadow-md hover:shadow-lg transition-all duration-200"
-            >
-              <MessageSquare className="mr-2 h-4 w-4" />
-              Create Your First Ticket
-            </Button>
-          </div>
-        )}
+          ) : (
+            <div className="flex flex-col items-center justify-center gap-6 py-16 text-center">
+              <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center">
+                <MessageSquare className="h-10 w-10 text-purple-600" />
+              </div>
+              <div className="max-w-md space-y-2">
+                <h3 className="text-xl font-semibold text-gray-800">No tickets yet</h3>
+                <p className="text-muted-foreground">
+                  You haven't submitted any support tickets. Need help or have a suggestion for improving the voting platform?
+                </p>
+              </div>
+              <Button 
+                onClick={() => setIsCreateTicketDialogOpen(true)}
+                variant="default"
+                className="bg-gradient-to-r from-purple-700 to-purple-500 hover:from-purple-800 hover:to-purple-600 shadow-md hover:shadow-lg transition-all duration-200"
+              >
+                <MessageSquare className="mr-2 h-4 w-4" />
+                Create Your First Ticket
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
