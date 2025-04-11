@@ -261,17 +261,20 @@ export function SimpleVoteButton({
       
       toast({
         title: "Submitting vote...",
-        description: "Please approve the transaction in your wallet",
-        duration: 10000,
+        description: "Please approve the transaction in your wallet. IMPORTANT: If the gas fee is too high, click 'Edit' in MetaMask and manually lower the gas price to 0.1 Gwei or less.",
+        duration: 20000,
       });
       
-      // Absolute minimal parameters approach - let MetaMask handle everything
-      // This worked for deployment and activation, so it should work for voting too
+      // Set ultra-minimal gas parameters to force a very low fee
+      // We need to override MetaMask's estimates which are too high for test networks
       const txParams = {
         from: account,
         to: '0xb74F07812B45dBEc4eC3E577194F6a798a060e5D',
-        data: data
-        // No gas settings at all - let MetaMask calculate everything
+        data: data,
+        // Use absolute minimum gas price the network will accept
+        gasPrice: '0x5F5E100', // 0.001 Gwei (100,000,000 wei) in hex - absolute minimum
+        // Ultra low gas limit - bare minimum for vote function
+        gas: '0x15F90' // Just 90,000 in hex - should be enough for a vote
       };
       
       console.log("Sending transaction with optimized parameters:", txParams);
