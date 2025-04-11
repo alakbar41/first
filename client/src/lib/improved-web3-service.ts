@@ -2,7 +2,9 @@ import { ethers } from 'ethers';
 import { IMPROVED_CONTRACT_ABI } from './improved-contract-abi';
 
 // Constants
-const POLYGON_AMOY_RPC_URL = 'https://rpc-amoy.polygon.technology';
+// Using Mumbai RPC as a fallback as it's more stable than Amoy for some operations
+const POLYGON_AMOY_RPC_URL = 'https://polygon-amoy.blockpi.network/v1/rpc/public';
+const POLYGON_AMOY_FALLBACK = 'https://rpc-amoy.polygon.technology';
 const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || '0xb74f07812b45DBec4eC3E577194F6a798a060e5D'; // Deployer: 0x0E6ED3EB1acc94F03006b326C939CeaF8d0953D5
 
 // Contract enums
@@ -41,7 +43,7 @@ class ImprovedWeb3Service {
   private isInitialized = false;
   private walletAddress = '';
 
-  // Initialize the Web3 service
+  // Initialize the Web3 service with improved reliability
   async initialize(): Promise<boolean> {
     try {
       if (!CONTRACT_ADDRESS) {
@@ -49,8 +51,30 @@ class ImprovedWeb3Service {
         return false;
       }
 
-      // Create provider
-      this.provider = new ethers.JsonRpcProvider(POLYGON_AMOY_RPC_URL);
+      // Try to create provider with the primary RPC URL first
+      try {
+        this.provider = new ethers.JsonRpcProvider(POLYGON_AMOY_RPC_URL);
+        // Test connection with a simple call
+        await this.provider.getBlockNumber();
+        console.log('Connected to primary RPC endpoint');
+      } catch (error) {
+        // If primary fails, try fallback RPC
+        console.warn('Primary RPC connection failed, trying fallback:', error);
+        try {
+          this.provider = new ethers.JsonRpcProvider(POLYGON_AMOY_FALLBACK);
+          await this.provider.getBlockNumber();
+          console.log('Connected to fallback RPC endpoint');
+        } catch (fallbackError) {
+          console.error('All RPC connections failed:', fallbackError);
+          // Last resort - try MetaMask's provider if available
+          if (window.ethereum) {
+            console.log('Attempting to use MetaMask provider as last resort');
+            this.provider = new ethers.BrowserProvider(window.ethereum);
+          } else {
+            throw new Error('Could not connect to any RPC endpoint');
+          }
+        }
+      }
       
       // Create contract interface
       this.contract = new ethers.Contract(

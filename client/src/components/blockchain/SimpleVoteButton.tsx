@@ -200,15 +200,15 @@ export function SimpleVoteButton({
         duration: 10000,
       });
       
-      // Use explicit low gas settings to reduce costs
+      // Use provider-estimated gas settings instead of hardcoded values
+      // This helps with compatibility across different networks and wallets
       const txHash = await window.ethereum.request({
         method: 'eth_sendTransaction',
         params: [{
           from: account,
           to: '0xb74F07812B45dBEc4eC3E577194F6a798a060e5D',
           data: data,
-          gas: '0x00F4240', // 1,000,000 gas limit in hex
-          gasPrice: '0x03B9ACA00' // 1 gwei in hex (using legacy gasPrice)
+          // Let MetaMask estimate the gas - more reliable across different networks
         }],
       });
       
@@ -251,7 +251,7 @@ export function SimpleVoteButton({
       } else if (errorMessage.includes('Internal JSON-RPC error')) {
         toast({
           title: "Network error",
-          description: "There was a problem with the network connection. You may need testnet MATIC tokens or to adjust gas settings manually.",
+          description: "The transaction failed due to a network error. Please try again or check your wallet connection.",
           variant: "destructive",
           duration: 10000,
         });
