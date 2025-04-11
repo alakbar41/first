@@ -13,7 +13,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Loader2 } from "lucide-react";
+import { Loader2, MessageSquare } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -123,17 +123,21 @@ export default function TicketsPage() {
 
   return (
     <div className="container py-6">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold">Support Tickets</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-800 to-purple-600 bg-clip-text text-transparent">
+            Support Tickets
+          </h1>
+          <p className="text-muted-foreground mt-2">
             Submit and track your concerns, suggestions, or other feedback
           </p>
         </div>
         <Button 
           onClick={() => setIsCreateTicketDialogOpen(true)}
-          className="bg-gradient-to-r from-purple-700 to-purple-500 hover:from-purple-800 hover:to-purple-600"
+          className="bg-gradient-to-r from-purple-700 to-purple-500 hover:from-purple-800 hover:to-purple-600 shadow-md hover:shadow-lg transition-all duration-200 px-5"
+          size="lg"
         >
+          <MessageSquare className="mr-2 h-5 w-5" />
           Create New Ticket
         </Button>
       </div>
@@ -242,48 +246,94 @@ export default function TicketsPage() {
       </Dialog>
 
       {/* Display Tickets */}
-      <div className="grid gap-4">
+      <div className="grid gap-6">
         {isLoading ? (
-          <div className="flex items-center justify-center h-64">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <div className="flex flex-col items-center justify-center h-64 bg-gray-50 rounded-lg border border-gray-100">
+            <Loader2 className="h-10 w-10 animate-spin text-purple-600 mb-3" />
+            <p className="text-muted-foreground">Loading your tickets...</p>
           </div>
         ) : error ? (
-          <div className="flex items-center justify-center h-64">
-            <p className="text-destructive">Failed to load tickets. Please try again.</p>
+          <div className="flex flex-col items-center justify-center h-64 bg-red-50 rounded-lg border border-red-100">
+            <div className="bg-red-100 p-3 rounded-full mb-3">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 text-red-600">
+                <path d="M12 9v4"></path>
+                <path d="M12 17h.01"></path>
+                <circle cx="12" cy="12" r="10"></circle>
+              </svg>
+            </div>
+            <p className="text-red-600 font-medium mb-1">Failed to load tickets</p>
+            <p className="text-red-500 text-sm">Please try refreshing the page</p>
           </div>
         ) : tickets && tickets.length > 0 ? (
           tickets.map((ticket: any) => (
-            <Card key={ticket.id} className="overflow-hidden">
-              <CardHeader className="pb-2">
-                <div className="flex justify-between">
-                  <CardTitle>{ticket.title}</CardTitle>
+            <Card key={ticket.id} className="overflow-hidden transition-all duration-200 hover:shadow-md border-gray-200 hover:border-purple-200">
+              <CardHeader className="pb-3 pt-5 bg-gradient-to-r from-purple-50/70 to-white">
+                <div className="flex justify-between items-start">
+                  <div className="space-y-1">
+                    <CardTitle className="flex items-center gap-2 text-gray-800">
+                      <span>{ticket.title}</span>
+                      <span className="text-sm text-muted-foreground font-normal font-mono">#{ticket.id}</span>
+                    </CardTitle>
+                    <CardDescription className="flex flex-wrap items-center gap-2">
+                      <span className="flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3">
+                          <circle cx="12" cy="12" r="10"></circle>
+                          <path d="M12 6v6l4 2"></path>
+                        </svg>
+                        {formatDate(ticket.createdAt)}
+                      </span>
+                      <span>•</span>
+                      <TicketTypeBadge type={ticket.type} />
+                    </CardDescription>
+                  </div>
                   <TicketStatusBadge status={ticket.status} />
                 </div>
-                <CardDescription className="flex items-center gap-2">
-                  <span>Submitted on {formatDate(ticket.createdAt)}</span>
-                  <span>•</span>
-                  <TicketTypeBadge type={ticket.type} />
-                </CardDescription>
               </CardHeader>
-              <CardContent>
-                <p className="whitespace-pre-wrap text-sm">{ticket.description}</p>
+              <CardContent className="py-4">
+                <p className="whitespace-pre-wrap text-sm text-gray-700 leading-relaxed">{ticket.description}</p>
               </CardContent>
               {ticket.status !== "open" && (
-                <CardFooter className="bg-muted/50 py-2 px-6">
-                  <p className="text-sm text-muted-foreground">
-                    Last updated: {formatDate(ticket.updatedAt)}
-                  </p>
+                <CardFooter className="bg-gray-50 py-3 px-6 border-t border-gray-100">
+                  <div className="w-full flex justify-between items-center">
+                    <p className="text-sm text-muted-foreground flex items-center gap-1">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3">
+                        <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"></path>
+                        <path d="m9 12 2 2 4-4"></path>
+                      </svg>
+                      Updated: {formatDate(ticket.updatedAt)}
+                    </p>
+                    {ticket.status === "in_progress" && (
+                      <Badge variant="outline" className="text-xs bg-yellow-50 border-yellow-200 text-yellow-700 hover:bg-yellow-50">
+                        Staff is working on this
+                      </Badge>
+                    )}
+                    {ticket.status === "resolved" && (
+                      <Badge variant="outline" className="text-xs bg-green-50 border-green-200 text-green-700 hover:bg-green-50">
+                        Issue resolved
+                      </Badge>
+                    )}
+                  </div>
                 </CardFooter>
               )}
             </Card>
           ))
         ) : (
-          <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
-            <p className="text-muted-foreground">You haven't submitted any tickets yet.</p>
+          <div className="flex flex-col items-center justify-center gap-6 py-16 text-center bg-gradient-to-b from-purple-50/50 to-white rounded-xl border border-purple-100/50 shadow-sm">
+            <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center">
+              <MessageSquare className="h-10 w-10 text-purple-600" />
+            </div>
+            <div className="max-w-md space-y-2">
+              <h3 className="text-xl font-semibold text-gray-800">No tickets yet</h3>
+              <p className="text-muted-foreground">
+                You haven't submitted any support tickets. Need help or have a suggestion for improving the voting platform?
+              </p>
+            </div>
             <Button 
               onClick={() => setIsCreateTicketDialogOpen(true)}
-              variant="outline"
+              variant="default"
+              className="bg-gradient-to-r from-purple-700 to-purple-500 hover:from-purple-800 hover:to-purple-600 shadow-md hover:shadow-lg transition-all duration-200"
             >
+              <MessageSquare className="mr-2 h-4 w-4" />
               Create Your First Ticket
             </Button>
           </div>
