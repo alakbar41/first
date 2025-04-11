@@ -1411,10 +1411,38 @@ Technical error: ${gasError.message}`);
   }
 
   // Get next nonce for voter
+  // Get next nonce - with lazy initialization
   async getNextNonce(): Promise<number> {
     try {
+      // If no provider or wallet, try to initialize through MetaMask connection
+      if ((!this.provider || !this.walletAddress) && window.ethereum) {
+        try {
+          console.log('Provider not initialized, trying to connect using MetaMask for getting nonce...');
+          const ethersProvider = new ethers.BrowserProvider(window.ethereum);
+          this.provider = ethersProvider;
+          
+          const signer = await ethersProvider.getSigner();
+          this.signer = signer;
+          this.walletAddress = await signer.getAddress();
+          
+          if (CONTRACT_ADDRESS) {
+            this.contract = new ethers.Contract(
+              CONTRACT_ADDRESS,
+              IMPROVED_CONTRACT_ABI,
+              signer
+            );
+          }
+          
+          console.log('Provider initialized on-demand for getting transaction nonce');
+        } catch (initError) {
+          console.error('Failed to initialize provider on-demand for nonce:', initError);
+          throw new Error('Failed to connect to blockchain. Please make sure MetaMask is installed and connected.');
+        }
+      }
+      
+      // If still no provider or wallet, can't proceed
       if (!this.provider || !this.walletAddress) {
-        throw new Error('Provider or wallet not initialized');
+        throw new Error('Provider could not be initialized. Please make sure MetaMask is installed and connected.');
       }
 
       // Get the transaction count (nonce) from the provider
@@ -1423,8 +1451,7 @@ Technical error: ${gasError.message}`);
       return nonce;
     } catch (error) {
       console.error('Failed to get next nonce:', error);
-      // Return 0 as a fallback value to avoid blocking the transaction
-      return 0;
+      throw error; // Re-throw the error so the caller can handle it
     }
   }
 
