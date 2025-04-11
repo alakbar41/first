@@ -211,101 +211,70 @@ export default function AdminTickets() {
                 </div>
               ) : (
                 <div className="space-y-6">
-                  <Tabs defaultValue="all" className="w-full" value={filter} onValueChange={setFilter}>
-                    <TabsList className="grid grid-cols-4 mb-4">
-                      <TabsTrigger value="all">All ({ticketCounts.all})</TabsTrigger>
-                      <TabsTrigger value="open" className="text-red-600">
+                  <div className="mb-4 border-b border-gray-200">
+                    <div className="flex flex-wrap -mb-px">
+                      <button
+                        className={`mr-2 inline-block py-2 px-4 text-sm font-medium ${
+                          filter === "all" 
+                            ? "text-purple-600 border-b-2 border-purple-600" 
+                            : "text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 border-transparent"
+                        }`}
+                        onClick={() => setFilter("all")}
+                      >
+                        All ({ticketCounts.all})
+                      </button>
+                      <button
+                        className={`mr-2 inline-block py-2 px-4 text-sm font-medium ${
+                          filter === "open" 
+                            ? "text-red-600 border-b-2 border-red-600" 
+                            : "text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 border-transparent"
+                        }`}
+                        onClick={() => setFilter("open")}
+                      >
                         Open ({ticketCounts.open})
-                      </TabsTrigger>
-                      <TabsTrigger value="in_progress" className="text-amber-600">
+                      </button>
+                      <button
+                        className={`mr-2 inline-block py-2 px-4 text-sm font-medium ${
+                          filter === "in_progress" 
+                            ? "text-amber-600 border-b-2 border-amber-600" 
+                            : "text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 border-transparent"
+                        }`}
+                        onClick={() => setFilter("in_progress")}
+                      >
                         In Progress ({ticketCounts.in_progress})
-                      </TabsTrigger>
-                      <TabsTrigger value="resolved" className="text-green-600">
+                      </button>
+                      <button
+                        className={`mr-2 inline-block py-2 px-4 text-sm font-medium ${
+                          filter === "resolved" 
+                            ? "text-green-600 border-b-2 border-green-600" 
+                            : "text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 border-transparent"
+                        }`}
+                        onClick={() => setFilter("resolved")}
+                      >
                         Resolved ({ticketCounts.resolved})
-                      </TabsTrigger>
-                    </TabsList>
-                    
-                    {/* All tickets tab - the logic for displaying is controlled by the filteredTickets variable */}
-                    <TabsContent value="all" className="mt-0">
-                      {filteredTickets.map((ticket: any) => (
-                        <TicketCard
-                          key={ticket.id}
-                          ticket={ticket}
-                          onMarkInProgress={() => {
-                            updateTicketMutation.mutate({
-                              id: ticket.id,
-                              status: "in_progress",
-                            });
-                          }}
-                          onResolve={() => {
-                            setSelectedTicket(ticket);
-                            setIsResponseDialogOpen(true);
-                          }}
-                          isPending={updateTicketMutation.isPending}
-                        />
-                      ))}
-                    </TabsContent>
-                    
-                    <TabsContent value="open" className="mt-0">
-                      {filteredTickets.map((ticket: any) => (
-                        <TicketCard
-                          key={ticket.id}
-                          ticket={ticket}
-                          onMarkInProgress={() => {
-                            updateTicketMutation.mutate({
-                              id: ticket.id,
-                              status: "in_progress",
-                            });
-                          }}
-                          onResolve={() => {
-                            setSelectedTicket(ticket);
-                            setIsResponseDialogOpen(true);
-                          }}
-                          isPending={updateTicketMutation.isPending}
-                        />
-                      ))}
-                    </TabsContent>
-                    
-                    <TabsContent value="in_progress" className="mt-0">
-                      {filteredTickets.map((ticket: any) => (
-                        <TicketCard
-                          key={ticket.id}
-                          ticket={ticket}
-                          onMarkInProgress={() => {
-                            updateTicketMutation.mutate({
-                              id: ticket.id,
-                              status: "in_progress",
-                            });
-                          }}
-                          onResolve={() => {
-                            setSelectedTicket(ticket);
-                            setIsResponseDialogOpen(true);
-                          }}
-                          isPending={updateTicketMutation.isPending}
-                        />
-                      ))}
-                    </TabsContent>
-                    
-                    <TabsContent value="resolved" className="mt-0">
-                      {filteredTickets.map((ticket: any) => (
-                        <TicketCard
-                          key={ticket.id}
-                          ticket={ticket}
-                          onMarkInProgress={() => {
-                            updateTicketMutation.mutate({
-                              id: ticket.id,
-                              status: "in_progress",
-                            });
-                          }}
-                          onResolve={() => {
-                            setSelectedTicket(ticket);
-                            setIsResponseDialogOpen(true);
-                          }}
-                          isPending={updateTicketMutation.isPending}
-                        />
-                      ))}
-                    </TabsContent>
-                  </Tabs>
+                      </button>
+                    </div>
+                  </div>
+                
+                  <div className="mt-6">
+                    {filteredTickets.map((ticket: any) => (
+                      <TicketCard
+                        key={ticket.id}
+                        ticket={ticket}
+                        onMarkInProgress={() => {
+                          updateTicketMutation.mutate({
+                            id: ticket.id,
+                            status: "in_progress",
+                          });
+                        }}
+                        onResolve={() => {
+                          setSelectedTicket(ticket);
+                          setIsResponseDialogOpen(true);
+                        }}
+                        isPending={updateTicketMutation.isPending}
+                      />
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
