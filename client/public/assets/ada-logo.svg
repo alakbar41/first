@@ -1,12 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="40" height="40" viewBox="0 0 40 40">
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Purple gradient background -->
+  <rect width="48" height="48" rx="8" fill="url(#paint0_linear)" />
+  
+  <!-- ADA text -->
+  <path d="M12 34L18 14H22L28 34H24L23 30H17L16 34H12ZM18 26H22L20 18L18 26Z" fill="white" />
+  <path d="M30 34V14H34V30H42V34H30Z" fill="white" />
+  <path d="M12 36V38H36V36H12Z" fill="white" />
+  
+  <!-- Mortarboard/graduation cap -->
+  <path d="M24 8L36 14L24 20L12 14L24 8Z" fill="white"/>
+  <path d="M30 17V25C30 25 27 28 24 28C21 28 18 25 18 25V17L24 20L30 17Z" fill="white"/>
+  <path d="M32 17V25L33 26V18L32 17Z" fill="white"/>
+  
+  <!-- Define gradient -->
   <defs>
-    <clipPath id="clip-path">
-      <rect id="Rectangle_32" data-name="Rectangle 32" width="40" height="40" fill="none"/>
-    </clipPath>
+    <linearGradient id="paint0_linear" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6930C3" />
+      <stop offset="1" stop-color="#4A1D96" />
+    </linearGradient>
   </defs>
-  <g id="Group_63" data-name="Group 63" clip-path="url(#clip-path)">
-    <path id="Path_117" data-name="Path 117" d="M35.333,0H4.666A4.639,4.639,0,0,0,0,4.667V35.333A4.639,4.639,0,0,0,4.666,40H35.333A4.64,4.64,0,0,0,40,35.333V4.667A4.64,4.64,0,0,0,35.333,0" fill="#662e91"/>
-    <path id="Path_118" data-name="Path 118" d="M11.574,17.954c.179-.269.328-.528.512-.762a4.17,4.17,0,0,1,1.943-1.358,3.313,3.313,0,0,1,3.809,1.343c.063.92.125.184.183.278Zm10.624-3.088H18.054v1.5h4.144Zm-2.2,4.724a.2.2,0,0,0,.009-.064,2.36,2.36,0,0,0-2.288-2.362c-.173-.008-.346,0-.519,0h-.547v4.706c.166.007.321.019.477.019.188,0,.377-.009.564-.02a3.233,3.233,0,0,0,2.214-.943A3.009,3.009,0,0,0,20,19.59M11.45,28.193V11.807h6.488v1.547H13.047v4.9h4.891v1.509H13.047v6.885H11.45m9.594,0V17.953h1.568v1.044a3.444,3.444,0,0,1,.347-.468,2.706,2.706,0,0,1,1.983-.752,2.6,2.6,0,0,1,2.789,2.562c.26.216.39.434.58.67v7.184H26.223v-6.7a1.5,1.5,0,0,0-1.5-1.611c-.082,0-.165,0-.246.01a1.607,1.607,0,0,0-1.634,1.491c-.26.217-.37.435-.3.672v6.14H21.044" fill="#fff"/>
-  </g>
 </svg>
