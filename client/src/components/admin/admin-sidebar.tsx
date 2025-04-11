@@ -9,7 +9,8 @@ import {
   LogOut,
   ChevronRight,
   ChevronLeft,
-  MessageSquare
+  MessageSquare,
+  Network
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -56,6 +57,12 @@ export function AdminSidebar({ user }: SidebarProps) {
       icon: FileText,
       path: "/admin/voters",
       active: location.includes("/admin/voters")
+    },
+    {
+      title: "Architecture",
+      icon: Network,
+      path: "/admin-architecture",
+      active: location === "/admin-architecture"
     },
     {
       title: "Settings",
