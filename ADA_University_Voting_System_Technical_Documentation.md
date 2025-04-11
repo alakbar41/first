@@ -146,7 +146,23 @@ This document is intended for technical stakeholders with foundational knowledge
     4. [Integration Opportunities](#integration-opportunities)
     5. [Research Directions](#research-directions)
 
-15. [Appendices](#appendices)
+15. [Detailed System Workflows](#detailed-system-workflows)
+    1. [Administrator Workflows](#administrator-workflows)
+       1. [Administrator Authentication Flow](#administrator-authentication-flow)
+       2. [Election Creation Flow](#election-creation-flow)
+       3. [Candidate Addition Flow](#candidate-addition-flow)
+       4. [Election Deployment Flow](#election-deployment-flow)
+       5. [Election Activation Flow](#election-activation-flow)
+       6. [Election Results Management Flow](#election-results-management-flow)
+       7. [Ticket Management Flow](#ticket-management-flow)
+    2. [Student Workflows](#student-workflows)
+       1. [Student Authentication Flow](#student-authentication-flow)
+       2. [Wallet Connection Flow](#wallet-connection-flow)
+       3. [Voting Process Flow](#voting-process-flow)
+       4. [Election Results Viewing Flow](#election-results-viewing-flow)
+       5. [Ticket Submission Flow](#ticket-submission-flow)
+
+16. [Appendices](#appendices)
     1. [Glossary of Terms](#glossary-of-terms)
     2. [Reference Implementation](#reference-implementation)
     3. [Development Environment Configuration](#development-environment-configuration)
@@ -1141,6 +1157,262 @@ Planned future enhancements include:
 8. **L2 Scaling**: Migration to Layer 2 scaling solutions for improved performance
 9. **Decentralized Identity**: Integration with decentralized identity solutions
 10. **Cross-Platform Wallet Support**: Expanded wallet provider support
+
+## Detailed System Workflows
+
+This section provides comprehensive, step-by-step descriptions of all core system workflows for both administrators and students. Each workflow details the exact sequence of operations, system interactions, and state transitions that occur during execution.
+
+### Administrator Workflows
+
+#### Administrator Authentication Flow
+
+1. Administrator navigates to the login page and enters their credentials (email and password)
+2. Frontend sends authentication request to the backend API via POST request to `/api/login`
+3. Backend validates the submitted credentials against the database using bcrypt password comparison
+4. If credentials are valid, backend creates a session using Passport.js and stores session data in PostgreSQL
+5. A session cookie is sent back to the client with a secure, HTTP-only flag
+6. Frontend redirects administrator to the admin dashboard
+7. The dashboard interface loads and makes authenticated API requests to fetch initial data
+8. Backend validates the session cookie on each request and checks administrator privileges
+9. Admin dashboard displays election management interface with access to all administrative functions
+
+#### Election Creation Flow
+
+1. Administrator selects "Create New Election" from the admin dashboard
+2. System presents a multi-step form requesting election details:
+   - Election name and description
+   - Faculty affiliation (School of IT, Business, etc.)
+   - Academic year reference
+   - Start and end dates/times for voting period
+3. Administrator completes and submits the form
+4. Frontend validates form data using Zod schema validation
+5. Frontend sends election data to backend via POST request to `/api/elections`
+6. Backend performs secondary validation of election data
+7. Backend generates a unique election ID for the new election
+8. Backend stores election data in PostgreSQL with initial status "pending"
+9. Database returns the created election object with complete metadata
+10. Backend responds to frontend with the created election data
+11. Frontend displays success notification and updates the election list
+12. New election appears in the administrator's election management interface with a "Configure" option
+
+#### Candidate Addition Flow
+
+1. Administrator selects a specific election from the election management interface
+2. Administrator chooses "Manage Candidates" option
+3. System displays current candidate list (empty for new elections) and "Add Candidate" button
+4. Administrator selects "Add Candidate"
+5. System presents candidate information form requesting:
+   - Student ID number
+   - Full name
+   - Faculty and program affiliation
+   - Year of study
+   - Biographical information
+   - Candidate photograph (optional)
+6. Administrator completes and submits the form
+7. Frontend validates submission and sends data to backend via POST request to `/api/candidates`
+8. Backend verifies candidate doesn't already exist in the system
+9. Backend stores candidate information in PostgreSQL database
+10. Backend creates relationship between election and candidate in election_candidates table
+11. Database returns confirmation of candidate creation and association
+12. Backend responds with success status and candidate details
+13. Frontend updates the candidate list showing the newly added candidate
+14. Process can be repeated to add multiple candidates to the election
+
+#### Election Deployment Flow
+
+1. Administrator selects "Deploy to Blockchain" for a fully configured election
+2. Frontend displays confirmation dialog explaining the blockchain deployment process
+3. Administrator confirms deployment
+4. Frontend sends deployment request to backend via POST to `/api/elections/{id}/deploy`
+5. Backend validates election configuration completeness
+6. Backend initializes blockchain transaction preparation:
+   - Retrieves election and candidate data from database
+   - Constructs transaction parameters for smart contract interaction
+   - Prepares administrator's wallet connection through MetaMask
+7. Backend prompts administrator to connect their MetaMask wallet if not already connected
+8. Administrator approves wallet connection in MetaMask popup
+9. Backend prepares blockchain transaction to call `deployElection` function on smart contract
+10. Backend estimates gas requirements and sets optimized transaction parameters:
+    - Gas limit: 500,000
+    - Gas price: 1.5 Gwei
+    - Max fee: 2.5 Gwei
+11. Administrator confirms transaction in MetaMask with signature
+12. Transaction is submitted to Polygon Amoy testnet
+13. Backend monitors transaction status via transaction hash
+14. When transaction is confirmed on blockchain, backend:
+    - Updates election status to "deployed" in database
+    - Stores transaction hash as reference
+    - Records blockchain election ID (may differ from database ID)
+15. Frontend receives confirmation and updates election status
+16. Election now shows "Deployed" status with blockchain transaction details
+17. "Activate Election" option becomes available for this election
+
+#### Election Activation Flow
+
+1. Administrator selects "Activate Election" for a deployed election
+2. System presents activation options:
+   - Immediate activation
+   - Scheduled activation based on predefined start time
+3. Administrator chooses activation option
+4. Frontend sends activation request to backend via POST to `/api/elections/{id}/activate`
+5. Backend verifies election is in deployable state
+6. Backend initiates blockchain transaction to call `startElection` function on smart contract
+7. Administrator approves blockchain transaction in MetaMask
+8. Transaction is submitted to Polygon network
+9. Backend monitors transaction status
+10. Upon confirmation, backend:
+    - Updates election status to "active" in database
+    - Stores activation transaction hash
+    - Updates activation timestamp
+11. Frontend receives confirmation and updates election interface
+12. Election now appears in "Active Elections" list
+13. Students can now see and participate in the election
+14. System begins automatic status monitoring based on election timeframe
+
+#### Election Results Management Flow
+
+1. Administrator navigates to an election that has completed its voting period
+2. System shows election status as "completed" based on end time passing
+3. Administrator selects "View Results" option
+4. System initiates blockchain query to retrieve vote counts from smart contract
+5. Backend calls smart contract's `getResults` function for the specific election
+6. Blockchain returns vote counts for each candidate in the election
+7. Backend retrieves candidate information from database to correlate with blockchain data
+8. Backend constructs complete results dataset with candidate details and vote counts
+9. Frontend receives results data and renders visualization:
+   - Vote counts in tabular format
+   - Bar/pie chart visualization of voting distribution
+   - Participation statistics
+10. Administrator can select "Finalize Results" to mark results as official
+11. Finalization triggers blockchain transaction to call `finalizeResults` function
+12. Administrator approves transaction in MetaMask
+13. Transaction is confirmed on blockchain
+14. Results are permanently sealed on blockchain and marked as finalized in database
+15. Results become visible to all students in public results view
+
+#### Ticket Management Flow
+
+1. Administrator navigates to "Ticket Management" section of admin dashboard
+2. System retrieves all student-submitted tickets from database
+3. Tickets are displayed with:
+   - Submission time
+   - Student name
+   - Ticket subject
+   - Status (open, in progress, resolved)
+4. Administrator selects a specific ticket to view details
+5. System displays complete ticket information:
+   - Full ticket message
+   - Student contact information
+   - Submission metadata
+   - Any previous responses
+6. Administrator can update ticket status or add a response
+7. Response is stored in database and linked to original ticket
+8. System sends email notification to student about ticket update
+9. Student can view response in their ticket management interface
+
+### Student Workflows
+
+#### Student Authentication Flow
+
+1. Student navigates to the login page and enters their ADA University credentials
+2. Frontend sends authentication request to backend via POST to `/api/login`
+3. Backend validates credentials against the database
+4. If valid, backend creates a session and sets session cookie
+5. Frontend redirects to student dashboard
+6. Dashboard loads with personalized information based on student's:
+   - Faculty affiliation
+   - Year of study
+   - Previous voting history
+7. System displays elections relevant to the student based on eligibility criteria
+8. Student can now access voting functionality for eligible active elections
+
+#### Wallet Connection Flow
+
+1. Student navigates to an active election they are eligible to participate in
+2. System presents election details and "Connect Wallet" button
+3. Student clicks "Connect Wallet" 
+4. Frontend initializes Web3 connection process:
+   - Checks if MetaMask extension is installed
+   - If not installed, displays installation instructions
+   - If installed, requests connection permission
+5. MetaMask popup appears requesting wallet connection permission
+6. Student approves the connection request in MetaMask
+7. MetaMask provides wallet address and connection to Polygon network
+8. Frontend verifies connection to correct network (Polygon Amoy testnet)
+9. If incorrect network, prompts student to switch networks in MetaMask
+10. Once connected, frontend stores wallet connection state
+11. Frontend requests voting token from backend via GET to `/api/elections/{id}/voting-token`
+12. Backend verifies student hasn't already voted in this election
+13. Backend generates a one-time voting token and stores it in database
+14. Token is returned to frontend
+15. "Vote" buttons become active for each candidate in the election
+
+#### Voting Process Flow
+
+1. Student reviews candidate information in the active election interface
+2. Each candidate is displayed with:
+   - Name and photo
+   - Faculty and program
+   - Year of study
+   - Biographical statement
+3. Student selects their preferred candidate
+4. System displays confirmation dialog summarizing selection
+5. Student confirms their selection
+6. Frontend prepares blockchain transaction:
+   - Constructs transaction parameters for smart contract's `vote` function
+   - Includes election ID, candidate ID, and one-time voting token
+   - Sets optimized gas parameters for Polygon network
+7. MetaMask popup displays transaction details for approval
+8. Student reviews transaction parameters and approves with signature
+9. Frontend submits transaction to blockchain
+10. Frontend displays loading indicator during transaction processing
+11. Frontend monitors transaction status via transaction hash
+12. Upon successful confirmation:
+    - Frontend notifies student of successful vote
+    - Backend records vote in database (marking voting token as used)
+    - Vote is permanently recorded on blockchain
+13. Student receives success confirmation with transaction hash reference
+14. Student is prevented from voting again in the same election
+
+#### Election Results Viewing Flow
+
+1. Student navigates to an election that has ended
+2. System shows election status as "completed" based on end time passing
+3. Student selects "View Results" option
+4. System initiates blockchain query to retrieve vote counts
+5. Backend calls smart contract's `getResults` function for the specific election
+6. Blockchain returns vote counts for each candidate
+7. Backend correlates vote counts with candidate information from database
+8. Frontend renders results visualization:
+   - Winner indication
+   - Vote distribution chart
+   - Participation statistics
+9. Results are displayed as read-only and cannot be modified
+10. Student can view their participation status for this election
+11. All data shown is retrieved directly from blockchain for transparency
+
+#### Ticket Submission Flow
+
+1. Student encounters an issue or has feedback about the voting system
+2. Student navigates to "Support" section of student dashboard
+3. System presents ticket submission form requesting:
+   - Subject/category of issue
+   - Detailed description
+   - Severity level
+4. Student completes and submits form
+5. Frontend validates submission and sends to backend via POST to `/api/tickets`
+6. Backend creates new ticket record in database with:
+   - Student ID association
+   - Timestamp
+   - Initial status of "open"
+7. Backend returns ticket confirmation with reference ID
+8. Frontend displays confirmation message with ticket reference
+9. Student can view submitted ticket in "My Tickets" section
+10. Student receives email confirmation of ticket submission
+11. Administrators are notified of new ticket in admin dashboard
+12. When administrators respond, student receives email notification
+13. Student can view administrator responses in ticket detail view
+14. Student can update ticket or mark as resolved if issue is fixed
 
 ---
 
