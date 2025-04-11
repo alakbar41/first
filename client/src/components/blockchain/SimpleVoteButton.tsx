@@ -101,13 +101,12 @@ export function SimpleVoteButton({
   // Reset vote in the database if blockchain transaction failed
   const resetVote = async (electionId: number, txHash: string): Promise<void> => {
     try {
-      const response = await apiRequest('POST', '/api/votes/reset', {
-        electionId,
-        txHash
+      const response = await apiRequest('POST', '/api/test/reset-user-vote', {
+        electionId
       });
       
       if (response.ok) {
-        console.log('Vote reset successfully');
+        console.log('Vote reset successfully - you can now vote again');
       } else {
         console.warn('Failed to reset vote, user may not be able to vote again');
       }
