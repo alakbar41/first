@@ -51,43 +51,9 @@ class ImprovedWeb3Service {
         return false;
       }
 
-      // Try to create provider with the primary RPC URL first
-      try {
-        this.provider = new ethers.JsonRpcProvider(POLYGON_AMOY_RPC_URL);
-        // Test connection with a simple call
-        await this.provider.getBlockNumber();
-        console.log('Connected to primary RPC endpoint');
-      } catch (error) {
-        // If primary fails, try fallback RPC
-        console.warn('Primary RPC connection failed, trying fallback:', error);
-        try {
-          this.provider = new ethers.JsonRpcProvider(POLYGON_AMOY_FALLBACK);
-          await this.provider.getBlockNumber();
-          console.log('Connected to fallback RPC endpoint');
-        } catch (fallbackError) {
-          console.error('All RPC connections failed:', fallbackError);
-          // Last resort - try MetaMask's provider if available
-          if (window.ethereum) {
-            console.log('Attempting to use MetaMask provider as last resort');
-            this.provider = new ethers.BrowserProvider(window.ethereum);
-          } else {
-            throw new Error('Could not connect to any RPC endpoint');
-          }
-        }
-      }
-      
-      // Create contract interface
-      this.contract = new ethers.Contract(
-        CONTRACT_ADDRESS,
-        IMPROVED_CONTRACT_ABI,
-        this.provider
-      );
-      
-      // If we have a signer, reconnect the contract with it
-      if (this.signer && this.walletAddress) {
-        this.contract = this.contract.connect(this.signer);
-        console.log('Contract connected with signer for address:', this.walletAddress);
-      }
+      // Skip the direct provider initialization - we'll use MetaMask's provider only
+      // This avoids issues with CSP (Content Security Policy) blocking RPC connections
+      console.log('Using MetaMask provider only approach - no RPC URLs');
       
       this.isInitialized = true;
       return true;

@@ -66,16 +66,8 @@ class OptimizedWeb3Service {
         return false;
       }
 
-      // Create provider
-      this.provider = new ethers.JsonRpcProvider(POLYGON_AMOY_RPC_URL);
-      
-      // Create contract interface
-      this.contract = new ethers.Contract(
-        CONTRACT_ADDRESS,
-        OPTIMIZED_CONTRACT_ABI,
-        this.provider
-      );
-      
+      // Skip the direct provider initialization - we'll use MetaMask's provider
+      // when needed through the connectWallet method  
       this.isInitialized = true;
       return true;
     } catch (error) {
