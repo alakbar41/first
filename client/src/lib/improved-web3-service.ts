@@ -551,39 +551,40 @@ Technical error: ${gasError.message}`);
     }
   }
   
-  // Start an election with custom gas settings (for retries) - with lazy initialization
+  // Start an election with custom gas settings (for retries) - with fully independent lazy initialization
   async startElectionWithCustomGas(electionId: number, customGasOptions: any): Promise<void> {
+    let provider = null;
+    let signer = null;
+    let walletAddress = '';
+    let contract = null;
     try {
-      // If no contract, try to initialize through MetaMask connection
-      if (!this.contract && window.ethereum) {
+      // Always attempt to initialize a fresh connection for this specific transaction
+      // This ensures we don't depend on previous initialization state at all
+      if (window.ethereum) {
         try {
-          console.log('Contract not initialized, trying to connect using MetaMask for custom gas election activation...');
-          const ethersProvider = new ethers.BrowserProvider(window.ethereum);
-          const signer = await ethersProvider.getSigner();
-          this.signer = signer;
-          this.walletAddress = await signer.getAddress();
+          console.log('Setting up fresh connection for custom gas election activation...');
+          provider = new ethers.BrowserProvider(window.ethereum);
+          signer = await provider.getSigner();
+          walletAddress = await signer.getAddress();
           
-          this.contract = new ethers.Contract(
+          contract = new ethers.Contract(
             CONTRACT_ADDRESS,
             IMPROVED_CONTRACT_ABI,
             signer
           );
           
-          console.log('Contract initialized on-demand for custom gas election activation');
+          console.log('Fresh contract connection established for custom gas election activation');
         } catch (initError) {
-          console.error('Failed to initialize contract on-demand for custom gas election activation:', initError);
+          console.error('Failed to establish fresh connection for custom gas election activation:', initError);
           throw new Error('Failed to connect to blockchain. Please make sure MetaMask is installed and connected.');
         }
+      } else {
+        throw new Error('MetaMask is not installed. Please install MetaMask to use blockchain features.');
       }
       
-      // If still no contract, we can't proceed
-      if (!this.contract || !this.signer) {
-        throw new Error('Contract could not be initialized. Please make sure MetaMask is installed and connected.');
-      }
-
-      // Ensure wallet is connected
-      if (!this.walletAddress) {
-        throw new Error('Wallet not connected. Please connect your MetaMask wallet first.');
+      // If we couldn't establish a connection, we can't proceed
+      if (!contract || !signer || !walletAddress) {
+        throw new Error('Failed to connect to blockchain. Please make sure MetaMask is installed and connected.');
       }
       
       // First, check the election status
@@ -604,13 +605,14 @@ Technical error: ${gasError.message}`);
         throw new Error(`Cannot activate election ${electionId} because it is already in ${electionDetails.status === ElectionStatus.Completed ? 'completed' : 'cancelled'} state.`);
       }
       
-      // Get nonce before transaction to ensure proper sequencing
-      const nonce = await this.getNextNonce();
+      // Get nonce directly from the provider for this transaction
+      const nonce = await provider.getTransactionCount(walletAddress);
+      console.log(`Retrieved nonce ${nonce} for wallet ${walletAddress} directly from provider`);
       
       console.log(`Starting election ${electionId} with custom gas settings and nonce ${nonce}`);
 
       // Use populateTransaction to separate contract parameters from transaction options
-      const tx = await this.contract.updateElectionStatus.populateTransaction(
+      const tx = await contract.updateElectionStatus.populateTransaction(
         electionId, 
         ElectionStatus.Active
       );
@@ -624,8 +626,8 @@ Technical error: ${gasError.message}`);
       
       console.log(`Sending activation transaction with custom gas options:`, customGasOptions);
       
-      // Send the transaction with the signer
-      const txResponse = await this.signer.sendTransaction(transaction);
+      // Send the transaction with the fresh signer (using non-null assertion since we've validated signer)
+      const txResponse = await signer!.sendTransaction(transaction);
       
       console.log(`Election activation transaction sent: ${txResponse.hash}`);
       
