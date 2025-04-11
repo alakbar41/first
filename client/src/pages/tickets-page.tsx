@@ -1,0 +1,294 @@
+import React from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Loader2 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { apiRequest } from "@/lib/queryClient";
+
+// Define schema for creating tickets
+const ticketFormSchema = z.object({
+  title: z.string().min(5, "Title must be at least 5 characters"),
+  description: z.string().min(10, "Please provide a more detailed description"),
+  type: z.enum(["concern", "suggestion", "other"], {
+    required_error: "Please select the type of ticket",
+  }),
+});
+
+type TicketFormData = z.infer<typeof ticketFormSchema>;
+
+// Define ticket status badge component
+function TicketStatusBadge({ status }: { status: string }) {
+  switch (status) {
+    case "open":
+      return <Badge variant="secondary">Open</Badge>;
+    case "in_progress":
+      return <Badge variant="default">In Progress</Badge>;
+    case "resolved":
+      return <Badge variant="outline">Resolved</Badge>;
+    default:
+      return <Badge variant="outline">{status}</Badge>;
+  }
+}
+
+// Define ticket type badge component
+function TicketTypeBadge({ type }: { type: string }) {
+  switch (type) {
+    case "concern":
+      return <Badge variant="destructive">Concern</Badge>;
+    case "suggestion":
+      return <Badge variant="default">Suggestion</Badge>;
+    case "other":
+      return <Badge variant="outline">Other</Badge>;
+    default:
+      return <Badge variant="outline">{type}</Badge>;
+  }
+}
+
+export default function TicketsPage() {
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [isCreateTicketDialogOpen, setIsCreateTicketDialogOpen] = React.useState(false);
+
+  // Get user tickets
+  const { data: tickets, isLoading, error } = useQuery({
+    queryKey: ["/api/my-tickets"],
+    refetchOnWindowFocus: false,
+  });
+
+  // Create ticket mutation
+  const createTicketMutation = useMutation({
+    mutationFn: async (data: TicketFormData) => {
+      const res = await apiRequest("POST", "/api/tickets", data);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to create ticket");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/my-tickets"] });
+      setIsCreateTicketDialogOpen(false);
+      toast({
+        title: "Ticket Created",
+        description: "Your ticket has been submitted successfully.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Failed to Create Ticket",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Initialize form
+  const form = useForm<TicketFormData>({
+    resolver: zodResolver(ticketFormSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+      type: "suggestion",
+    },
+  });
+
+  const onSubmit = (data: TicketFormData) => {
+    createTicketMutation.mutate(data);
+  };
+
+  // Format date
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "numeric",
+    }).format(date);
+  };
+
+  return (
+    <div className="container py-6">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-3xl font-bold">Support Tickets</h1>
+          <p className="text-muted-foreground">
+            Submit and track your concerns, suggestions, or other feedback
+          </p>
+        </div>
+        <Button 
+          onClick={() => setIsCreateTicketDialogOpen(true)}
+          className="bg-gradient-to-r from-purple-700 to-purple-500 hover:from-purple-800 hover:to-purple-600"
+        >
+          Create New Ticket
+        </Button>
+      </div>
+
+      {/* Create Ticket Dialog */}
+      <Dialog open={isCreateTicketDialogOpen} onOpenChange={setIsCreateTicketDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Create Support Ticket</DialogTitle>
+            <DialogDescription>
+              Submit a ticket to share your concerns, suggestions, or feedback with administrators.
+            </DialogDescription>
+          </DialogHeader>
+
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Title</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Brief summary of your feedback" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Please provide details about your feedback" 
+                        className="h-24"
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Ticket Type</FormLabel>
+                    <FormControl>
+                      <RadioGroup
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                        className="flex flex-col space-y-1"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="concern" id="concern" />
+                          <Label htmlFor="concern">Concern</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="suggestion" id="suggestion" />
+                          <Label htmlFor="suggestion">Suggestion</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="other" id="other" />
+                          <Label htmlFor="other">Other</Label>
+                        </div>
+                      </RadioGroup>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <DialogFooter>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setIsCreateTicketDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit"
+                  disabled={createTicketMutation.isPending}
+                  className="bg-gradient-to-r from-purple-700 to-purple-500 hover:from-purple-800 hover:to-purple-600"
+                >
+                  {createTicketMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    "Submit Ticket"
+                  )}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Display Tickets */}
+      <div className="grid gap-4">
+        {isLoading ? (
+          <div className="flex items-center justify-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : error ? (
+          <div className="flex items-center justify-center h-64">
+            <p className="text-destructive">Failed to load tickets. Please try again.</p>
+          </div>
+        ) : tickets && tickets.length > 0 ? (
+          tickets.map((ticket: any) => (
+            <Card key={ticket.id} className="overflow-hidden">
+              <CardHeader className="pb-2">
+                <div className="flex justify-between">
+                  <CardTitle>{ticket.title}</CardTitle>
+                  <TicketStatusBadge status={ticket.status} />
+                </div>
+                <CardDescription className="flex items-center gap-2">
+                  <span>Submitted on {formatDate(ticket.createdAt)}</span>
+                  <span>•</span>
+                  <TicketTypeBadge type={ticket.type} />
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="whitespace-pre-wrap text-sm">{ticket.description}</p>
+              </CardContent>
+              {ticket.status !== "open" && (
+                <CardFooter className="bg-muted/50 py-2 px-6">
+                  <p className="text-sm text-muted-foreground">
+                    Last updated: {formatDate(ticket.updatedAt)}
+                  </p>
+                </CardFooter>
+              )}
+            </Card>
+          ))
+        ) : (
+          <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
+            <p className="text-muted-foreground">You haven't submitted any tickets yet.</p>
+            <Button 
+              onClick={() => setIsCreateTicketDialogOpen(true)}
+              variant="outline"
+            >
+              Create Your First Ticket
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

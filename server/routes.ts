@@ -1178,6 +1178,105 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Ticket system routes
+  
+  // Get all tickets (admin only)
+  app.get("/api/tickets", isAdmin, async (req, res) => {
+    try {
+      const tickets = await storage.getTickets();
+      res.json(tickets);
+    } catch (error) {
+      console.error("Error fetching tickets:", error);
+      res.status(500).json({ message: "Failed to fetch tickets" });
+    }
+  });
+  
+  // Get tickets for current user
+  app.get("/api/my-tickets", isAuthenticated, async (req, res) => {
+    try {
+      const tickets = await storage.getUserTickets(req.user.id);
+      res.json(tickets);
+    } catch (error) {
+      console.error("Error fetching user tickets:", error);
+      res.status(500).json({ message: "Failed to fetch your tickets" });
+    }
+  });
+  
+  // Get a specific ticket
+  app.get("/api/tickets/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid ticket ID" });
+      }
+      
+      const ticket = await storage.getTicket(id);
+      
+      if (!ticket) {
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+      
+      // Check if user is admin or ticket owner
+      if (!req.user.isAdmin && ticket.userId !== req.user.id) {
+        return res.status(403).json({ message: "You don't have permission to view this ticket" });
+      }
+      
+      res.json(ticket);
+    } catch (error) {
+      console.error("Error fetching ticket:", error);
+      res.status(500).json({ message: "Failed to fetch ticket" });
+    }
+  });
+  
+  // Create a new ticket
+  app.post("/api/tickets", isAuthenticated, async (req, res) => {
+    try {
+      const result = insertTicketSchema.safeParse(req.body);
+      
+      if (!result.success) {
+        return res.status(400).json({ 
+          message: "Invalid ticket data", 
+          errors: result.error.format() 
+        });
+      }
+      
+      const userId = req.user.id;
+      const ticket = await storage.createTicket(userId, result.data);
+      
+      res.status(201).json(ticket);
+    } catch (error) {
+      console.error("Error creating ticket:", error);
+      res.status(500).json({ message: "Failed to create ticket" });
+    }
+  });
+  
+  // Update ticket status (admin only)
+  app.patch("/api/tickets/:id/status", isAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid ticket ID" });
+      }
+      
+      const result = updateTicketStatusSchema.safeParse(req.body);
+      
+      if (!result.success) {
+        return res.status(400).json({ 
+          message: "Invalid status", 
+          errors: result.error.format() 
+        });
+      }
+      
+      const ticket = await storage.updateTicketStatus(id, result.data.status);
+      res.json(ticket);
+    } catch (error) {
+      console.error("Error updating ticket status:", error);
+      res.status(500).json({ message: "Failed to update ticket status" });
+    }
+  });
+  
   const httpServer = createServer(app);
 
   return httpServer;
