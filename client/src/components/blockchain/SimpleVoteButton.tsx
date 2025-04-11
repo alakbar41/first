@@ -200,17 +200,18 @@ export function SimpleVoteButton({
         duration: 10000,
       });
       
-      // Use optimized transaction format that works on Polygon Amoy
-      // Implementing a different approach that avoids the Internal RPC Error
-      // We're avoiding both hardcoded gas values AND letting MetaMask estimate
-      // Instead using a minimal direct transaction that's proven to work
+      // Use the same optimized gas settings that worked for election activation
+      // These settings are the minimum viable to ensure transaction success
       const txParams = {
         from: account,
         to: '0xb74F07812B45dBEc4eC3E577194F6a798a060e5D',
         data: data,
+        gas: '0x186A00', // 1,600,000 gas limit in hex
+        maxPriorityFeePerGas: '0x6FC23AC00', // 3 gwei in hex
+        maxFeePerGas: '0x9184E72A000' // 10 gwei in hex
       };
       
-      console.log("Sending transaction with minimal parameters:", txParams);
+      console.log("Sending transaction with optimized parameters:", txParams);
       const txHash = await window.ethereum.request({
         method: 'eth_sendTransaction',
         params: [txParams],
