@@ -2,7 +2,9 @@ import { ethers } from 'ethers';
 import { OPTIMIZED_CONTRACT_ABI } from './optimized-contract-abi';
 
 // Constants - these should be updated with your new contract address
-const POLYGON_AMOY_RPC_URL = 'https://rpc-amoy.polygon.technology';
+// REMOVED DIRECT RPC URLs to avoid CSP issues - using MetaMask provider only
+// No direct RPC connections to prevent CSP violations
+console.log("Using MetaMask provider only approach - no RPC URLs");
 const CONTRACT_ADDRESS = import.meta.env.VITE_OPTIMIZED_CONTRACT_ADDRESS || '';
 
 // Contract enums - same as before
