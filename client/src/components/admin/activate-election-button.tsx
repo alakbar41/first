@@ -35,7 +35,9 @@ export function ActivateElectionButton({
   
   // Check the current blockchain status first
   const checkCurrentStatus = async () => {
-    if (!blockchainId || !isInitialized) return null;
+    if (!blockchainId) return null;
+    
+    // Note: We don't check isInitialized anymore because we're using lazy initialization
     
     setIsChecking(true);
     try {
@@ -60,16 +62,10 @@ export function ActivateElectionButton({
       return;
     }
     
-    if (!isInitialized) {
-      toast({
-        title: "Web3 Not Initialized",
-        description: "The blockchain connection is not available yet. Please wait a moment and try again.",
-        variant: "destructive"
-      });
-      return;
-    }
+    // We don't need to check isInitialized anymore since we're using lazy initialization
     
-    // Connect wallet if not connected
+    // Connect wallet if not connected - this is still necessary since the user needs
+    // to be logged into MetaMask before we attempt the transaction
     if (!isWalletConnected) {
       try {
         await connectWallet();
@@ -139,11 +135,26 @@ export function ActivateElectionButton({
             return false; // Don't retry on user rejection
           }
           
+          // MetaMask not installed or not connected
+          if (error.message && (
+              error.message.includes("MetaMask is not installed") || 
+              error.message.includes("Failed to connect to blockchain") ||
+              error.message.includes("Contract could not be initialized"))) {
+            
+            toast({
+              title: "Wallet Connection Issue",
+              description: "Please make sure MetaMask is installed and connected to continue.",
+              variant: "destructive",
+            });
+            return false; // Don't retry on wallet connection issues
+          }
+          
           // MetaMask RPC error - often temporary
           if (error.message && (
               error.message.includes("Internal JSON-RPC error") || 
               error.message.includes("could not coalesce error") ||
-              error.message.includes("transaction underpriced"))) {
+              error.message.includes("transaction underpriced") ||
+              error.message.includes("insufficient funds"))) {
             
             if (retryCount < maxRetries) {
               retryCount++;
@@ -151,7 +162,7 @@ export function ActivateElectionButton({
               
               toast({
                 title: "Transaction Failed",
-                description: `Network congestion detected. Retrying in ${waitTime/1000} seconds with higher gas...`,
+                description: `Network congestion detected. Retrying in ${waitTime/1000} seconds with higher gas settings...`,
                 variant: "default",
               });
               
@@ -161,7 +172,7 @@ export function ActivateElectionButton({
             } else {
               toast({
                 title: "Network Congestion",
-                description: "The Polygon Amoy testnet is experiencing high congestion. Please try again later.",
+                description: "The Polygon Amoy testnet is experiencing high congestion. Please try again later or ensure you have enough testnet MATIC.",
                 variant: "destructive",
               });
               return false;
