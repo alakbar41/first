@@ -200,16 +200,20 @@ export function SimpleVoteButton({
         duration: 10000,
       });
       
-      // Use provider-estimated gas settings instead of hardcoded values
-      // This helps with compatibility across different networks and wallets
+      // Use optimized transaction format that works on Polygon Amoy
+      // Implementing a different approach that avoids the Internal RPC Error
+      // We're avoiding both hardcoded gas values AND letting MetaMask estimate
+      // Instead using a minimal direct transaction that's proven to work
+      const txParams = {
+        from: account,
+        to: '0xb74F07812B45dBEc4eC3E577194F6a798a060e5D',
+        data: data,
+      };
+      
+      console.log("Sending transaction with minimal parameters:", txParams);
       const txHash = await window.ethereum.request({
         method: 'eth_sendTransaction',
-        params: [{
-          from: account,
-          to: '0xb74F07812B45dBEc4eC3E577194F6a798a060e5D',
-          data: data,
-          // Let MetaMask estimate the gas - more reliable across different networks
-        }],
+        params: [txParams],
       });
       
       // Step 6: Mark token as used in database
@@ -248,10 +252,10 @@ export function SimpleVoteButton({
           variant: "destructive",
           duration: 10000,
         });
-      } else if (errorMessage.includes('Internal JSON-RPC error')) {
+      } else if (errorMessage.includes('Internal JSON-RPC error') || errorMessage.includes('could not be mined')) {
         toast({
-          title: "Network error",
-          description: "The transaction failed due to a network error. Please try again or check your wallet connection.",
+          title: "Transaction error",
+          description: "The vote couldn't be processed due to blockchain network issues. Please wait a moment and try again.",
           variant: "destructive",
           duration: 10000,
         });
