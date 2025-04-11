@@ -327,176 +327,164 @@ Database Schema:
               <Card className="p-6">
                 <h2 className="text-2xl font-bold mb-4">ADA University Voting Blockchain Architecture</h2>
                 
-                <div className="rounded-md border bg-gradient-to-b from-white to-purple-50 p-6 mb-6 shadow-md">
+                <div className="rounded-md border bg-white p-6 mb-6 shadow-md">
                   <div className="blockchain-diagram flex justify-center">
-                    <svg width="900" height="680" viewBox="0 0 900 680" className="border rounded-lg bg-white shadow-inner">
-                      {/* Background grid for technical appearance */}
-                      <pattern id="smallGrid" width="10" height="10" patternUnits="userSpaceOnUse">
-                        <path d="M 10 0 L 0 0 0 10" fill="none" stroke="#f1f1f1" strokeWidth="0.5"/>
-                      </pattern>
-                      <pattern id="grid" width="100" height="100" patternUnits="userSpaceOnUse">
-                        <rect width="100" height="100" fill="url(#smallGrid)"/>
-                        <path d="M 100 0 L 0 0 0 100" fill="none" stroke="#e9e9e9" strokeWidth="1"/>
-                      </pattern>
-                      <rect width="900" height="680" fill="url(#grid)" />
-                      
-                      {/* Main title */}
-                      <text x="450" y="35" fontSize="20" textAnchor="middle" fontWeight="bold" fill="#4c1d95">ADA University Blockchain Voting System</text>
+                    <svg width="900" height="550" viewBox="0 0 900 550" className="border rounded-lg bg-white shadow-inner">
+                      {/* Header */}
+                      <text x="450" y="35" fontSize="20" textAnchor="middle" fontWeight="bold" fill="#4c1d95">ADA University Voting System Architecture</text>
                       <line x1="250" y1="45" x2="650" y2="45" stroke="#8b5cf6" strokeWidth="2" />
                       
-                      {/* Polygon Amoy Testnet Container */}
-                      <rect x="50" y="190" width="800" height="300" rx="10" fill="#f5f0ff" stroke="#8b5cf6" strokeWidth="2" strokeDasharray="5,3" />
-                      <text x="450" y="215" fontSize="16" textAnchor="middle" fill="#4c1d95" fontWeight="bold">Polygon Amoy Testnet</text>
+                      {/* Main layout */}
+                      <g>
+                        {/* Left column - Admin Path */}
+                        <rect x="100" y="70" width="250" height="450" rx="5" fill="#f8fafc" stroke="#e2e8f0" strokeWidth="2" />
+                        <text x="225" y="90" fontSize="16" textAnchor="middle" fontWeight="bold" fill="#1e293b">Admin Flow</text>
+                        
+                        {/* Admin user */}
+                        <circle cx="170" cy="120" r="15" fill="#8b5cf6" />
+                        <rect x="165" y="135" width="10" height="15" fill="#8b5cf6" />
+                        <text x="170" y="170" fontSize="12" textAnchor="middle" fontWeight="bold">Administrator</text>
+                        
+                        {/* Admin Steps */}
+                        <rect x="130" y="190" width="180" height="50" rx="5" fill="#f8fafc" stroke="#8b5cf6" strokeWidth="2" />
+                        <text x="220" y="220" fontSize="12" textAnchor="middle" fontWeight="bold">1. Create Election</text>
+                        
+                        <rect x="130" y="260" width="180" height="50" rx="5" fill="#f8fafc" stroke="#8b5cf6" strokeWidth="2" />
+                        <text x="220" y="290" fontSize="12" textAnchor="middle" fontWeight="bold">2. Add Candidates</text>
+                        
+                        <rect x="130" y="330" width="180" height="50" rx="5" fill="#f8fafc" stroke="#8b5cf6" strokeWidth="2" />
+                        <text x="220" y="360" fontSize="12" textAnchor="middle" fontWeight="bold">3. Deploy To Blockchain</text>
+                        
+                        <rect x="130" y="400" width="180" height="50" rx="5" fill="#f8fafc" stroke="#8b5cf6" strokeWidth="2" />
+                        <text x="220" y="430" fontSize="12" textAnchor="middle" fontWeight="bold">4. Activate Election</text>
+                        
+                        {/* Admin flow arrows */}
+                        <line x1="220" y1="240" x2="220" y2="260" stroke="#8b5cf6" strokeWidth="2" strokeLinecap="round" />
+                        <polygon points="215,255 220,260 225,255" fill="#8b5cf6" />
+                        
+                        <line x1="220" y1="310" x2="220" y2="330" stroke="#8b5cf6" strokeWidth="2" strokeLinecap="round" />
+                        <polygon points="215,325 220,330 225,325" fill="#8b5cf6" />
+                        
+                        <line x1="220" y1="380" x2="220" y2="400" stroke="#8b5cf6" strokeWidth="2" strokeLinecap="round" />
+                        <polygon points="215,395 220,400 225,395" fill="#8b5cf6" />
+                      </g>
                       
-                      {/* Application Layer */}
-                      <rect x="80" y="80" width="240" height="80" rx="5" fill="#faf5ff" stroke="#8b5cf6" strokeWidth="2" />
-                      <text x="200" y="110" fontSize="14" textAnchor="middle" fontWeight="bold" fill="#4c1d95">Admin Interface</text>
-                      <text x="200" y="130" fontSize="12" textAnchor="middle" fill="#6b21a8">Election Management</text>
+                      {/* Middle column - Blockchain */}
+                      <g>
+                        <rect x="380" y="70" width="140" height="450" rx="5" fill="#ede9fe" stroke="#8b5cf6" strokeWidth="2" />
+                        <text x="450" y="90" fontSize="16" textAnchor="middle" fontWeight="bold" fill="#6d28d9">Polygon Blockchain</text>
+                        <text x="450" y="110" fontSize="10" textAnchor="middle" fill="#6d28d9">(Amoy Testnet)</text>
+
+                        {/* Smart Contract */}
+                        <rect x="395" y="130" width="110" height="80" rx="4" fill="white" stroke="#8b5cf6" strokeWidth="2" />
+                        <text x="450" y="155" fontSize="12" textAnchor="middle" fontWeight="bold" fill="#4c1d95">Smart Contract</text>
+                        <text x="450" y="175" fontSize="9" textAnchor="middle" fill="#4c1d95">0xb74F0781...</text>
+                        <text x="450" y="195" fontSize="9" textAnchor="middle" fill="#4c1d95">Voting Logic</text>
+                        
+                        {/* Smart Contract Components */}
+                        <rect x="395" y="230" width="110" height="30" rx="3" fill="white" stroke="#8b5cf6" strokeWidth="1" />
+                        <text x="450" y="250" fontSize="10" textAnchor="middle" fill="#4c1d95">Election Storage</text>
+                        
+                        <rect x="395" y="270" width="110" height="30" rx="3" fill="white" stroke="#8b5cf6" strokeWidth="1" />
+                        <text x="450" y="290" fontSize="10" textAnchor="middle" fill="#4c1d95">Candidate Registry</text>
+                        
+                        <rect x="395" y="310" width="110" height="30" rx="3" fill="white" stroke="#8b5cf6" strokeWidth="1" />
+                        <text x="450" y="330" fontSize="10" textAnchor="middle" fill="#4c1d95">Vote Counter</text>
+                        
+                        <rect x="395" y="350" width="110" height="30" rx="3" fill="white" stroke="#8b5cf6" strokeWidth="1" />
+                        <text x="450" y="370" fontSize="10" textAnchor="middle" fill="#4c1d95">Status Control</text>
+                        
+                        <rect x="395" y="390" width="110" height="30" rx="3" fill="white" stroke="#8b5cf6" strokeWidth="1" />
+                        <text x="450" y="410" fontSize="10" textAnchor="middle" fill="#4c1d95">Access Control</text>
+                        
+                        {/* Blockchain Stats */}
+                        <rect x="395" y="440" width="110" height="60" rx="3" fill="white" stroke="#8b5cf6" strokeWidth="1" />
+                        <text x="450" y="460" fontSize="10" textAnchor="middle" fontWeight="bold" fill="#4c1d95">Transaction Settings</text>
+                        <text x="450" y="475" fontSize="8" textAnchor="middle" fill="#4c1d95">Gas Limit: 500,000</text>
+                        <text x="450" y="487" fontSize="8" textAnchor="middle" fill="#4c1d95">Gas Price: 1.5 Gwei</text>
+                        <text x="450" y="499" fontSize="8" textAnchor="middle" fill="#4c1d95">Max Fee: 2.5 Gwei</text>
+                      </g>
                       
-                      <rect x="580" y="80" width="240" height="80" rx="5" fill="#faf5ff" stroke="#8b5cf6" strokeWidth="2" />
-                      <text x="700" y="110" fontSize="14" textAnchor="middle" fontWeight="bold" fill="#4c1d95">Student Interface</text>
-                      <text x="700" y="130" fontSize="12" textAnchor="middle" fill="#6b21a8">Voting Portal</text>
+                      {/* Right column - Student Path */}
+                      <g>
+                        <rect x="550" y="70" width="250" height="450" rx="5" fill="#f8fafc" stroke="#e2e8f0" strokeWidth="2" />
+                        <text x="675" y="90" fontSize="16" textAnchor="middle" fontWeight="bold" fill="#1e293b">Student Flow</text>
+                        
+                        {/* Student user */}
+                        <circle cx="675" cy="120" r="15" fill="#3b82f6" />
+                        <rect x="670" y="135" width="10" height="15" fill="#3b82f6" />
+                        <text x="675" y="170" fontSize="12" textAnchor="middle" fontWeight="bold">Student</text>
+                        
+                        {/* Student Steps */}
+                        <rect x="590" y="190" width="180" height="50" rx="5" fill="#f8fafc" stroke="#3b82f6" strokeWidth="2" />
+                        <text x="680" y="220" fontSize="12" textAnchor="middle" fontWeight="bold">1. Login with ADA ID</text>
+                        
+                        <rect x="590" y="260" width="180" height="50" rx="5" fill="#f8fafc" stroke="#3b82f6" strokeWidth="2" />
+                        <text x="680" y="290" fontSize="12" textAnchor="middle" fontWeight="bold">2. Connect MetaMask</text>
+                        
+                        <rect x="590" y="330" width="180" height="50" rx="5" fill="#f8fafc" stroke="#3b82f6" strokeWidth="2" />
+                        <text x="680" y="360" fontSize="12" textAnchor="middle" fontWeight="bold">3. Select Candidate</text>
+                        
+                        <rect x="590" y="400" width="180" height="50" rx="5" fill="#f8fafc" stroke="#3b82f6" strokeWidth="2" />
+                        <text x="680" y="430" fontSize="12" textAnchor="middle" fontWeight="bold">4. Submit Vote & Confirm</text>
+                        
+                        {/* Student flow arrows */}
+                        <line x1="680" y1="240" x2="680" y2="260" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" />
+                        <polygon points="675,255 680,260 685,255" fill="#3b82f6" />
+                        
+                        <line x1="680" y1="310" x2="680" y2="330" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" />
+                        <polygon points="675,325 680,330 685,325" fill="#3b82f6" />
+                        
+                        <line x1="680" y1="380" x2="680" y2="400" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" />
+                        <polygon points="675,395 680,400 685,395" fill="#3b82f6" />
+                      </g>
                       
-                      {/* Central Contract Box */}
-                      <rect x="300" y="250" width="300" height="160" rx="6" fill="#ffffff" stroke="#7c3aed" strokeWidth="3" />
-                      <text x="450" y="275" fontSize="16" textAnchor="middle" fontWeight="bold" fill="#4c1d95">Smart Contract (0xb74F0781...)</text>
+                      {/* Backend services box */}
+                      <rect x="315" y="530" width="270" height="10" rx="5" fill="#f3f4f6" stroke="#64748b" strokeWidth="1" />
+                      <text x="450" y="537" fontSize="7" textAnchor="middle" fill="#64748b">PostgreSQL Database (Auth, Election metadata, Voting tokens)</text>
+
+                      {/* Connection lines */}
+                      {/* Admin to Blockchain */}
+                      <path d="M 310,215 L 340,215 L 340,170 L 395,170" fill="none" stroke="#8b5cf6" strokeWidth="2" />
+                      <polygon points="387,165 395,170 387,175" fill="#8b5cf6" />
+                      <text x="340" y="205" fontSize="9" textAnchor="middle" fill="#4c1d95">Create</text>
                       
-                      {/* Contract Inner Components */}
-                      <rect x="320" y="290" width="120" height="35" rx="4" fill="#ede9fe" stroke="#7c3aed" strokeWidth="1" />
-                      <text x="380" y="312" fontSize="11" textAnchor="middle" fill="#4c1d95">ElectionRegistry</text>
+                      <path d="M 310,285 L 350,285 L 350,270 L 395,270" fill="none" stroke="#8b5cf6" strokeWidth="2" />
+                      <polygon points="387,265 395,270 387,275" fill="#8b5cf6" />
+                      <text x="350" y="280" fontSize="9" textAnchor="middle" fill="#4c1d95">Add</text>
                       
-                      <rect x="460" y="290" width="120" height="35" rx="4" fill="#ede9fe" stroke="#7c3aed" strokeWidth="1" />
-                      <text x="520" y="312" fontSize="11" textAnchor="middle" fill="#4c1d95">CandidateRegistry</text>
+                      <path d="M 310,355 L 360,355 L 360,350 L 395,350" fill="none" stroke="#8b5cf6" strokeWidth="2" />
+                      <polygon points="387,345 395,350 387,355" fill="#8b5cf6" />
+                      <text x="350" y="345" fontSize="9" textAnchor="middle" fill="#4c1d95">Deploy</text>
                       
-                      <rect x="320" y="335" width="120" height="35" rx="4" fill="#ede9fe" stroke="#7c3aed" strokeWidth="1" />
-                      <text x="380" y="357" fontSize="11" textAnchor="middle" fill="#4c1d95">VoteManagement</text>
+                      <path d="M 310,425 L 370,425 L 370,390 L 395,390" fill="none" stroke="#8b5cf6" strokeWidth="2" />
+                      <polygon points="387,385 395,390 387,395" fill="#8b5cf6" />
+                      <text x="369" y="415" fontSize="9" textAnchor="middle" fill="#4c1d95">Activate</text>
                       
-                      <rect x="460" y="335" width="120" height="35" rx="4" fill="#ede9fe" stroke="#7c3aed" strokeWidth="1" />
-                      <text x="520" y="357" fontSize="11" textAnchor="middle" fill="#4c1d95">ResultTallying</text>
+                      {/* Student to Blockchain */}
+                      <path d="M 590,215 L 560,215 L 560,270 L 505,270" fill="none" stroke="#3b82f6" strokeWidth="2" />
+                      <polygon points="513,265 505,270 513,275" fill="#3b82f6" />
+                      <text x="550" y="235" fontSize="9" textAnchor="middle" fill="#1e40af">Auth</text>
                       
-                      <rect x="380" y="380" width="140" height="20" rx="3" fill="#c4b5fd" stroke="#7c3aed" strokeWidth="1" />
-                      <text x="450" y="393" fontSize="10" textAnchor="middle" fill="#4c1d95">AccessControl</text>
+                      <path d="M 590,285 L 550,285 L 550,310 L 505,310" fill="none" stroke="#3b82f6" strokeWidth="2" />
+                      <polygon points="513,305 505,310 513,315" fill="#3b82f6" />
+                      <text x="550" y="300" fontSize="9" textAnchor="middle" fill="#1e40af">Connect</text>
                       
-                      {/* Transaction Flow Arrows from Admin */}
-                      <path d="M 200,160 L 200,250 L 300,250" fill="none" stroke="#7c3aed" strokeWidth="2" />
-                      <polygon points="290,245 300,250 290,255" fill="#7c3aed" />
-                      <text x="240" y="200" fontSize="10" textAnchor="middle" fill="#4c1d95" transform="rotate(-90, 240, 200)">Deploy</text>
-                      <text x="240" y="230" fontSize="10" textAnchor="middle" fill="#4c1d95" transform="rotate(-90, 240, 230)">Configure</text>
-                      <text x="240" y="260" fontSize="10" textAnchor="middle" fill="#4c1d95" transform="rotate(-90, 240, 260)">Activate</text>
+                      <path d="M 590,355 L 540,355 L 540,370 L 505,370" fill="none" stroke="#3b82f6" strokeWidth="2" />
+                      <polygon points="513,365 505,370 513,375" fill="#3b82f6" />
+                      <text x="547" y="350" fontSize="9" textAnchor="middle" fill="#1e40af">Select</text>
                       
-                      {/* Transaction Flow Arrows to Admin */}
-                      <path d="M 300,280 L 240,280 L 240,160" fill="none" stroke="#7c3aed" strokeWidth="2" strokeDasharray="5,3" />
-                      <polygon points="235,170 240,160 245,170" fill="#7c3aed" />
-                      <text x="280" y="270" fontSize="10" textAnchor="middle" fill="#4c1d95">Status Updates</text>
+                      <path d="M 590,425 L 530,425 L 530,400 L 505,400" fill="none" stroke="#3b82f6" strokeWidth="2" />
+                      <polygon points="513,395 505,400 513,405" fill="#3b82f6" />
+                      <text x="540" y="415" fontSize="9" textAnchor="middle" fill="#1e40af">Vote</text>
                       
-                      {/* Transaction Flow Arrows from Student */}
-                      <path d="M 700,160 L 700,250 L 600,250" fill="none" stroke="#7c3aed" strokeWidth="2" />
-                      <polygon points="610,245 600,250 610,255" fill="#7c3aed" />
-                      <text x="670" y="200" fontSize="10" textAnchor="middle" fill="#4c1d95" transform="rotate(-90, 670, 200)">Connect</text>
-                      <text x="670" y="230" fontSize="10" textAnchor="middle" fill="#4c1d95" transform="rotate(-90, 670, 230)">Sign</text>
-                      <text x="670" y="260" fontSize="10" textAnchor="middle" fill="#4c1d95" transform="rotate(-90, 670, 260)">Vote</text>
+                      {/* Database connections */}
+                      <path d="M 450,530 L 450,510" fill="none" stroke="#64748b" strokeWidth="1" strokeDasharray="3,2" />
+                      <text x="430" y="520" fontSize="8" textAnchor="end" fill="#64748b">Store Auth & Metadata</text>
                       
-                      {/* Transaction Flow Arrows to Student */}
-                      <path d="M 600,280 L 660,280 L 660,160" fill="none" stroke="#7c3aed" strokeWidth="2" strokeDasharray="5,3" />
-                      <polygon points="655,170 660,160 665,170" fill="#7c3aed" />
-                      <text x="620" y="270" fontSize="10" textAnchor="middle" fill="#4c1d95">Vote Receipt</text>
-                      
-                      {/* MetaMask Integration */}
-                      <rect x="630" y="180" width="140" height="40" rx="5" fill="#f6e05e" stroke="#d97706" strokeWidth="2" />
-                      <text x="700" y="205" fontSize="12" textAnchor="middle" fontWeight="bold" fill="#92400e">MetaMask Wallet</text>
-                      
-                      {/* Validation Nodes */}
-                      <rect x="150" y="320" width="100" height="100" rx="10" fill="#f3f4f6" stroke="#4b5563" strokeWidth="2" />
-                      <text x="200" y="350" fontSize="11" textAnchor="middle" fontWeight="bold">Validator</text>
-                      <text x="200" y="370" fontSize="11" textAnchor="middle">Node</text>
-                      <circle cx="200" cy="390" r="15" fill="#d1d5db" stroke="#4b5563" strokeWidth="1" />
-                      <path d="M 193,390 L 207,390 M 200,383 L 200,397" stroke="#1f2937" strokeWidth="2" />
-                      
-                      <rect x="650" y="320" width="100" height="100" rx="10" fill="#f3f4f6" stroke="#4b5563" strokeWidth="2" />
-                      <text x="700" y="350" fontSize="11" textAnchor="middle" fontWeight="bold">Validator</text>
-                      <text x="700" y="370" fontSize="11" textAnchor="middle">Node</text>
-                      <circle cx="700" cy="390" r="15" fill="#d1d5db" stroke="#4b5563" strokeWidth="1" />
-                      <path d="M 693,390 L 707,390 M 700,383 L 700,397" stroke="#1f2937" strokeWidth="2" />
-                      
-                      {/* Database / Backend Section */}
-                      <rect x="300" y="520" width="300" height="120" rx="6" fill="#ffffff" stroke="#3b82f6" strokeWidth="2" />
-                      <text x="450" y="545" fontSize="16" textAnchor="middle" fontWeight="bold" fill="#1e40af">Backend Infrastructure</text>
-                      
-                      <rect x="330" y="560" width="100" height="60" rx="4" fill="#dbeafe" stroke="#3b82f6" strokeWidth="1" />
-                      <text x="380" y="585" fontSize="11" textAnchor="middle" fontWeight="bold" fill="#1e40af">PostgreSQL</text>
-                      <text x="380" y="600" fontSize="9" textAnchor="middle" fill="#1e40af">Auth & Metadata</text>
-                      
-                      <rect x="450" y="560" width="120" height="60" rx="4" fill="#dbeafe" stroke="#3b82f6" strokeWidth="1" />
-                      <text x="510" y="585" fontSize="11" textAnchor="middle" fontWeight="bold" fill="#1e40af">Token Service</text>
-                      <text x="510" y="600" fontSize="9" textAnchor="middle" fill="#1e40af">One-time Voting Tokens</text>
-                      
-                      {/* Connection between DB and Contract */}
-                      <path d="M 450,410 L 450,520" fill="none" stroke="#3b82f6" strokeWidth="2" strokeDasharray="8,4" />
-                      <text x="470" y="470" fontSize="11" textAnchor="start" fill="#1e40af">Token Verification</text>
-                      <text x="470" y="490" fontSize="11" textAnchor="start" fill="#1e40af">Transaction Status</text>
-                      
-                      {/* System Components Sidebar */}
-                      <rect x="780" y="250" width="100" height="190" rx="5" fill="#f8fafc" stroke="#64748b" strokeWidth="1" />
-                      <text x="830" y="270" fontSize="12" textAnchor="middle" fontWeight="bold" fill="#0f172a">Components</text>
-                      <line x1="790" y1="280" x2="870" y2="280" stroke="#94a3b8" strokeWidth="1" />
-                      
-                      <rect x="790" y="290" width="80" height="20" rx="3" fill="#e0f2fe" stroke="#0ea5e9" strokeWidth="1" />
-                      <text x="830" y="304" fontSize="9" textAnchor="middle" fill="#0c4a6e">Web3Provider</text>
-                      
-                      <rect x="790" y="320" width="80" height="20" rx="3" fill="#e0f2fe" stroke="#0ea5e9" strokeWidth="1" />
-                      <text x="830" y="334" fontSize="9" textAnchor="middle" fill="#0c4a6e">BrowserProvider</text>
-                      
-                      <rect x="790" y="350" width="80" height="20" rx="3" fill="#e0f2fe" stroke="#0ea5e9" strokeWidth="1" />
-                      <text x="830" y="364" fontSize="9" textAnchor="middle" fill="#0c4a6e">Ethers.js</text>
-                      
-                      <rect x="790" y="380" width="80" height="20" rx="3" fill="#e0f2fe" stroke="#0ea5e9" strokeWidth="1" />
-                      <text x="830" y="394" fontSize="9" textAnchor="middle" fill="#0c4a6e">VoteButton</text>
-                      
-                      <rect x="790" y="410" width="80" height="20" rx="3" fill="#e0f2fe" stroke="#0ea5e9" strokeWidth="1" />
-                      <text x="830" y="424" fontSize="9" textAnchor="middle" fill="#0c4a6e">OptimizedService</text>
-                      
-                      {/* Blockchain Metrics */}
-                      <rect x="70" y="440" width="160" height="100" rx="5" fill="#f8fafc" stroke="#64748b" strokeWidth="1" />
-                      <text x="150" y="460" fontSize="11" textAnchor="middle" fontWeight="bold" fill="#0f172a">Transaction Metrics</text>
-                      <line x1="80" y1="470" x2="220" y2="470" stroke="#94a3b8" strokeWidth="1" />
-                      
-                      <text x="90" y="490" fontSize="9" textAnchor="start" fill="#334155">Gas Limit: </text>
-                      <text x="145" y="490" fontSize="9" textAnchor="start" fill="#0f172a" fontWeight="bold">500,000</text>
-                      
-                      <text x="90" y="510" fontSize="9" textAnchor="start" fill="#334155">Gas Price: </text>
-                      <text x="145" y="510" fontSize="9" textAnchor="start" fill="#0f172a" fontWeight="bold">1.5 Gwei</text>
-                      
-                      <text x="90" y="530" fontSize="9" textAnchor="start" fill="#334155">Max Fee: </text>
-                      <text x="145" y="530" fontSize="9" textAnchor="start" fill="#0f172a" fontWeight="bold">2.5 Gwei</text>
-                      
-                      {/* Legend */}
-                      <rect x="670" y="440" width="160" height="100" rx="5" fill="#f8fafc" stroke="#64748b" strokeWidth="1" />
-                      <text x="750" y="460" fontSize="11" textAnchor="middle" fontWeight="bold">Legend</text>
-                      <line x1="680" y1="470" x2="820" y2="470" stroke="#94a3b8" strokeWidth="1" />
-                      
-                      <rect x="690" y="480" width="10" height="10" rx="2" fill="#ede9fe" stroke="#7c3aed" strokeWidth="1" />
-                      <text x="710" y="488" fontSize="9" textAnchor="start">Contract Components</text>
-                      
-                      <rect x="690" y="500" width="10" height="10" rx="2" fill="#dbeafe" stroke="#3b82f6" strokeWidth="1" />
-                      <text x="710" y="508" fontSize="9" textAnchor="start">Backend Services</text>
-                      
-                      <rect x="690" y="520" width="10" height="10" rx="2" fill="#f6e05e" stroke="#d97706" strokeWidth="1" />
-                      <text x="710" y="528" fontSize="9" textAnchor="start">External Wallet</text>
-                      
-                      {/* Signature Arrow from Student to Contract */}
-                      <path d="M 700,220 C 650,230 600,240 590,250" fill="none" stroke="#d97706" strokeWidth="2" strokeDasharray="2,2" />
-                      <text x="640" y="230" fontSize="9" textAnchor="middle" fill="#92400e">Transaction Signing</text>
-                      
-                      {/* Transaction Flow with Nodes */}
-                      <path d="M 250,340 C 270,330 290,320 300,320" fill="none" stroke="#6b7280" strokeWidth="1" />
-                      <text x="270" y="320" fontSize="8" textAnchor="middle" fill="#374151">Validate</text>
-                      
-                      <path d="M 650,340 C 630,330 610,320 600,320" fill="none" stroke="#6b7280" strokeWidth="1" />
-                      <text x="630" y="320" fontSize="8" textAnchor="middle" fill="#374151">Validate</text>
-                      
-                      {/* Connections between Validators */}
-                      <path d="M 200,420 C 300,450 600,450 700,420" fill="none" stroke="#6b7280" strokeWidth="1" strokeDasharray="3,3" />
-                      <text x="450" y="440" fontSize="9" textAnchor="middle" fill="#374151">Consensus Network</text>
+                      {/* MetaMask indicator */}
+                      <image href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDMyIDMyIj48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTE2IDMyQzI0Ljg0IDMyIDMyIDI0Ljg0IDMyIDE2QzMyIDcuMTYgMjQuODQgMCAxNiAwQzcuMTYgMCAwIDcuMTYgMCAxNkMwIDI0Ljg0IDcuMTYgMzIgMTYgMzJaIiBmaWxsPSIjRjY4NTFDII8+PHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0yNCA5Ljk1NjU0TDE3LjIgNkwxNi4xNCA5LjEzMDc3TDE0LjggMTIuNzc3NUg5LjRWMTkuNjA0N0wxNi42IDE5Ljk3ODVWMjQuOUwyMC43NiAyNi43Nzg1TDI1LjUyIDIwLjYwNDdMMjQgOS45NTY1NFoiIGZpbGw9IndoaXRlIi8+PHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik04IDE5LjYwNDdWMTIuNzc3NUg2LjRWMjYuNEwxNS4yIDI0LjUyOFYyMC42MDQ3SDkuMkw4IDE5LjYwNDdaIiBmaWxsPSJ3aGl0ZSIvPjwvc3ZnPg==" 
+                        x="720" y="275" width="20" height="20" />
                     </svg>
                   </div>
                 </div>
