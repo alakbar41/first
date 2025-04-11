@@ -1108,22 +1108,8 @@ Technical error: ${gasError.message}`);
         return 0;
       }
 
-      try {
-        const voteCount = await this.contract.getCandidateVoteCount(candidateId);
-        return Number(voteCount);
-      } catch (callError: any) {
-        // Handle specific revert reasons from the smart contract
-        if (callError.reason === "Candidate does not exist" || 
-            (callError.message && callError.message.includes("Candidate does not exist"))) {
-          // This is expected when a candidate exists in the database but not on the blockchain
-          console.warn(`Candidate ID ${candidateId} exists in database but not on blockchain`);
-          return 0;
-        }
-        
-        // For any other contract call errors, log but return 0
-        console.error(`Error in getCandidateVoteCount for ID ${candidateId}:`, callError);
-        return 0;
-      }
+      const voteCount = await this.contract.getCandidateVoteCount(candidateId);
+      return Number(voteCount);
     } catch (error) {
       console.error(`Failed to get vote count for candidate ID ${candidateId}:`, error);
       // Return 0 as fallback to avoid breaking the UI with errors
@@ -1163,26 +1149,8 @@ Technical error: ${gasError.message}`);
         return 0;
       }
 
-      try {
-        const voteCount = await this.contract.getTicketVoteCount(ticketId);
-        return Number(voteCount);
-      } catch (callError: any) {
-        // Handle specific revert reasons from the smart contract
-        if (callError.reason === "Ticket does not exist" || 
-            callError.reason === "VP ticket does not exist" || 
-            (callError.message && (
-              callError.message.includes("Ticket does not exist") || 
-              callError.message.includes("VP ticket does not exist")
-            ))) {
-          // This is expected when a ticket exists in the database but not on the blockchain
-          console.warn(`Ticket ID ${ticketId} exists in database but not on blockchain`);
-          return 0;
-        }
-        
-        // For any other contract call errors, log but return 0
-        console.error(`Error in getTicketVoteCount for ID ${ticketId}:`, callError);
-        return 0;
-      }
+      const voteCount = await this.contract.getTicketVoteCount(ticketId);
+      return Number(voteCount);
     } catch (error) {
       console.error(`Failed to get vote count for ticket ID ${ticketId}:`, error);
       // Return 0 as fallback to avoid breaking the UI with errors
