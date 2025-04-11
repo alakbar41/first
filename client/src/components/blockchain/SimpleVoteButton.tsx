@@ -200,15 +200,12 @@ export function SimpleVoteButton({
         duration: 10000,
       });
       
-      // Using minimal gas settings for Polygon Amoy testnet
-      // These are much lower than before to reduce costs
+      // This approach uses minimal parameters and lets MetaMask calculate gas
+      // Focus on making a clean transaction that works on the Amoy testnet
       const txParams = {
         from: account,
         to: '0xb74F07812B45dBEc4eC3E577194F6a798a060e5D',
-        data: data,
-        gas: '0xAA690', // 700,000 gas limit in hex (substantially lower)
-        maxPriorityFeePerGas: '0x77359400', // 0.5 gwei in hex (6x lower)
-        maxFeePerGas: '0x77359400' // 0.5 gwei in hex (20x lower)
+        data: data
       };
       
       console.log("Sending transaction with optimized parameters:", txParams);

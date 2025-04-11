@@ -2,9 +2,9 @@ import { ethers } from 'ethers';
 import { IMPROVED_CONTRACT_ABI } from './improved-contract-abi';
 
 // Constants
-// Using Mumbai RPC as a fallback as it's more stable than Amoy for some operations
-const POLYGON_AMOY_RPC_URL = 'https://polygon-amoy.blockpi.network/v1/rpc/public';
-const POLYGON_AMOY_FALLBACK = 'https://rpc-amoy.polygon.technology';
+// Using Polygon's official RPC endpoints to avoid CORS/CSP issues
+const POLYGON_AMOY_RPC_URL = 'https://rpc-amoy.polygon.technology';
+const POLYGON_AMOY_FALLBACK = 'https://polygon-amoy.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161';
 const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || '0xb74f07812b45DBec4eC3E577194F6a798a060e5D'; // Deployer: 0x0E6ED3EB1acc94F03006b326C939CeaF8d0953D5
 
 // Contract enums
