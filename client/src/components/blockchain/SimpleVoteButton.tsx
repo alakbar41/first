@@ -169,6 +169,58 @@ export function SimpleVoteButton({
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
       const account = accounts[0];
       
+      // Step 4.5: Check if we're on the correct network (Polygon Amoy)
+      const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+      if (chainId !== '0x13882') { // 80002 in hex
+        toast({
+          title: "Network check",
+          description: "Checking if we're on the Polygon Amoy network...",
+          duration: 3000,
+        });
+        
+        try {
+          // First try to switch to the network if it's already added
+          try {
+            await window.ethereum.request({
+              method: 'wallet_switchEthereumChain',
+              params: [{ chainId: '0x13882' }], // 80002 in hex
+            });
+          } catch (switchError: any) {
+            // This error code means the chain has not been added to MetaMask
+            if (switchError.code === 4902 || switchError.message?.includes('Unrecognized chain ID')) {
+              // Try to add the network
+              await window.ethereum.request({
+                method: 'wallet_addEthereumChain',
+                params: [
+                  {
+                    chainId: '0x13882', // 80002 in hex
+                    chainName: 'Polygon Amoy',
+                    nativeCurrency: {
+                      name: 'POL',
+                      symbol: 'POL',
+                      decimals: 18,
+                    },
+                    rpcUrls: ['https://rpc-amoy.polygon.technology'],
+                    blockExplorerUrls: ['https://amoy.polygonscan.com'],
+                  },
+                ],
+              });
+            } else {
+              throw switchError;
+            }
+          }
+          
+          toast({
+            title: "Network switched",
+            description: "Successfully connected to Polygon Amoy network",
+            duration: 3000,
+          });
+        } catch (networkError: any) {
+          console.error('Failed to switch to Polygon Amoy network:', networkError);
+          throw new Error('Please switch to the Polygon Amoy network in your MetaMask wallet to vote');
+        }
+      }
+      
       // Step 5: Submit vote transaction
       setVoteState('submitting-vote');
       

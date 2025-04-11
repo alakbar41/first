@@ -1035,6 +1035,10 @@ Technical error: ${gasError.message}`);
           const accounts = await window.ethereum.request({ method: 'eth_accounts' });
           if (accounts.length > 0 && accounts[0].toLowerCase() === this.walletAddress.toLowerCase()) {
             console.log('Wallet already connected, using existing connection');
+            
+            // Even if connected, ensure we're on the right network
+            await this.ensurePolygonAmoyNetwork();
+            
             return this.walletAddress;
           }
         } catch (checkError) {
@@ -1081,6 +1085,9 @@ Technical error: ${gasError.message}`);
         }
       }
 
+      // Ensure we're on the Polygon Amoy network
+      await this.ensurePolygonAmoyNetwork();
+
       // Create Web3Provider using window.ethereum
       const ethersProvider = new ethers.BrowserProvider(window.ethereum);
       
@@ -1102,6 +1109,70 @@ Technical error: ${gasError.message}`);
     } catch (error) {
       console.error('Failed to connect wallet:', error);
       throw error;
+    }
+  }
+  
+  // Verify and ensure connection to Polygon Amoy network
+  private async ensurePolygonAmoyNetwork(): Promise<boolean> {
+    try {
+      if (!window.ethereum) return false;
+      
+      // First check if we're already on Polygon Amoy
+      try {
+        const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+        // Polygon Amoy chain ID is 80002 (0x13882 in hex)
+        if (chainId === '0x13882') {
+          console.log('Already connected to Polygon Amoy network');
+          return true;
+        }
+      } catch (error) {
+        console.warn('Error checking chain ID:', error);
+      }
+      
+      // First try to switch to the network if it's already added
+      try {
+        console.log('Switching to Polygon Amoy network');
+        await window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: '0x13882' }], // 80002 in hex
+        });
+        console.log('Successfully switched to Polygon Amoy network');
+        return true;
+      } catch (switchError: any) {
+        // This error code means the chain has not been added to MetaMask
+        if (switchError.code === 4902 || switchError.message?.includes('Unrecognized chain ID')) {
+          console.log('Polygon Amoy network not found, attempting to add it');
+          try {
+            await window.ethereum.request({
+              method: 'wallet_addEthereumChain',
+              params: [
+                {
+                  chainId: '0x13882', // 80002 in hex
+                  chainName: 'Polygon Amoy',
+                  nativeCurrency: {
+                    name: 'POL',
+                    symbol: 'POL',
+                    decimals: 18,
+                  },
+                  rpcUrls: ['https://rpc-amoy.polygon.technology'],
+                  blockExplorerUrls: ['https://amoy.polygonscan.com'],
+                },
+              ],
+            });
+            console.log('Successfully added Polygon Amoy network');
+            return true;
+          } catch (addError) {
+            console.error('Failed to add Polygon Amoy network:', addError);
+            throw new Error('Please add the Polygon Amoy network manually to your MetaMask wallet');
+          }
+        } else {
+          console.error('Failed to switch to Polygon Amoy network:', switchError);
+          throw switchError;
+        }
+      }
+    } catch (error) {
+      console.error('Error ensuring Polygon Amoy network:', error);
+      return false;
     }
   }
 
