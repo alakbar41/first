@@ -1147,6 +1147,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid or expired token" });
       }
       
+      // Require a transaction hash to mark the token as used - this proves the blockchain transaction was submitted
+      const txHash = req.body.txHash;
+      if (!txHash) {
+        return res.status(400).json({ message: "Transaction hash required" });
+      }
+      
       // Mark the token as used
       await storage.markTokenAsUsed(token);
       
@@ -1157,6 +1163,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error recording vote:", error);
       res.status(500).json({ message: "Failed to record vote" });
+    }
+  });
+  
+  // Reset a vote if blockchain transaction failed
+  app.post("/api/votes/reset", isAuthenticated, async (req, res) => {
+    try {
+      const schema = z.object({
+        electionId: z.number(),
+        txHash: z.string().optional() // The transaction hash that failed (for logging)
+      });
+      
+      const result = schema.safeParse(req.body);
+      
+      if (!result.success) {
+        return res.status(400).json({ 
+          message: "Invalid request", 
+          errors: result.error.format() 
+        });
+      }
+      
+      const { electionId, txHash } = result.data;
+      
+      // First check if the user has voted in this election
+      const hasVoted = await storage.hasUserVoted(req.user.id, electionId);
+      
+      if (!hasVoted) {
+        return res.status(400).json({ message: "No vote found to reset" });
+      }
+      
+      // Reset the vote
+      await storage.resetVote(req.user.id, electionId);
+      
+      console.log(`Vote reset for user ${req.user.id} in election ${electionId}. Failed transaction: ${txHash || 'unknown'}`);
+      
+      res.status(200).json({ message: "Vote reset successfully" });
+    } catch (error) {
+      console.error("Error resetting vote:", error);
+      res.status(500).json({ message: "Failed to reset vote" });
     }
   });
   

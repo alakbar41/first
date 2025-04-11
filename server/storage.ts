@@ -65,6 +65,7 @@ export interface IStorage {
   // Vote history tracking (optional, blockchain is the main source of truth)
   recordVote?(userId: number, electionId: number): Promise<void>;
   hasUserVoted?(userId: number, electionId: number): Promise<boolean>;
+  resetVote?(userId: number, electionId: number): Promise<void>;
   
   // Voting token methods (for secure blockchain voting)
   createVotingToken(userId: number, electionId: number): Promise<VotingToken>;
@@ -740,6 +741,20 @@ export class MemStorage implements IStorage {
     return Array.from(this.votingTokens.values()).some(
       token => token.userId === userId && token.electionId === electionId && token.used
     );
+  }
+  
+  async resetVote(userId: number, electionId: number): Promise<void> {
+    // Find all tokens for this user/election and reset their used status
+    const tokens = Array.from(this.votingTokens.values()).filter(
+      token => token.userId === userId && token.electionId === electionId && token.used
+    );
+    
+    for (const token of tokens) {
+      token.used = false;
+      this.votingTokens.set(token.token, token);
+    }
+    
+    console.log(`Reset vote for user ${userId} in election ${electionId}, reset ${tokens.length} tokens`);
   }
 }
 
