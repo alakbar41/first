@@ -200,15 +200,15 @@ export function SimpleVoteButton({
         duration: 10000,
       });
       
-      // Use the same optimized gas settings that worked for election activation
-      // These settings are the minimum viable to ensure transaction success
+      // Using minimal gas settings for Polygon Amoy testnet
+      // These are much lower than before to reduce costs
       const txParams = {
         from: account,
         to: '0xb74F07812B45dBEc4eC3E577194F6a798a060e5D',
         data: data,
-        gas: '0x186A00', // 1,600,000 gas limit in hex
-        maxPriorityFeePerGas: '0x6FC23AC00', // 3 gwei in hex
-        maxFeePerGas: '0x9184E72A000' // 10 gwei in hex
+        gas: '0xAA690', // 700,000 gas limit in hex (substantially lower)
+        maxPriorityFeePerGas: '0x77359400', // 0.5 gwei in hex (6x lower)
+        maxFeePerGas: '0x77359400' // 0.5 gwei in hex (20x lower)
       };
       
       console.log("Sending transaction with optimized parameters:", txParams);
