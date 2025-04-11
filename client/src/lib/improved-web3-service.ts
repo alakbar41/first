@@ -981,6 +981,20 @@ Technical error: ${gasError.message}`);
         );
       }
 
+      // Verify the contract exists at the specified address
+      try {
+        const ethersProvider = new ethers.BrowserProvider(window.ethereum);
+        const code = await ethersProvider.getCode(CONTRACT_ADDRESS);
+        if (code === '0x' || code === '0x0') {
+          console.error(`❌ No contract found at address ${CONTRACT_ADDRESS} on the current network.`);
+          throw new Error(`No contract found at address ${CONTRACT_ADDRESS}. Make sure you're connected to the Polygon Amoy testnet.`);
+        }
+        console.log(`✅ Contract found at address ${CONTRACT_ADDRESS} on the current network.`);
+      } catch (contractError) {
+        console.error('Contract verification failed:', contractError);
+        throw new Error(`Failed to connect to contract at ${CONTRACT_ADDRESS}. Please check your network connection and make sure you're connected to the Polygon Amoy testnet.`);
+      }
+
       return this.walletAddress;
     } catch (error) {
       console.error('Failed to connect wallet:', error);
