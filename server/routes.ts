@@ -1222,6 +1222,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // New endpoint with simpler route for checking user-voted status
+  app.get("/api/elections/:electionId/user-voted", isAuthenticated, async (req, res) => {
+    try {
+      const electionId = parseInt(req.params.electionId);
+      
+      if (isNaN(electionId)) {
+        return res.status(400).json({ message: "Invalid election ID" });
+      }
+      
+      const hasVoted = await storage.hasUserVoted(req.user.id, electionId);
+      
+      res.status(200).json({ hasVoted });
+    } catch (error) {
+      console.error("Error checking vote status:", error);
+      res.status(500).json({ message: "Failed to check vote status" });
+    }
+  });
+  
   // Ticket system routes
   
   // Get all tickets (admin only)

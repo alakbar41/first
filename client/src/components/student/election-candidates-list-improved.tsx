@@ -83,18 +83,36 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
   // First effect - Check if the user has already voted in this election
   useEffect(() => {
     async function checkVotingStatus() {
+      // First check with database if user has voted
+      if (user && election) {
+        try {
+          // Check with the server if user has already voted in this election
+          const response = await fetch(`/api/elections/${election.id}/user-voted`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.hasVoted) {
+              setHasVotedInElection(true);
+              return; // Already know user voted, no need to check blockchain
+            }
+          }
+        } catch (error) {
+          console.error("Error checking database vote status:", error);
+        }
+      }
+      
+      // Then check with blockchain for confirmation
       if (isInitialized && isWalletConnected && election) {
         try {
           const hasVoted = await checkIfVoted(election.id);
           setHasVotedInElection(hasVoted);
         } catch (error) {
-          console.error("Error checking voting status:", error);
+          console.error("Error checking blockchain voting status:", error);
         }
       }
     }
     
     checkVotingStatus();
-  }, [isInitialized, isWalletConnected, election, checkIfVoted]);
+  }, [isInitialized, isWalletConnected, election, checkIfVoted, user]);
   
   // Second effect - Load vote counts for candidates from blockchain
   useEffect(() => {
