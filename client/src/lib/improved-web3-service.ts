@@ -1075,33 +1075,86 @@ Technical error: ${gasError.message}`);
     }
   }
 
-  // Get candidate vote count
+  // Get candidate vote count - with lazy initialization and fallback
   async getCandidateVoteCount(candidateId: number): Promise<number> {
     try {
+      // If no contract, try to initialize through MetaMask connection
+      if (!this.contract && window.ethereum) {
+        try {
+          console.log('Contract not initialized, trying to connect using MetaMask...');
+          const ethersProvider = new ethers.BrowserProvider(window.ethereum);
+          const signer = await ethersProvider.getSigner();
+          this.signer = signer;
+          this.walletAddress = await signer.getAddress();
+          
+          this.contract = new ethers.Contract(
+            CONTRACT_ADDRESS,
+            IMPROVED_CONTRACT_ABI,
+            signer
+          );
+          
+          console.log('Contract initialized on-demand for vote count');
+        } catch (initError) {
+          console.warn('Failed to initialize contract on-demand:', initError);
+          // Return 0 as fallback rather than throwing an error
+          // This improves the user experience by showing 0 votes instead of errors
+          return 0;
+        }
+      }
+      
+      // If still no contract, return 0 instead of throwing error
       if (!this.contract) {
-        throw new Error('Contract not initialized');
+        console.warn(`Cannot get vote count for candidate ID ${candidateId}: Contract not initialized and cannot connect to MetaMask`);
+        return 0;
       }
 
       const voteCount = await this.contract.getCandidateVoteCount(candidateId);
       return Number(voteCount);
     } catch (error) {
       console.error(`Failed to get vote count for candidate ID ${candidateId}:`, error);
-      throw error;
+      // Return 0 as fallback to avoid breaking the UI with errors
+      return 0;
     }
   }
 
-  // Get ticket vote count
+  // Get ticket vote count - with lazy initialization and fallback
   async getTicketVoteCount(ticketId: number): Promise<number> {
     try {
+      // If no contract, try to initialize through MetaMask connection
+      if (!this.contract && window.ethereum) {
+        try {
+          console.log('Contract not initialized, trying to connect using MetaMask...');
+          const ethersProvider = new ethers.BrowserProvider(window.ethereum);
+          const signer = await ethersProvider.getSigner();
+          this.signer = signer;
+          this.walletAddress = await signer.getAddress();
+          
+          this.contract = new ethers.Contract(
+            CONTRACT_ADDRESS,
+            IMPROVED_CONTRACT_ABI,
+            signer
+          );
+          
+          console.log('Contract initialized on-demand for ticket vote count');
+        } catch (initError) {
+          console.warn('Failed to initialize contract on-demand:', initError);
+          // Return 0 as fallback rather than throwing an error
+          return 0;
+        }
+      }
+      
+      // If still no contract, return 0 instead of throwing error
       if (!this.contract) {
-        throw new Error('Contract not initialized');
+        console.warn(`Cannot get vote count for ticket ID ${ticketId}: Contract not initialized and cannot connect to MetaMask`);
+        return 0;
       }
 
       const voteCount = await this.contract.getTicketVoteCount(ticketId);
       return Number(voteCount);
     } catch (error) {
       console.error(`Failed to get vote count for ticket ID ${ticketId}:`, error);
-      throw error;
+      // Return 0 as fallback to avoid breaking the UI with errors
+      return 0;
     }
   }
 
@@ -1123,22 +1176,51 @@ Technical error: ${gasError.message}`);
     }
   }
 
-  // Check if voter has already voted in an election
+  // Check if voter has already voted in an election - with lazy initialization
   async checkIfVoted(electionId: number, voterAddress?: string): Promise<boolean> {
     try {
+      // If no contract, try to initialize through MetaMask connection
+      if (!this.contract && window.ethereum) {
+        try {
+          console.log('Contract not initialized, trying to connect using MetaMask...');
+          const ethersProvider = new ethers.BrowserProvider(window.ethereum);
+          const signer = await ethersProvider.getSigner();
+          this.signer = signer;
+          this.walletAddress = await signer.getAddress();
+          
+          this.contract = new ethers.Contract(
+            CONTRACT_ADDRESS,
+            IMPROVED_CONTRACT_ABI,
+            signer
+          );
+          
+          console.log('Contract initialized on-demand for vote check');
+        } catch (initError) {
+          console.warn('Failed to initialize contract on-demand:', initError);
+          // Return false as fallback rather than throwing an error
+          // This fallback treats the user as not having voted yet, which is safer
+          return false;
+        }
+      }
+      
+      // If still no contract, return false instead of throwing error
       if (!this.contract) {
-        throw new Error('Contract not initialized');
+        console.warn(`Cannot check voted status: Contract not initialized and cannot connect to MetaMask`);
+        return false;
       }
 
       const address = voterAddress || this.walletAddress;
       if (!address) {
-        throw new Error('No voter address provided');
+        console.warn('No voter address provided for vote check');
+        return false;
       }
 
       return await this.contract.checkIfVoted(electionId, address);
     } catch (error) {
       console.error(`Failed to check if address ${voterAddress || this.walletAddress} voted in election ${electionId}:`, error);
-      throw error;
+      // Return false as fallback to avoid breaking the UI with errors
+      // This fallback treats the user as not having voted yet, which is safer
+      return false;
     }
   }
 
@@ -1303,22 +1385,49 @@ Technical error: ${gasError.message}`);
     }
   }
 
-  // Check if an address is a registered voter
+  // Check if an address is a registered voter - with lazy initialization
   async isRegisteredVoter(address?: string): Promise<boolean> {
     try {
+      // If no contract, try to initialize through MetaMask connection
+      if (!this.contract && window.ethereum) {
+        try {
+          console.log('Contract not initialized, trying to connect using MetaMask...');
+          const ethersProvider = new ethers.BrowserProvider(window.ethereum);
+          const signer = await ethersProvider.getSigner();
+          this.signer = signer;
+          this.walletAddress = await signer.getAddress();
+          
+          this.contract = new ethers.Contract(
+            CONTRACT_ADDRESS,
+            IMPROVED_CONTRACT_ABI,
+            signer
+          );
+          
+          console.log('Contract initialized on-demand for voter check');
+        } catch (initError) {
+          console.warn('Failed to initialize contract on-demand:', initError);
+          // Return false as fallback rather than throwing an error
+          return false;
+        }
+      }
+      
+      // If still no contract, return false instead of throwing error
       if (!this.contract) {
-        throw new Error('Contract not initialized');
+        console.warn(`Cannot check voter status: Contract not initialized and cannot connect to MetaMask`);
+        return false;
       }
 
       const voterAddress = address || this.walletAddress;
       if (!voterAddress) {
-        throw new Error('No address provided');
+        console.warn('No voter address provided');
+        return false;
       }
 
       return await this.contract.registeredVoters(voterAddress);
     } catch (error) {
       console.error(`Failed to check if ${address || this.walletAddress} is a registered voter:`, error);
-      throw error;
+      // Return false as fallback to avoid breaking the UI with errors
+      return false;
     }
   }
 
