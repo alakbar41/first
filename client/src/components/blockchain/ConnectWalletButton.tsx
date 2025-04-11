@@ -51,22 +51,10 @@ export function ConnectWalletButton({
         variant: "default",
       });
     } catch (error: any) {
-      let title = "Connection Failed";
-      let description = error.message || "Failed to connect wallet. Please make sure you have MetaMask installed.";
-      
-      // Detect contract verification errors specifically
-      if (description.includes("No contract found") || 
-          description.includes("Contract not found") ||
-          description.includes("not a contract")) {
-        title = "Smart Contract Not Found";
-        description = "The voting smart contract was not found on the current network. Please make sure you are connected to the Polygon Amoy testnet and contact your administrator.";
-      }
-      
       toast({
-        title: title,
-        description: description,
+        title: "Connection Failed",
+        description: error.message || "Failed to connect wallet. Please make sure you have MetaMask installed.",
         variant: "destructive",
-        duration: 10000, // Keep the message visible longer
       });
     } finally {
       setIsConnecting(false);
