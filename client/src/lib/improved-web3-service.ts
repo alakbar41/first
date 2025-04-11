@@ -1003,11 +1003,52 @@ Technical error: ${gasError.message}`);
     return !!this.signer && !!this.walletAddress;
   }
 
-  // Get election details
+  // Get election details - with lazy initialization
   async getElectionDetails(electionId: number): Promise<ImprovedElection> {
     try {
+      // If no contract, try to initialize through MetaMask connection
+      if (!this.contract && window.ethereum) {
+        try {
+          console.log('Contract not initialized, trying to connect using MetaMask...');
+          const ethersProvider = new ethers.BrowserProvider(window.ethereum);
+          const signer = await ethersProvider.getSigner();
+          this.signer = signer;
+          this.walletAddress = await signer.getAddress();
+          
+          this.contract = new ethers.Contract(
+            CONTRACT_ADDRESS,
+            IMPROVED_CONTRACT_ABI,
+            signer
+          );
+          
+          console.log('Contract initialized on-demand for getting election details');
+        } catch (initError) {
+          console.warn('Failed to initialize contract on-demand:', initError);
+          // Return a default election object with pending status
+          return {
+            id: electionId,
+            electionType: ElectionType.Senator, 
+            status: ElectionStatus.Pending,
+            startTime: 0,
+            endTime: 0,
+            totalVotesCast: 0,
+            resultsFinalized: false
+          };
+        }
+      }
+      
+      // If still no contract, return default election rather than throwing
       if (!this.contract) {
-        throw new Error('Contract not initialized');
+        console.warn(`Cannot get election details: Contract not initialized and cannot connect to MetaMask`);
+        return {
+          id: electionId,
+          electionType: ElectionType.Senator, 
+          status: ElectionStatus.Pending,
+          startTime: 0,
+          endTime: 0,
+          totalVotesCast: 0,
+          resultsFinalized: false
+        };
       }
 
       const details = await this.contract.getElectionDetails(electionId);
@@ -1023,45 +1064,137 @@ Technical error: ${gasError.message}`);
       };
     } catch (error) {
       console.error(`Failed to get election details for ID ${electionId}:`, error);
-      throw error;
+      // Return a default election object instead of throwing an error
+      return {
+        id: electionId,
+        electionType: ElectionType.Senator, 
+        status: ElectionStatus.Pending,
+        startTime: 0,
+        endTime: 0,
+        totalVotesCast: 0,
+        resultsFinalized: false
+      };
     }
   }
 
-  // Get candidates for a specific election
+  // Get candidates for a specific election - with lazy initialization
   async getElectionCandidates(electionId: number): Promise<number[]> {
     try {
+      // If no contract, try to initialize through MetaMask connection
+      if (!this.contract && window.ethereum) {
+        try {
+          console.log('Contract not initialized, trying to connect using MetaMask...');
+          const ethersProvider = new ethers.BrowserProvider(window.ethereum);
+          const signer = await ethersProvider.getSigner();
+          this.signer = signer;
+          this.walletAddress = await signer.getAddress();
+          
+          this.contract = new ethers.Contract(
+            CONTRACT_ADDRESS,
+            IMPROVED_CONTRACT_ABI,
+            signer
+          );
+          
+          console.log('Contract initialized on-demand for getting election candidates');
+        } catch (initError) {
+          console.warn('Failed to initialize contract on-demand:', initError);
+          // Return empty array as fallback rather than throwing an error
+          return [];
+        }
+      }
+      
+      // If still no contract, return empty array instead of throwing
       if (!this.contract) {
-        throw new Error('Contract not initialized');
+        console.warn(`Cannot get candidates for election ID ${electionId}: Contract not initialized and cannot connect to MetaMask`);
+        return [];
       }
 
       const candidateIds = await this.contract.getElectionCandidates(electionId);
       return candidateIds.map((id: any) => Number(id));
     } catch (error) {
       console.error(`Failed to get candidates for election ID ${electionId}:`, error);
-      throw error;
+      // Return empty array as fallback to avoid breaking the UI with errors
+      return [];
     }
   }
 
-  // Get tickets for a specific election
+  // Get tickets for a specific election - with lazy initialization
   async getElectionTickets(electionId: number): Promise<number[]> {
     try {
+      // If no contract, try to initialize through MetaMask connection
+      if (!this.contract && window.ethereum) {
+        try {
+          console.log('Contract not initialized, trying to connect using MetaMask...');
+          const ethersProvider = new ethers.BrowserProvider(window.ethereum);
+          const signer = await ethersProvider.getSigner();
+          this.signer = signer;
+          this.walletAddress = await signer.getAddress();
+          
+          this.contract = new ethers.Contract(
+            CONTRACT_ADDRESS,
+            IMPROVED_CONTRACT_ABI,
+            signer
+          );
+          
+          console.log('Contract initialized on-demand for getting election tickets');
+        } catch (initError) {
+          console.warn('Failed to initialize contract on-demand:', initError);
+          // Return empty array as fallback rather than throwing an error
+          return [];
+        }
+      }
+      
+      // If still no contract, return empty array instead of throwing
       if (!this.contract) {
-        throw new Error('Contract not initialized');
+        console.warn(`Cannot get tickets for election ID ${electionId}: Contract not initialized and cannot connect to MetaMask`);
+        return [];
       }
 
       const ticketIds = await this.contract.getElectionTickets(electionId);
       return ticketIds.map((id: any) => Number(id));
     } catch (error) {
       console.error(`Failed to get tickets for election ID ${electionId}:`, error);
-      throw error;
+      // Return empty array as fallback to avoid breaking the UI with errors
+      return [];
     }
   }
 
-  // Get winner of a finalized election
+  // Get winner of a finalized election - with lazy initialization
   async getElectionWinner(electionId: number): Promise<{ winnerId: number, votes: number }> {
     try {
+      // If no contract, try to initialize through MetaMask connection
+      if (!this.contract && window.ethereum) {
+        try {
+          console.log('Contract not initialized, trying to connect using MetaMask...');
+          const ethersProvider = new ethers.BrowserProvider(window.ethereum);
+          const signer = await ethersProvider.getSigner();
+          this.signer = signer;
+          this.walletAddress = await signer.getAddress();
+          
+          this.contract = new ethers.Contract(
+            CONTRACT_ADDRESS,
+            IMPROVED_CONTRACT_ABI,
+            signer
+          );
+          
+          console.log('Contract initialized on-demand for getting election winner');
+        } catch (initError) {
+          console.warn('Failed to initialize contract on-demand:', initError);
+          // Return a default object with no winner
+          return {
+            winnerId: 0,
+            votes: 0
+          };
+        }
+      }
+      
+      // If still no contract, return default instead of throwing
       if (!this.contract) {
-        throw new Error('Contract not initialized');
+        console.warn(`Cannot get winner for election ID ${electionId}: Contract not initialized and cannot connect to MetaMask`);
+        return {
+          winnerId: 0,
+          votes: 0
+        };
       }
 
       const result = await this.contract.getElectionWinner(electionId);
@@ -1071,7 +1204,11 @@ Technical error: ${gasError.message}`);
       };
     } catch (error) {
       console.error(`Failed to get winner for election ID ${electionId}:`, error);
-      throw error;
+      // Return default values to avoid breaking the UI with errors
+      return {
+        winnerId: 0,
+        votes: 0
+      };
     }
   }
 
