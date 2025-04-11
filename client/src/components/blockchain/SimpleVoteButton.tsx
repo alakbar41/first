@@ -265,16 +265,13 @@ export function SimpleVoteButton({
         duration: 10000,
       });
       
-      // This approach uses minimal parameters with explicit ultra-low gas settings 
-      // Focus on making a clean transaction that works on the Amoy testnet with minimal costs
+      // Absolute minimal parameters approach - let MetaMask handle everything
+      // This worked for deployment and activation, so it should work for voting too
       const txParams = {
         from: account,
         to: '0xb74F07812B45dBEc4eC3E577194F6a798a060e5D',
-        data: data,
-        // Ultra-low gas parameters for Polygon Amoy testnet
-        gasLimit: '0x15F90', // 90,000 in hex (extremely conservative limit)
-        maxFeePerGas: '0x59682F00', // 1.5 gwei in hex
-        maxPriorityFeePerGas: '0x1DCD6500' // 0.5 gwei in hex
+        data: data
+        // No gas settings at all - let MetaMask calculate everything
       };
       
       console.log("Sending transaction with optimized parameters:", txParams);
@@ -320,11 +317,26 @@ export function SimpleVoteButton({
           duration: 10000,
         });
       } else if (errorMessage.includes('Internal JSON-RPC error') || errorMessage.includes('could not be mined')) {
+        // Try to extract more detail from the error
+        let detailedError = "Unknown blockchain error";
+        try {
+          // Often the actual error is nested inside
+          if (error.error && error.error.message) {
+            detailedError = error.error.message;
+          } else if (error.data && error.data.message) {
+            detailedError = error.data.message;
+          }
+        } catch (e) {
+          console.log("Could not extract detailed error:", e);
+        }
+        
+        console.log("Transaction failed with detailed error:", detailedError);
+        
         toast({
           title: "Transaction error",
-          description: "The vote couldn't be processed due to blockchain network issues. Please wait a moment and try again.",
+          description: "The vote couldn't be processed. This is likely due to network congestion on Polygon Amoy. Please try again in a moment.",
           variant: "destructive",
-          duration: 10000,
+          duration: 15000,
         });
       } else if (errorMessage.includes('execution reverted')) {
         toast({
