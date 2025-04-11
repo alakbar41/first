@@ -1321,6 +1321,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Reset user's vote for an election (admin or test mode only)
+  app.post("/api/test/reset-user-vote", isAuthenticated, async (req, res) => {
+    try {
+      const { electionId } = req.body;
+      
+      if (!electionId || typeof electionId !== 'number') {
+        return res.status(400).json({ message: "Invalid election ID" });
+      }
+      
+      // For security, check if we're in development/test mode or if user is admin
+      const isTestMode = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
+      const isAdmin = req.user && req.user.isAdmin;
+      
+      if (!isTestMode && !isAdmin) {
+        return res.status(403).json({ message: "Operation not allowed in production" });
+      }
+      
+      // Reset the vote
+      await storage.resetVote(req.user.id, electionId);
+      
+      res.json({ message: "Vote reset successfully" });
+    } catch (error) {
+      console.error("Error resetting vote:", error);
+      res.status(500).json({ message: "Failed to reset vote" });
+    }
+  });
+  
   const httpServer = createServer(app);
 
   return httpServer;

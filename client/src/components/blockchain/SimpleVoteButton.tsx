@@ -260,8 +260,34 @@ export function SimpleVoteButton({
       // IMPORTANT: We must use the blockchain ID if provided, as the database ID won't match what's on the blockchain
       const actualElectionId = blockchainId || electionId;
       
-      // Function signature for vote(uint256,uint256,uint256)
-      const functionSignature = '0x0121b93f';
+      // Get next nonce from blockchain to prevent replay attacks
+      let nonce = 1; // Default nonce
+      try {
+        // Try to fetch next nonce from the contract if possible (polyfill for MetaMask direct use)
+        if (window.ethereum) {
+          const provider = new ethers.BrowserProvider(window.ethereum);
+          const contract = new ethers.Contract(
+            '0xb74F07812B45dBEc4eC3E577194F6a798a060e5D',
+            [
+              "function getNextNonce() external view returns (uint256)"
+            ],
+            provider
+          );
+          
+          try {
+            const nextNonce = await contract.getNextNonce();
+            nonce = Number(nextNonce);
+            console.log("Got next nonce from blockchain:", nonce);
+          } catch (nonceError) {
+            console.warn("Could not get nonce from contract, using default:", nonceError);
+          }
+        }
+      } catch (error) {
+        console.warn("Error getting nonce, using default:", error);
+      }
+      
+      // Function signature for voteForSenator(uint256,uint256,uint256)
+      const functionSignature = '0x8c8f5bcb'; // Correct function signature for voteForSenator
       
       // Convert parameters to 32-byte hex strings
       const toHex32 = (num: number): string => {
@@ -272,7 +298,7 @@ export function SimpleVoteButton({
       const data = functionSignature + 
                   toHex32(actualElectionId) + 
                   toHex32(candidateId) + 
-                  toHex32(0); // nonce = 0
+                  toHex32(nonce); // Use actual nonce instead of 0
       
       console.log("Voting for election ID:", actualElectionId, "candidate ID:", candidateId);
       console.log("Database election ID:", electionId, "Blockchain election ID:", blockchainId || "same as database");
@@ -285,16 +311,17 @@ export function SimpleVoteButton({
         duration: 20000,
       });
       
-      // Set ultra-minimal gas parameters to force a very low fee
-      // We need to override MetaMask's estimates which are too high for test networks
+      // Set optimized gas parameters for reliable voting on Polygon Amoy testnet
+      // We need sufficient but not excessive gas to ensure transactions succeed
       const txParams = {
         from: account,
         to: '0xb74F07812B45dBEc4eC3E577194F6a798a060e5D',
         data: data,
-        // Use absolute minimum gas price the network will accept
-        gasPrice: '0x174876E800', // 0.1 Gwei (100,000,000 wei) in hex - absolute minimum
-        // Ultra low gas limit - bare minimum for vote function
-        gas: '0x186A0' // 100,000 in hex - enough for a vote
+        // Use optimized gas values that are low but sufficient for success
+        maxFeePerGas: '0x3B9ACA00', // 1 Gwei in hex
+        maxPriorityFeePerGas: '0x1DCD6500', // 0.5 Gwei in hex
+        // Set higher gas limit to ensure voting transaction succeeds
+        gas: '0x430E0' // 275,000 in hex - higher than minimum to ensure success
       };
       
       console.log("Sending transaction with optimized parameters:", txParams);
