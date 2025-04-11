@@ -38,6 +38,11 @@ export function ResetUserVoteButton({
           description: "The user can now vote again in this election.",
           duration: 3000,
         });
+        
+        // Call the onResetSuccess callback if provided
+        if (onResetSuccess) {
+          onResetSuccess();
+        }
       } else {
         const error = await response.json();
         throw new Error(error.message || "Failed to reset vote");

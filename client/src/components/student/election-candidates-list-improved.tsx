@@ -325,6 +325,20 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
       queryClient.invalidateQueries({ queryKey: [`/api/elections/${election.id}/candidates`] });
     }, 2000);
   };
+  
+  // Handle successful vote reset
+  const handleResetSuccess = () => {
+    // Update UI state to indicate user can vote again
+    setHasVotedInElection(false);
+    
+    // Refresh vote counts for all candidates
+    Object.values(candidateVoteCountRefs.current).forEach(refreshFn => {
+      if (typeof refreshFn === 'function') refreshFn();
+    });
+    
+    // Also force re-fetch of the candidate list to refresh all data
+    queryClient.invalidateQueries({ queryKey: [`/api/elections/${election.id}/candidates`] });
+  };
 
   // Get appropriate status message for display
   const getElectionStatusMessage = () => {
@@ -476,6 +490,7 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                           <ResetUserVoteButton 
                             electionId={election.id}
                             className="text-xs sm:text-sm"
+                            onResetSuccess={handleResetSuccess}
                           />
                         </>
                       ) : !isWalletConnected ? (
@@ -580,6 +595,7 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                           <ResetUserVoteButton 
                             electionId={election.id}
                             className="text-xs sm:text-sm"
+                            onResetSuccess={handleResetSuccess}
                           />
                         </div>
                       ) : !isWalletConnected ? (
