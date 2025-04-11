@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, VoteIcon, ShieldCheck } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import * as ethers from "ethers";
 
 interface SimpleVoteButtonProps {
   electionId: number;
@@ -278,26 +279,63 @@ export function SimpleVoteButton({
       };
       
       console.log("Sending transaction with optimized parameters:", txParams);
+      // Get transaction hash from MetaMask
       const txHash = await window.ethereum.request({
         method: 'eth_sendTransaction',
         params: [txParams],
       });
       
-      // Step 6: Mark token as used in database
-      try {
-        await markTokenAsUsed(token, txHash);
-      } catch (error) {
-        console.error("Failed to mark token as used, but vote was successful:", error);
-      }
-      
+      // IMPORTANT: We need to wait for transaction confirmation before marking token as used
+      // Show waiting message
       toast({
-        title: "Vote recorded!",
-        description: "Your vote has been successfully processed on the blockchain.",
-        duration: 5000,
+        title: "Vote submitted!",
+        description: "Waiting for blockchain confirmation. This may take a few moments...",
+        duration: 10000,
       });
       
-      if (onVoteSuccess && txHash) {
-        onVoteSuccess(txHash);
+      // Step 6: Wait for transaction confirmation and only then mark token as used
+      try {
+        // Set state to recording (waiting for confirmation)
+        setVoteState('recording-vote');
+        
+        // Wait for transaction receipt to check if it was successful
+        console.log(`Waiting for transaction confirmation: ${txHash}`);
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const receipt = await provider.waitForTransaction(txHash);
+        
+        // Check if transaction was successful
+        if (receipt.status === 1) { // 1 = success, 0 = failure
+          console.log('Transaction confirmed successfully!', receipt);
+          
+          // Only mark token as used if transaction succeeded
+          await markTokenAsUsed(token, txHash);
+          
+          toast({
+            title: "Vote recorded!",
+            description: "Your vote has been successfully processed on the blockchain.",
+            duration: 5000,
+          });
+          
+          if (onVoteSuccess) {
+            onVoteSuccess(txHash);
+          }
+        } else {
+          console.error('Transaction failed:', receipt);
+          throw new Error('Transaction failed on the blockchain');
+        }
+      } catch (receiptError) {
+        console.error("Transaction receipt error:", receiptError);
+        
+        // If we get here, the transaction failed or we couldn't get a receipt
+        toast({
+          title: "Vote failed",
+          description: "The blockchain transaction failed. You can try voting again.",
+          variant: "destructive",
+          duration: 10000,
+        });
+        
+        // Don't call onVoteSuccess since the vote failed
+        throw new Error('Transaction confirmation failed');
       }
     } catch (error: any) {
       console.error('Vote failed:', error);
