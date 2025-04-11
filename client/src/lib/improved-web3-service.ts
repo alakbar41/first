@@ -430,16 +430,39 @@ Technical error: ${gasError.message}`);
     }
   }
 
-  // Start an election with enhanced gas and transaction handling
+  // Start an election with enhanced gas and transaction handling - with lazy initialization
   async startElection(electionId: number): Promise<void> {
     try {
+      // If no contract, try to initialize through MetaMask connection
+      if (!this.contract && window.ethereum) {
+        try {
+          console.log('Contract not initialized, trying to connect using MetaMask for election activation...');
+          const ethersProvider = new ethers.BrowserProvider(window.ethereum);
+          const signer = await ethersProvider.getSigner();
+          this.signer = signer;
+          this.walletAddress = await signer.getAddress();
+          
+          this.contract = new ethers.Contract(
+            CONTRACT_ADDRESS,
+            IMPROVED_CONTRACT_ABI,
+            signer
+          );
+          
+          console.log('Contract initialized on-demand for election activation');
+        } catch (initError) {
+          console.error('Failed to initialize contract on-demand for election activation:', initError);
+          throw new Error('Failed to connect to blockchain. Please make sure MetaMask is installed and connected.');
+        }
+      }
+      
+      // If still no contract, we can't proceed
       if (!this.contract || !this.signer) {
-        throw new Error('Contract or signer not initialized');
+        throw new Error('Contract could not be initialized. Please make sure MetaMask is installed and connected.');
       }
 
       // Ensure wallet is connected
       if (!this.walletAddress) {
-        throw new Error('Wallet not connected');
+        throw new Error('Wallet not connected. Please connect your MetaMask wallet first.');
       }
       
       // First, check the election status
@@ -528,16 +551,39 @@ Technical error: ${gasError.message}`);
     }
   }
   
-  // Start an election with custom gas settings (for retries)
+  // Start an election with custom gas settings (for retries) - with lazy initialization
   async startElectionWithCustomGas(electionId: number, customGasOptions: any): Promise<void> {
     try {
+      // If no contract, try to initialize through MetaMask connection
+      if (!this.contract && window.ethereum) {
+        try {
+          console.log('Contract not initialized, trying to connect using MetaMask for custom gas election activation...');
+          const ethersProvider = new ethers.BrowserProvider(window.ethereum);
+          const signer = await ethersProvider.getSigner();
+          this.signer = signer;
+          this.walletAddress = await signer.getAddress();
+          
+          this.contract = new ethers.Contract(
+            CONTRACT_ADDRESS,
+            IMPROVED_CONTRACT_ABI,
+            signer
+          );
+          
+          console.log('Contract initialized on-demand for custom gas election activation');
+        } catch (initError) {
+          console.error('Failed to initialize contract on-demand for custom gas election activation:', initError);
+          throw new Error('Failed to connect to blockchain. Please make sure MetaMask is installed and connected.');
+        }
+      }
+      
+      // If still no contract, we can't proceed
       if (!this.contract || !this.signer) {
-        throw new Error('Contract or signer not initialized');
+        throw new Error('Contract could not be initialized. Please make sure MetaMask is installed and connected.');
       }
 
       // Ensure wallet is connected
       if (!this.walletAddress) {
-        throw new Error('Wallet not connected');
+        throw new Error('Wallet not connected. Please connect your MetaMask wallet first.');
       }
       
       // First, check the election status
@@ -619,16 +665,39 @@ Technical error: ${gasError.message}`);
     }
   }
 
-  // Stop an election (with improved transaction handling)
+  // Stop an election (with improved transaction handling) - with lazy initialization
   async stopElection(electionId: number): Promise<void> {
     try {
+      // If no contract, try to initialize through MetaMask connection
+      if (!this.contract && window.ethereum) {
+        try {
+          console.log('Contract not initialized, trying to connect using MetaMask for election stopping...');
+          const ethersProvider = new ethers.BrowserProvider(window.ethereum);
+          const signer = await ethersProvider.getSigner();
+          this.signer = signer;
+          this.walletAddress = await signer.getAddress();
+          
+          this.contract = new ethers.Contract(
+            CONTRACT_ADDRESS,
+            IMPROVED_CONTRACT_ABI,
+            signer
+          );
+          
+          console.log('Contract initialized on-demand for stopping election');
+        } catch (initError) {
+          console.error('Failed to initialize contract on-demand for stopping election:', initError);
+          throw new Error('Failed to connect to blockchain. Please make sure MetaMask is installed and connected.');
+        }
+      }
+      
+      // If still no contract, we can't proceed
       if (!this.contract || !this.signer) {
-        throw new Error('Contract or signer not initialized');
+        throw new Error('Contract could not be initialized. Please make sure MetaMask is installed and connected.');
       }
 
       // Ensure wallet is connected
       if (!this.walletAddress) {
-        throw new Error('Wallet not connected');
+        throw new Error('Wallet not connected. Please connect your MetaMask wallet first.');
       }
 
       // Use ultra-high gas settings to ensure transaction success on Polygon Amoy
@@ -698,16 +767,39 @@ Technical error: ${gasError.message}`);
     }
   }
 
-  // Auto-update an election's status based on time (improved transaction handling)
+  // Auto-update an election's status based on time (improved transaction handling) - with lazy initialization
   async autoUpdateElectionStatus(electionId: number): Promise<void> {
     try {
+      // If no contract, try to initialize through MetaMask connection
+      if (!this.contract && window.ethereum) {
+        try {
+          console.log('Contract not initialized, trying to connect using MetaMask for election auto-update...');
+          const ethersProvider = new ethers.BrowserProvider(window.ethereum);
+          const signer = await ethersProvider.getSigner();
+          this.signer = signer;
+          this.walletAddress = await signer.getAddress();
+          
+          this.contract = new ethers.Contract(
+            CONTRACT_ADDRESS,
+            IMPROVED_CONTRACT_ABI,
+            signer
+          );
+          
+          console.log('Contract initialized on-demand for auto-updating election status');
+        } catch (initError) {
+          console.error('Failed to initialize contract on-demand for auto-updating election:', initError);
+          throw new Error('Failed to connect to blockchain. Please make sure MetaMask is installed and connected.');
+        }
+      }
+      
+      // If still no contract, we can't proceed
       if (!this.contract || !this.signer) {
-        throw new Error('Contract or signer not initialized');
+        throw new Error('Contract could not be initialized. Please make sure MetaMask is installed and connected.');
       }
 
       // Ensure wallet is connected
       if (!this.walletAddress) {
-        throw new Error('Wallet not connected');
+        throw new Error('Wallet not connected. Please connect your MetaMask wallet first.');
       }
       
       // First, check the current election details to know what we're working with
@@ -826,16 +918,39 @@ Technical error: ${gasError.message}`);
     }
   }
 
-  // Finalize election results (with improved transaction handling)
+  // Finalize election results (with improved transaction handling) - with lazy initialization
   async finalizeResults(electionId: number): Promise<void> {
     try {
+      // If no contract, try to initialize through MetaMask connection
+      if (!this.contract && window.ethereum) {
+        try {
+          console.log('Contract not initialized, trying to connect using MetaMask for finalizing results...');
+          const ethersProvider = new ethers.BrowserProvider(window.ethereum);
+          const signer = await ethersProvider.getSigner();
+          this.signer = signer;
+          this.walletAddress = await signer.getAddress();
+          
+          this.contract = new ethers.Contract(
+            CONTRACT_ADDRESS,
+            IMPROVED_CONTRACT_ABI,
+            signer
+          );
+          
+          console.log('Contract initialized on-demand for finalizing election results');
+        } catch (initError) {
+          console.error('Failed to initialize contract on-demand for finalizing results:', initError);
+          throw new Error('Failed to connect to blockchain. Please make sure MetaMask is installed and connected.');
+        }
+      }
+      
+      // If still no contract, we can't proceed
       if (!this.contract || !this.signer) {
-        throw new Error('Contract or signer not initialized');
+        throw new Error('Contract could not be initialized. Please make sure MetaMask is installed and connected.');
       }
 
       // Ensure wallet is connected
       if (!this.walletAddress) {
-        throw new Error('Wallet not connected');
+        throw new Error('Wallet not connected. Please connect your MetaMask wallet first.');
       }
 
       // Use ultra-high gas settings to ensure transaction success on Polygon Amoy
