@@ -9,14 +9,14 @@ import { Loader2 } from "lucide-react";
 
 const ArchitectureView: React.FC = () => {
   const { user, isLoading } = useAuth();
-  const [_, navigate] = useNavigate();
+  const [_, navigate] = useLocation();
 
   // Redirect non-admin users
   React.useEffect(() => {
     if (!isLoading && (!user || !user.isAdmin)) {
       navigate("/auth");
     }
-  }, [user, isLoading, navigate]);
+  }, [user, isLoading]);
 
   if (isLoading) {
     return (
@@ -32,7 +32,7 @@ const ArchitectureView: React.FC = () => {
 
   return (
     <div className="grid grid-cols-[240px_1fr] h-screen bg-background">
-      <AdminSidebar />
+      <AdminSidebar user={user} />
       <div className="overflow-auto p-6">
         <div className="max-w-[1200px] mx-auto">
           <h1 className="text-3xl font-bold tracking-tight mb-4">

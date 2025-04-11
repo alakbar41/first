@@ -13,6 +13,7 @@ import AdminDashboard from "@/pages/admin-dashboard-new";
 import AdminCandidates from "@/pages/admin-candidates";
 import TicketsPage from "@/pages/tickets-page";
 import AdminTickets from "@/pages/admin-tickets";
+import AdminArchitecture from "@/pages/admin-architecture";
 import { ProtectedRoute, AdminProtectedRoute } from "./lib/protected-route";
 import { AuthProvider } from "./hooks/use-auth";
 import { Web3Provider } from "./hooks/use-web3";
@@ -35,6 +36,7 @@ function Router() {
       <AdminProtectedRoute path="/admin/tickets" component={AdminTickets} />
       <AdminProtectedRoute path="/admin/voters" component={AdminDashboard} />
       <AdminProtectedRoute path="/admin/settings" component={AdminDashboard} />
+      <AdminProtectedRoute path="/admin-architecture" component={AdminArchitecture} />
       
       {/* Auth routes */}
       <Route path="/auth" component={AuthPage} />
