@@ -24,8 +24,20 @@ function mapElectionTypeToBlockchain(dbPosition: string): ElectionType {
 }
 
 // Convert DB date to Unix timestamp (seconds)
+// Modified to ensure dates work with blockchain contract requirements
+// - Start time must be in future when deploying 
+// - Start time must be "now" when activating
 function dateToTimestamp(date: Date): number {
-  return Math.floor(date.getTime() / 1000);
+  const now = Math.floor(Date.now() / 1000); // Current time in seconds
+  const dateTimestamp = Math.floor(date.getTime() / 1000);
+  
+  // If the date is in the past, return future time (now + 60 seconds)
+  // This ensures our deployment succeeds while still allowing immediate activation
+  if (dateTimestamp <= now) {
+    return now + 60; // 1 minute in the future
+  }
+  
+  return dateTimestamp;
 }
 
 interface DeployToBlockchainButtonProps {

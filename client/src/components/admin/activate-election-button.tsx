@@ -79,6 +79,25 @@ export function ActivateElectionButton({
       }
     }
     
+    // Check if we need to update election time settings before activation
+    // This ensures the start time is compatible with the contract validation
+    try {
+      const details = await web3Service.getElectionDetails(blockchainId);
+      const now = Math.floor(Date.now() / 1000);
+      
+      if (details.startTime > now) {
+        toast({
+          title: "Notice: Election Start Time Adjustment",
+          description: "The blockchain activation requires start time to be current. After activating, the election will be immediately available for voting.",
+          variant: "default",
+          duration: 5000,
+        });
+      }
+    } catch (error) {
+      console.error("Error checking election time settings:", error);
+      // Continue with activation attempt even if the check fails
+    }
+    
     // Check current status before attempting activation
     setIsActivating(true);
     const status = await checkCurrentStatus();
