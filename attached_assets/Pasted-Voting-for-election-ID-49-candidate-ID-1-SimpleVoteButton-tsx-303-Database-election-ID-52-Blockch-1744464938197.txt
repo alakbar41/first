@@ -1,0 +1,31 @@
+Voting for election ID: 49 candidate ID: 1
+SimpleVoteButton.tsx:303 Database election ID: 52 Blockchain election ID: 49
+SimpleVoteButton.tsx:304 Contract address: 0xb74F07812B45dBEc4eC3E577194F6a798a060e5D
+SimpleVoteButton.tsx:305 Using secured voting token
+SimpleVoteButton.tsx:326 Sending transaction with optimized parameters: {from: '0xdfcc716668df29e0d187dd37574247341305030d', to: '0xb74F07812B45dBEc4eC3E577194F6a798a060e5D', data: '0x8c8f5bcb0000000000000000000000000000000000000000…0000000000000000000000000000000000000000000000001', maxFeePerGas: '0x3B9ACA00', maxPriorityFeePerGas: '0x1DCD6500', …}
+SimpleVoteButton.tsx:348 Waiting for transaction confirmation: 0xfc11fcd6a22a9c5f8a70c34706c760f829719986ddb94ed45691a28fe27a4c16
+SimpleVoteButton.tsx:355 Transaction receipt received: TransactionReceipt {provider: BrowserProvider, to: '0xb74f07812b45DBec4eC3E577194F6a798a060e5D', from: '0xDfcC716668DF29e0D187dD37574247341305030D', contractAddress: null, hash: '0xfc11fcd6a22a9c5f8a70c34706c760f829719986ddb94ed45691a28fe27a4c16', …}
+SimpleVoteButton.tsx:358 Receipt status type: number
+SimpleVoteButton.tsx:359 Receipt status value: 0
+SimpleVoteButton.tsx:384 Transaction status indicated failure: TransactionReceipt {provider: BrowserProvider, to: '0xb74f07812b45DBec4eC3E577194F6a798a060e5D', from: '0xDfcC716668DF29e0D187dD37574247341305030D', contractAddress: null, hash: '0xfc11fcd6a22a9c5f8a70c34706c760f829719986ddb94ed45691a28fe27a4c16', …}
+handleVote @ SimpleVoteButton.tsx:384
+await in handleVote
+callCallback2 @ chunk-RPCDYKBN.js?v=57897b23:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=57897b23:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=57897b23:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=57897b23:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=57897b23:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=57897b23:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=57897b23:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=57897b23:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=57897b23:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=57897b23:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=57897b23:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=57897b23:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=57897b23:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=57897b23:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=57897b23:5449Understand this error
+queryClient.ts:102 
+            
+            
+           POST https://ad0591da-b426-4a84-876d-4e36567ce223-00-3ktlote48pnrm.worf.replit.dev/api/test/reset-user-vote 400 (Bad Request)

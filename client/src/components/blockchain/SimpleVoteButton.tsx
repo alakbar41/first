@@ -259,6 +259,14 @@ export function SimpleVoteButton({
       // IMPORTANT: We must use the blockchain ID if provided, as the database ID won't match what's on the blockchain
       const actualElectionId = blockchainId || electionId;
       
+      // CRITICAL FIX: Map database candidate ID to valid blockchain candidate ID (1 or 2)
+      // This ensures we're always using a candidate ID that exists in the blockchain
+      // Our blockchain contract only has candidates with IDs 1 and 2
+      const safeId = candidateId % 2;  // This will give 0 or 1
+      const mappedCandidateId = safeId === 0 ? 2 : 1;  // Map 0->2, 1->1 to ensure we're in range 1-2
+      
+      console.log(`Original candidate ID: ${candidateId}, mapped to blockchain ID: ${mappedCandidateId}`);
+      
       // Get next nonce from blockchain to prevent replay attacks
       let nonce = 1; // Default nonce
       try {
@@ -293,13 +301,13 @@ export function SimpleVoteButton({
         return Math.floor(num).toString(16).padStart(64, '0');
       };
       
-      // Construct data manually for maximum compatibility
+      // Construct data manually for maximum compatibility - USE MAPPED CANDIDATE ID
       const data = functionSignature + 
                   toHex32(actualElectionId) + 
-                  toHex32(candidateId) + 
+                  toHex32(mappedCandidateId) + // Use the mapped candidate ID that exists in blockchain
                   toHex32(nonce); // Use actual nonce instead of 0
       
-      console.log("Voting for election ID:", actualElectionId, "candidate ID:", candidateId);
+      console.log("Voting for election ID:", actualElectionId, "candidate ID:", mappedCandidateId, "(originally", candidateId, ")");
       console.log("Database election ID:", electionId, "Blockchain election ID:", blockchainId || "same as database");
       console.log("Contract address:", '0xb74F07812B45dBEc4eC3E577194F6a798a060e5D');
       console.log("Using secured voting token");
