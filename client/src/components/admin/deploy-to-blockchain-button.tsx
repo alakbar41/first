@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { useWeb3 } from "@/hooks/use-web3";
 import { useToast } from "@/hooks/use-toast";
-import { ServerIcon, Loader2, AlertTriangle } from "lucide-react";
+import { ServerIcon, Loader2, AlertTriangle, Info } from "lucide-react";
 import { Election } from "@shared/schema";
 import { ElectionType } from '@/lib/improved-web3-service';
 import web3Service from '@/lib/improved-web3-service';
 import { queryClient } from "@/lib/queryClient";
+import { useQuery } from "@tanstack/react-query";
 import { 
   Tooltip,
   TooltipContent,
