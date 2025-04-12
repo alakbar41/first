@@ -11,10 +11,10 @@ import { apiRequest } from "@/lib/queryClient";
 interface MappingCache {
   elections: Map<number, { 
     blockchainId: number;
-    deploymentTimestamp: number;
+    startTimestamp: number; // Stores the election start time for stable identification
   }>;
   candidates: Map<number, {
-    studentId: string;
+    studentId: string; // Student ID is used as the stable identifier for candidates
     blockchainId: number;
   }>;
 }
@@ -27,7 +27,7 @@ const cache: MappingCache = {
 
 /**
  * Get the blockchain election ID corresponding to a database election ID
- * Uses election deployment timestamp as a stable identifier
+ * Uses election start time as a stable identifier across Web2 and Web3 systems
  */
 export async function getBlockchainElectionId(databaseElectionId: number): Promise<number> {
   // Check cache first
@@ -49,10 +49,11 @@ export async function getBlockchainElectionId(databaseElectionId: number): Promi
     
     // If election has a blockchain reference, use it
     if (election.blockchainId) {
-      // Store in cache
+      // Store in cache using ONLY the start time as the stable identifier
+      // This ensures we use the same timestamp for identification on both systems
       cache.elections.set(databaseElectionId, {
         blockchainId: election.blockchainId,
-        deploymentTimestamp: new Date(election.deployedAt || election.startDate).getTime()
+        startTimestamp: new Date(election.startDate).getTime() // Using ONLY startDate
       });
       
       return election.blockchainId;
