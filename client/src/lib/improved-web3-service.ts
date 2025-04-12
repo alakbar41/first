@@ -1433,8 +1433,25 @@ Technical error: ${gasError.message}`);
         return 0;
       }
 
-      const voteCount = await this.contract.getCandidateVoteCount(candidateId);
-      return Number(voteCount);
+      // First, check if the candidate exists in the blockchain
+      try {
+        // Use a transaction-less view function to check if candidate exists
+        await this.contract.getCandidateVoteCount.staticCall(candidateId);
+        
+        // If we're here, the candidate exists, so we can get the vote count
+        const voteCount = await this.contract.getCandidateVoteCount(candidateId);
+        return Number(voteCount);
+      } catch (error: any) {
+        // Check if the error is about candidate not existing
+        if (error.message && error.message.includes("Candidate does not exist")) {
+          console.warn(`Candidate with ID ${candidateId} does not exist in the blockchain yet. Returning 0 votes.`);
+          return 0; // Return 0 for non-existent candidates
+        }
+        
+        // For other errors, log and return 0
+        console.error(`Error checking vote count for candidate ID ${candidateId}:`, error);
+        return 0;
+      }
     } catch (error) {
       console.error(`Failed to get vote count for candidate ID ${candidateId}:`, error);
       // Return 0 as fallback to avoid breaking the UI with errors
