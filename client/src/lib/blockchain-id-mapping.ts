@@ -3,19 +3,25 @@
  * 
  * This module provides reliable mapping between Web2 database IDs and Web3 blockchain IDs
  * using student IDs and election timestamps as stable identifiers across both systems.
+ * 
+ * IMPORTANT: Once an election is deployed to blockchain, its parameters become IMMUTABLE 
+ * and cannot be modified. This service ensures consistency between Web2 and Web3 systems.
  */
 
 import { apiRequest } from "@/lib/queryClient";
+import { toast } from "@/hooks/use-toast";
 
 // Cache structure to avoid excessive API calls
 interface MappingCache {
   elections: Map<number, { 
     blockchainId: number;
     startTimestamp: number; // Stores the election start time for stable identification
+    isDeployed: boolean;    // Flag to indicate if election is deployed to blockchain
   }>;
   candidates: Map<number, {
-    studentId: string; // Student ID is used as the stable identifier for candidates
+    studentId: string;      // Student ID is used as the stable identifier for candidates
     blockchainId: number;
+    electionId: number;     // Store associated election ID for reference
   }>;
 }
 
@@ -51,13 +57,26 @@ export async function getBlockchainElectionId(databaseElectionId: number): Promi
     if (election.blockchainId) {
       // Store in cache using ONLY the start time as the stable identifier
       // This ensures we use the same timestamp for identification on both systems
+      const startTimestamp = new Date(election.startDate).getTime();
+      
       cache.elections.set(databaseElectionId, {
         blockchainId: election.blockchainId,
-        startTimestamp: new Date(election.startDate).getTime() // Using ONLY startDate
+        startTimestamp: startTimestamp, // Using ONLY startDate as stable identifier
+        isDeployed: true
       });
+      
+      console.log(`Election ${databaseElectionId} is deployed to blockchain with ID ${election.blockchainId}`);
+      console.log(`Start timestamp (used as stable identifier): ${startTimestamp}`);
       
       return election.blockchainId;
     }
+    
+    // If not deployed, store with isDeployed = false
+    cache.elections.set(databaseElectionId, {
+      blockchainId: databaseElectionId, // Temporary mapping
+      startTimestamp: new Date(election.startDate).getTime(),
+      isDeployed: false
+    });
     
     // Fallback to using the same ID (temporary)
     return databaseElectionId;
@@ -82,6 +101,17 @@ export async function getBlockchainCandidateId(
   }
   
   try {
+    // First check if the election is deployed to blockchain
+    const electionResponse = await apiRequest('GET', `/api/elections/${databaseElectionId}`);
+    
+    if (!electionResponse.ok) {
+      console.error(`Failed to fetch election ${databaseElectionId} details`);
+      const safeId = databaseCandidateId % 2;
+      return safeId === 0 ? 2 : 1;
+    }
+    
+    const election = await electionResponse.json();
+    
     // First get candidate details to get student ID
     const candidateResponse = await apiRequest('GET', `/api/candidates/${databaseCandidateId}`);
     
@@ -126,11 +156,14 @@ export async function getBlockchainCandidateId(
     // Blockchain IDs are 1-based, so add 1 to the position
     const blockchainCandidateId = position + 1;
     
-    // Store in cache
+    // Store in cache with all required properties
     cache.candidates.set(databaseCandidateId, {
-      studentId,
-      blockchainId: blockchainCandidateId
+      studentId: studentId,
+      blockchainId: blockchainCandidateId,
+      electionId: databaseElectionId
     });
+    
+    console.log(`Mapped candidate ${databaseCandidateId} (studentId: ${studentId}) to blockchain ID ${blockchainCandidateId}`);
     
     return blockchainCandidateId;
   } catch (error) {
@@ -161,4 +194,42 @@ export function clearElectionCache(databaseElectionId: number): void {
  */
 export function clearCandidateCache(databaseCandidateId: number): void {
   cache.candidates.delete(databaseCandidateId);
+}
+
+/**
+ * Check if an election is deployed to blockchain
+ * This is used to prevent modifying elections that are already deployed
+ */
+export async function isElectionDeployedToBlockchain(electionId: number): Promise<boolean> {
+  // Check cache first
+  if (cache.elections.has(electionId)) {
+    return cache.elections.get(electionId)!.isDeployed;
+  }
+  
+  try {
+    // Fetch election details from API
+    const response = await apiRequest('GET', `/api/elections/${electionId}`);
+    
+    if (!response.ok) {
+      console.error(`Failed to fetch election ${electionId} details`);
+      return false;
+    }
+    
+    const election = await response.json();
+    
+    // If election has a blockchain reference, it's deployed
+    const isDeployed = election.blockchainId !== null && election.blockchainId !== undefined;
+    
+    // Store in cache
+    cache.elections.set(electionId, {
+      blockchainId: election.blockchainId || electionId,
+      startTimestamp: new Date(election.startDate).getTime(),
+      isDeployed: isDeployed
+    });
+    
+    return isDeployed;
+  } catch (error) {
+    console.error('Error checking election deployment status:', error);
+    return false;
+  }
 }

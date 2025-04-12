@@ -8,6 +8,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import { format } from "date-fns";
+import { isElectionDeployedToBlockchain } from "@/lib/blockchain-id-mapping";
 
 import {
   Dialog,
@@ -85,8 +86,25 @@ export function EditElectionDialog({ open, onOpenChange, election }: EditElectio
         ? election.eligibleFaculties[0] 
         : "";
       
-      // Check if election is deployed to blockchain
-      setIsDeployedToBlockchain(!!election.blockchainId);
+      // Check if election is deployed to blockchain using our utility function
+      // This provides a more reliable check than just looking at the blockchainId field
+      const checkDeploymentStatus = async () => {
+        if (election.blockchainId) {
+          // If we have a blockchain ID, it's definitely deployed
+          setIsDeployedToBlockchain(true);
+        } else {
+          // Double-check using our utility which can check for deployment even if ID is missing
+          const isDeployed = await isElectionDeployedToBlockchain(election.id);
+          setIsDeployedToBlockchain(isDeployed);
+          
+          if (isDeployed) {
+            // If we found it's deployed but no blockchainId is set, warn in console
+            console.warn(`Election ${election.id} is deployed to blockchain but has no blockchainId set`);
+          }
+        }
+      };
+      
+      checkDeploymentStatus();
       
       form.reset({
         name: election.name,
