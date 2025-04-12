@@ -49,6 +49,18 @@ export function DeployToBlockchainButton({
   const [isDeployed, setIsDeployed] = useState(false);
   const [alreadyDeployedWarning, setAlreadyDeployedWarning] = useState(false);
   
+  // Fetch election candidates to verify minimum candidate count
+  const { data: electionCandidates = [], isLoading: isLoadingCandidates } = useQuery({
+    queryKey: [`/api/elections/${election.id}/candidates`],
+    queryFn: async () => {
+      const response = await fetch(`/api/elections/${election.id}/candidates`);
+      if (!response.ok) throw new Error("Failed to fetch election candidates");
+      return response.json();
+    },
+  });
+  
+  const hasMinimumCandidates = electionCandidates.length >= 2;
+  
   // Set initial state based on whether the election already has a blockchain ID
   useEffect(() => {
     if (election.blockchainId) {
@@ -218,6 +230,16 @@ export function DeployToBlockchainButton({
   const handleDeploy = async () => {
     if (isDeployed || isDeploying) return;
     
+    // Check for minimum number of candidates first
+    if (!hasMinimumCandidates) {
+      toast({
+        title: "Cannot Deploy Election",
+        description: "A minimum of 2 candidates is required before deploying an election to the blockchain. Please add more candidates.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     // First connect wallet if needed
     const connected = await connectMetamaskWallet();
     if (!connected) return;
@@ -285,18 +307,54 @@ export function DeployToBlockchainButton({
     );
   }
 
+  // Not enough candidates warning
+  if (!hasMinimumCandidates && !isLoadingCandidates) {
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex flex-col">
+              <Button
+                variant="outline"
+                size={size}
+                disabled
+                className={`${className} bg-amber-50 text-amber-700 border-amber-200`}
+              >
+                <Info className="mr-2 h-4 w-4" />
+                Add More Candidates
+              </Button>
+              <div className="mt-1 flex items-center justify-center text-amber-700 text-xs">
+                <AlertTriangle className="h-3 w-3 mr-1" />
+                <span>Need at least 2 candidates</span>
+              </div>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="right" className="max-w-xs">
+            <p>Elections require a minimum of 2 candidates before they can be deployed to the blockchain.</p>
+            <p className="mt-1">Current candidate count: {electionCandidates.length}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
   return (
     <Button
       variant={variant}
       size={size}
       onClick={handleDeploy}
-      disabled={isDeploying || !isInitialized}
+      disabled={isDeploying || !isInitialized || isLoadingCandidates}
       className={`${className} ${isDeploying ? 'bg-purple-100 text-purple-800' : ''}`}
     >
       {isDeploying ? (
         <>
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           Deploying to Blockchain...
+        </>
+      ) : isLoadingCandidates ? (
+        <>
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          Checking Candidates...
         </>
       ) : (
         <>
