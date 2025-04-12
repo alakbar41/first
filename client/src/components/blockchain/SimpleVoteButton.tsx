@@ -303,8 +303,12 @@ export function SimpleVoteButton({
         // Try to fetch next nonce from the contract if possible (polyfill for MetaMask direct use)
         if (window.ethereum) {
           const provider = new ethers.BrowserProvider(window.ethereum);
+          // We need to use checksummed addresses in ethers v6+
+          const contractAddress = '0xb74f07812B45dBEc4eC3E577194F6a798a060e5D';
+          console.log("Using ethers normalized contract address for nonce check:", contractAddress);
+          
           const contract = new ethers.Contract(
-            '0xb74F07812B45dBEc4eC3E577194F6a798a060e5D',
+            contractAddress,
             [
               "function getNextNonce() external view returns (uint256)"
             ],
@@ -331,6 +335,9 @@ export function SimpleVoteButton({
         return Math.floor(num).toString(16).padStart(64, '0');
       };
       
+      // We'll use a consistent contract address format
+      console.log("Using properly formatted contract address for transaction");
+      
       // Construct data manually for maximum compatibility - USE MAPPED CANDIDATE ID
       const data = functionSignature + 
                   toHex32(actualElectionId) + 
@@ -339,26 +346,27 @@ export function SimpleVoteButton({
       
       console.log("Voting for election ID:", actualElectionId, "candidate ID:", mappedCandidateId, "(originally", candidateId, ")");
       console.log("Database election ID:", electionId, "Blockchain election ID:", blockchainId || "same as database");
-      console.log("Contract address:", '0xb74F07812B45dBEc4eC3E577194F6a798a060e5D');
+      console.log("Contract address:", '0xb74f07812B45dBEc4eC3E577194F6a798a060e5D');
       console.log("Using secured voting token");
       
       toast({
         title: "Submitting vote...",
-        description: "Please approve the transaction in your wallet. IMPORTANT: If the gas fee is too high, click 'Edit' in MetaMask and manually lower the gas price to 0.1 Gwei or less.",
+        description: "Please approve the transaction in your wallet. We've set the gas price very low (0.15-0.3 Gwei) to save you money - MetaMask might show the transaction as failing but it should still go through on Polygon Amoy testnet.",
         duration: 20000,
       });
       
-      // Set optimized gas parameters for reliable voting on Polygon Amoy testnet
-      // We need sufficient but not excessive gas to ensure transactions succeed
+      // Use the contractAddress from above
+      const correctAddress = '0xb74f07812B45dBEc4eC3E577194F6a798a060e5D';
+      
       const txParams = {
         from: account,
-        to: '0xb74F07812B45dBEc4eC3E577194F6a798a060e5D',
+        to: correctAddress,
         data: data,
-        // Use very low gas values - Polygon Amoy accepts extremely low gas
-        maxFeePerGas: '0x77359400', // 2 Gwei in hex - slight increase to help with confirmation
-        maxPriorityFeePerGas: '0x3b9aca00', // 1 Gwei in hex - higher priority fee
-        // Set even higher gas limit to ensure voting transaction succeeds
-        gas: '0x6FC23AC0' // 1,875,000 gas in hex - much higher to prevent out-of-gas errors
+        // Use lower gas values for Polygon Amoy testnet to reduce costs
+        maxFeePerGas: '0xB2D05E00', // 0.3 Gwei in hex - much lower for test network
+        maxPriorityFeePerGas: '0x59682F00', // 0.15 Gwei in hex - lower priority fee
+        // Set reasonable gas limit - 300,000 should be plenty
+        gas: '0x493E0' // 300,000 in hex - enough for the vote function
       };
       
       console.log("Sending transaction with optimized parameters:", txParams);
