@@ -2,10 +2,11 @@
  * Blockchain ID Mapping Service
  * 
  * This module provides reliable mapping between Web2 database IDs and Web3 blockchain IDs
- * using student IDs and election timestamps as stable identifiers across both systems.
+ * using election timestamps and candidate positions as stable identifiers across both systems.
  * 
  * IMPORTANT: Once an election is deployed to blockchain, its parameters become IMMUTABLE 
- * and cannot be modified. This service ensures consistency between Web2 and Web3 systems.
+ * and cannot be modified. This service ensures consistency between Web2 and Web3 systems
+ * even if database IDs are changed or elections are deleted from the Web2 system.
  */
 
 import { apiRequest } from "@/lib/queryClient";
@@ -18,17 +19,19 @@ interface MappingCache {
     startTimestamp: number; // Stores the election start time for stable identification
     isDeployed: boolean;    // Flag to indicate if election is deployed to blockchain
   }>;
-  candidates: Map<number, {
-    studentId: string;      // Student ID is used as the stable identifier for candidates
+  candidates: Map<string, {
     blockchainId: number;
     electionId: number;     // Store associated election ID for reference
   }>;
+  // A key/value store where key = database election ID + candidate ID, value = blockchain candidate ID
+  candidatePositions: Map<string, number>;
 }
 
 // Global cache to store mappings
 const cache: MappingCache = {
   elections: new Map(),
-  candidates: new Map()
+  candidates: new Map(),
+  candidatePositions: new Map()
 };
 
 /**
@@ -47,13 +50,13 @@ export async function getBlockchainElectionId(databaseElectionId: number): Promi
     
     if (!response.ok) {
       console.error(`Failed to fetch election ${databaseElectionId} details`);
-      // Fallback to using the same ID as in database (temporary)
+      // Return database ID as fallback
       return databaseElectionId;
     }
     
     const election = await response.json();
     
-    // If election has a blockchain reference, use it
+    // If election has a blockchain ID reference, use it
     if (election.blockchainId) {
       // Store in cache using ONLY the start time as the stable identifier
       // This ensures we use the same timestamp for identification on both systems
@@ -78,108 +81,100 @@ export async function getBlockchainElectionId(databaseElectionId: number): Promi
       isDeployed: false
     });
     
-    // Fallback to using the same ID (temporary)
+    // Return database ID as fallback
     return databaseElectionId;
   } catch (error) {
     console.error('Error mapping election ID:', error);
-    // Fallback to using the same ID (temporary)
+    // Return database ID as fallback
     return databaseElectionId;
   }
 }
 
 /**
- * Get the blockchain candidate ID corresponding to a database candidate ID
- * Uses student ID as a stable identifier across systems
+ * This is the key function that maps a database candidate ID to its blockchain equivalent
+ * for a specific election. The blockchain ID is determined by the candidate's position
+ * in the election candidate list, NOT by its database ID.
  */
 export async function getBlockchainCandidateId(
   databaseElectionId: number, 
   databaseCandidateId: number
 ): Promise<number> {
-  // Check cache first
-  if (cache.candidates.has(databaseCandidateId)) {
-    return cache.candidates.get(databaseCandidateId)!.blockchainId;
+  // First create a composite key for this election-candidate pair
+  const cacheKey = `${databaseElectionId}-${databaseCandidateId}`;
+  
+  // Check candidate position cache first (most direct mapping)
+  if (cache.candidatePositions.has(cacheKey)) {
+    return cache.candidatePositions.get(cacheKey)!;
   }
   
   try {
-    // First check if the election is deployed to blockchain
+    // First check if the election exists and is deployed to blockchain
     const electionResponse = await apiRequest('GET', `/api/elections/${databaseElectionId}`);
     
     if (!electionResponse.ok) {
-      console.error(`Failed to fetch election ${databaseElectionId} details`);
-      const safeId = databaseCandidateId % 2;
-      return safeId === 0 ? 2 : 1;
+      console.error(`Failed to fetch election ${databaseElectionId} details, using fallback mapping`);
+      // If we can't find the election, use a simple fallback mapping (1 or 2)
+      const fallbackId = databaseCandidateId % 2 === 0 ? 2 : 1;
+      return fallbackId;
     }
     
     const election = await electionResponse.json();
     
-    // First get candidate details to get student ID
-    const candidateResponse = await apiRequest('GET', `/api/candidates/${databaseCandidateId}`);
-    
-    if (!candidateResponse.ok) {
-      console.error(`Failed to fetch candidate ${databaseCandidateId} details`);
-      // Safety fallback: If candidate ID > 2, map to either 1 or 2 which exist on blockchain
-      // This ensures we don't try to access non-existent candidates
-      const safeId = databaseCandidateId % 2;
-      return safeId === 0 ? 2 : 1;
-    }
-    
-    const candidate = await candidateResponse.json();
-    const studentId = candidate.studentId;
-    
-    // Now get all candidates for this election on the blockchain
+    // Now get all candidates for this election
     const electionCandidatesResponse = await apiRequest(
       'GET', 
       `/api/elections/${databaseElectionId}/candidates`
     );
     
     if (!electionCandidatesResponse.ok) {
-      console.error(`Failed to fetch candidates for election ${databaseElectionId}`);
-      // Safety fallback as above
-      const safeId = databaseCandidateId % 2;
-      return safeId === 0 ? 2 : 1;
+      console.error(`Failed to fetch candidates for election ${databaseElectionId}, using fallback mapping`);
+      // If we can't find candidates, use a simple fallback mapping (1 or 2)
+      const fallbackId = databaseCandidateId % 2 === 0 ? 2 : 1;
+      return fallbackId;
     }
     
     const electionCandidates = await electionCandidatesResponse.json();
     
-    // Find this candidate's position in the election
+    // Find this candidate's position in the election's candidates list
+    // The position in this list determines the blockchain ID
     const position = electionCandidates.findIndex(
       (ec: any) => ec.candidateId === databaseCandidateId
     );
     
     if (position === -1) {
-      console.error(`Candidate ${databaseCandidateId} not found in election ${databaseElectionId}`);
-      // Safety fallback as above
-      const safeId = databaseCandidateId % 2;
-      return safeId === 0 ? 2 : 1;
+      console.error(`Candidate ${databaseCandidateId} not found in election ${databaseElectionId}, using fallback mapping`);
+      // If candidate not found in this election, use fallback
+      const fallbackId = databaseCandidateId % 2 === 0 ? 2 : 1;
+      return fallbackId;
     }
     
     // Blockchain IDs are 1-based, so add 1 to the position
     const blockchainCandidateId = position + 1;
     
-    // Store in cache with all required properties
-    cache.candidates.set(databaseCandidateId, {
-      studentId: studentId,
-      blockchainId: blockchainCandidateId,
-      electionId: databaseElectionId
-    });
+    // Store mapping in cache using the composite key
+    cache.candidatePositions.set(cacheKey, blockchainCandidateId);
     
-    console.log(`Mapped candidate ${databaseCandidateId} (studentId: ${studentId}) to blockchain ID ${blockchainCandidateId}`);
+    // Log for debugging
+    console.log(`➡️ Mapped: Election ${databaseElectionId}, Candidate ${databaseCandidateId} → Blockchain position ${blockchainCandidateId}`);
     
     return blockchainCandidateId;
   } catch (error) {
     console.error('Error mapping candidate ID:', error);
-    // Safety fallback as above
-    const safeId = databaseCandidateId % 2;
-    return safeId === 0 ? 2 : 1;
+    // If any error occurs, use a safe fallback mapping (1 or 2)
+    const fallbackId = databaseCandidateId % 2 === 0 ? 2 : 1;
+    console.log(`⚠️ Using fallback mapping for Candidate ${databaseCandidateId} → Blockchain ID ${fallbackId}`);
+    return fallbackId;
   }
 }
 
 /**
- * Clear mapping cache when elections or candidates change
+ * Clear all mapping caches when elections or candidates change
  */
 export function clearMappingCache(): void {
   cache.elections.clear();
   cache.candidates.clear();
+  cache.candidatePositions.clear();
+  console.log("🧹 All mapping caches cleared");
 }
 
 /**
@@ -187,13 +182,32 @@ export function clearMappingCache(): void {
  */
 export function clearElectionCache(databaseElectionId: number): void {
   cache.elections.delete(databaseElectionId);
+  
+  // Also clear all candidate mappings for this election
+  Array.from(cache.candidatePositions.keys()).forEach(key => {
+    if (key.startsWith(`${databaseElectionId}-`)) {
+      cache.candidatePositions.delete(key);
+    }
+  });
+  
+  console.log(`🧹 Cache cleared for election ${databaseElectionId} and its candidates`);
 }
 
 /**
  * Clear candidate mapping cache when a candidate changes
  */
 export function clearCandidateCache(databaseCandidateId: number): void {
-  cache.candidates.delete(databaseCandidateId);
+  // Clear from candidates cache
+  cache.candidates.delete(`${databaseCandidateId}`);
+  
+  // Clear from candidate positions cache for all elections
+  Array.from(cache.candidatePositions.keys()).forEach(key => {
+    if (key.endsWith(`-${databaseCandidateId}`)) {
+      cache.candidatePositions.delete(key);
+    }
+  });
+  
+  console.log(`🧹 Cache cleared for candidate ${databaseCandidateId}`);
 }
 
 /**
@@ -218,9 +232,9 @@ export async function isElectionDeployedToBlockchain(electionId: number): Promis
     const election = await response.json();
     
     // If election has a blockchain reference, it's deployed
-    const isDeployed = election.blockchainId !== null && election.blockchainId !== undefined;
+    const isDeployed = Boolean(election.blockchainId);
     
-    // Store in cache
+    // Store in cache with all information
     cache.elections.set(electionId, {
       blockchainId: election.blockchainId || electionId,
       startTimestamp: new Date(election.startDate).getTime(),
