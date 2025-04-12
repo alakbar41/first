@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, VoteIcon, ShieldCheck } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import * as ethers from "ethers";
+import { getBlockchainElectionId, getBlockchainCandidateId } from "@/lib/blockchain-id-mapping";
 
 interface SimpleVoteButtonProps {
   electionId: number;
@@ -256,16 +257,26 @@ export function SimpleVoteButton({
       // Step 5: Submit vote transaction
       setVoteState('submitting-vote');
       
-      // IMPORTANT: We must use the blockchain ID if provided, as the database ID won't match what's on the blockchain
-      const actualElectionId = blockchainId || electionId;
+      // IMPORTANT: Get proper blockchain IDs using the student ID mapping
+      // First, try to use the provided blockchainId
+      let actualElectionId: number;
+      let mappedCandidateId: number;
       
-      // CRITICAL FIX: Map database candidate ID to valid blockchain candidate ID (1 or 2)
-      // This ensures we're always using a candidate ID that exists in the blockchain
-      // Our blockchain contract only has candidates with IDs 1 and 2
-      const safeId = candidateId % 2;  // This will give 0 or 1
-      const mappedCandidateId = safeId === 0 ? 2 : 1;  // Map 0->2, 1->1 to ensure we're in range 1-2
-      
-      console.log(`Original candidate ID: ${candidateId}, mapped to blockchain ID: ${mappedCandidateId}`);
+      try {
+        // Use our stable ID mapping that works across database resets
+        actualElectionId = blockchainId || await getBlockchainElectionId(electionId);
+        mappedCandidateId = await getBlockchainCandidateId(electionId, candidateId);
+        
+        console.log(`Using blockchain mapping: Election ID ${electionId} → ${actualElectionId}, Candidate ID ${candidateId} → ${mappedCandidateId}`);
+      } catch (error) {
+        console.error("Error mapping IDs, falling back to safe mapping:", error);
+        // Fallback to original mapping if something goes wrong
+        actualElectionId = blockchainId || electionId;
+        const safeId = candidateId % 2;  // This will give 0 or 1
+        mappedCandidateId = safeId === 0 ? 2 : 1;  // Map 0->2, 1->1 to ensure we're in range 1-2
+        
+        console.log(`Fallback mapping: Original candidate ID: ${candidateId}, mapped to blockchain ID: ${mappedCandidateId}`);
+      }
       
       // Get next nonce from blockchain to prevent replay attacks
       let nonce = 1; // Default nonce
