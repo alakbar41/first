@@ -365,6 +365,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Election not found" });
       }
       
+      // Prevent modification of elections that are already deployed to blockchain
+      if (election.blockchainId) {
+        return res.status(403).json({ 
+          message: "Cannot modify election after blockchain deployment",
+          detail: "This election has already been deployed to the blockchain and cannot be modified to maintain data integrity"
+        });
+      }
+      
+      // Check if start date is being changed - this affects the blockchain identifier mapping
+      if (req.body.startDate && election.startDate !== req.body.startDate) {
+        console.log(`Election ${id} start date changed from ${election.startDate} to ${req.body.startDate}`);
+      }
+      
       const updatedElection = await storage.updateElection(id, req.body);
       res.json(updatedElection);
     } catch (error) {
@@ -391,10 +404,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Election not found" });
       }
       
+      // If election already has a blockchain ID, don't update it
+      if (election.blockchainId !== null && election.blockchainId !== undefined) {
+        console.log(`Election ${id} already has blockchainId ${election.blockchainId}, refusing to update to ${blockchainId}`);
+        return res.status(409).json({ 
+          message: "Election already has a blockchain ID",
+          detail: "This election has already been deployed to the blockchain. The blockchain ID cannot be changed.",
+          currentBlockchainId: election.blockchainId
+        });
+      }
+      
       console.log(`Updating blockchain ID for election ${id} to ${blockchainId}`);
+      console.log(`Election start time: ${election.startDate} (used as stable identifier for blockchain mapping)`);
       
       // Use the simplified updateElection method which handles blockchainId updates specially
       const updatedElection = await storage.updateElection(id, { blockchainId });
+      
+      // Store the start timestamp as the stable identifier
+      const startTimestamp = new Date(election.startDate).getTime() / 1000;
+      console.log(`Election ${id} start timestamp (seconds): ${startTimestamp} - This is the stable identifier used for blockchain mapping`);
       
       // After updating the blockchain ID, immediately check if the election should be active based on dates
       // This will update the status in the database if needed
@@ -452,6 +480,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const election = await storage.getElection(id);
       if (!election) {
         return res.status(404).json({ message: "Election not found" });
+      }
+      
+      // Prevent deleting elections that are already deployed to blockchain
+      if (election.blockchainId) {
+        return res.status(403).json({ 
+          message: "Cannot delete election after blockchain deployment",
+          detail: "This election has already been deployed to the blockchain and cannot be deleted. The data must remain available for verification purposes."
+        });
       }
 
       await storage.deleteElection(id);
@@ -685,6 +721,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Election not found" });
       }
       
+      // Prevent adding candidates to elections that are already deployed to blockchain
+      if (election.blockchainId) {
+        return res.status(403).json({ 
+          message: "Cannot modify election after blockchain deployment",
+          detail: "This election has already been deployed to the blockchain. Candidates cannot be added or removed."
+        });
+      }
+      
       // For president/VP elections, require a running mate
       if ((election.position === "President/VP" || election.position === "President/Vice President") && !result.data.runningMateId) {
         return res.status(400).json({ 
@@ -861,6 +905,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const election = await storage.getElection(electionId);
       if (!election) {
         return res.status(404).json({ message: "Election not found" });
+      }
+      
+      // Prevent removing candidates from elections that are already deployed to blockchain
+      if (election.blockchainId) {
+        return res.status(403).json({ 
+          message: "Cannot modify election after blockchain deployment",
+          detail: "This election has already been deployed to the blockchain. Candidates cannot be added or removed."
+        });
       }
       
       await storage.removeCandidateFromElection(electionId, candidateId);
