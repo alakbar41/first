@@ -1,0 +1,52 @@
+Voting for election ID: 51 candidate ID: 1 (originally 5 )
+SimpleVoteButton.tsx:322 Database election ID: 54 Blockchain election ID: 51
+SimpleVoteButton.tsx:323 Contract address: 0xb74F07812B45dBEc4eC3E577194F6a798a060e5D
+SimpleVoteButton.tsx:324 Using secured voting token
+SimpleVoteButton.tsx:345 Sending transaction with optimized parameters: {from: '0xdfcc716668df29e0d187dd37574247341305030d', to: '0xb74F07812B45dBEc4eC3E577194F6a798a060e5D', data: '0x8c8f5bcb0000000000000000000000000000000000000000…0000000000000000000000000000000000000000000000001', maxFeePerGas: '0x3B9ACA00', maxPriorityFeePerGas: '0x1DCD6500', …}
+inpage.js:1 MetaMask - RPC Error: Internal JSON-RPC error. {code: -32603, message: 'Internal JSON-RPC error.', stack: '{\n  "code": -32603,\n  "message": "Internal JSON-RP…hfbeogaeaoehlefnkodbefgpgknn/common-1.js:1:466733'}
+(anonymous) @ inpage.js:1
+(anonymous) @ inpage.js:1
+p @ inpage.js:1
+d @ inpage.js:1
+await in d
+l @ inpage.js:1
+handle @ inpage.js:1
+_rpcRequest @ inpage.js:1
+(anonymous) @ inpage.js:1
+request @ inpage.js:1
+handleVote @ SimpleVoteButton.tsx:348
+await in handleVote
+callCallback2 @ chunk-RPCDYKBN.js?v=57897b23:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=57897b23:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=57897b23:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=57897b23:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=57897b23:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=57897b23:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=57897b23:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=57897b23:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=57897b23:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=57897b23:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=57897b23:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=57897b23:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=57897b23:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=57897b23:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=57897b23:5449Understand this warning
+SimpleVoteButton.tsx:477 Vote failed: {code: -32603, message: 'Internal JSON-RPC error.', stack: '{\n  "code": -32603,\n  "message": "Internal JSON-RP…hfbeogaeaoehlefnkodbefgpgknn/common-1.js:1:466733'}
+handleVote @ SimpleVoteButton.tsx:477
+await in handleVote
+callCallback2 @ chunk-RPCDYKBN.js?v=57897b23:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=57897b23:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=57897b23:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=57897b23:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=57897b23:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=57897b23:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=57897b23:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=57897b23:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=57897b23:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=57897b23:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=57897b23:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=57897b23:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=57897b23:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=57897b23:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=57897b23:5449Understand this error
+SimpleVoteButton.tsx:510 Transaction failed with detailed error: Unknown blockchain error
