@@ -275,26 +275,57 @@ export function SimpleVoteButton({
           actualElectionId = election.blockchainId;
           console.log(`Using blockchain ID from database: ${actualElectionId}`);
         } else {
-          // Otherwise try to use our mapping service
-          actualElectionId = await getBlockchainElectionId(electionId);
-          console.log(`Using blockchain ID from mapping service: ${actualElectionId}`);
+          // If not deployed to blockchain, we can't vote
+          toast({
+            title: "Election not deployed",
+            description: "This election has not been deployed to the blockchain yet.",
+            variant: "destructive",
+            duration: 5000,
+          });
+          throw new Error("Election not deployed to blockchain");
         }
         
-        // For candidate ID, use the blockchain mapping service
-        mappedCandidateId = await getBlockchainCandidateId(electionId, candidateId);
+        // Now get all candidates for this election to find the right mapping
+        const candidatesResponse = await fetch(`/api/elections/${electionId}/candidates`);
+        if (!candidatesResponse.ok) {
+          throw new Error(`Failed to fetch candidates for election ${electionId}`);
+        }
+        const candidates = await candidatesResponse.json();
         
-        console.log(`Using blockchain mapping: Election ID ${electionId} → ${actualElectionId}, Candidate ID ${candidateId} → ${mappedCandidateId}`);
-      } catch (error) {
-        console.error("Error mapping IDs, falling back to safe mapping:", error);
+        // Find this candidate's position in the array (0-based)
+        const candidatePosition = candidates.findIndex(
+          (c: any) => c.candidateId === candidateId
+        );
         
-        // For election, we know it should be 51 from your logs
-        actualElectionId = 51; // Hard-code to the correct blockchain election ID
+        if (candidatePosition === -1) {
+          toast({
+            title: "Candidate not found",
+            description: `Candidate ID ${candidateId} not found in election ${electionId}`,
+            variant: "destructive",
+            duration: 5000,
+          });
+          throw new Error(`Candidate ID ${candidateId} not found in election ${electionId}`);
+        }
         
-        // For candidate, map to a safe value
-        const safeId = candidateId % 2;  // This will give 0 or 1
-        mappedCandidateId = safeId === 0 ? 2 : 1;  // Map 0->2, 1->1 to ensure we're in range 1-2
+        // Blockchain positions are 1-based
+        mappedCandidateId = candidatePosition + 1;
         
-        console.log(`Fallback mapping: Original candidate ID: ${candidateId}, mapped to blockchain ID: ${mappedCandidateId}`);
+        console.log(`Direct position mapping: Election ${electionId} → ${actualElectionId}, Candidate ${candidateId} → position ${candidatePosition} → ID ${mappedCandidateId}`);
+        console.log(`Candidate list (${candidates.length} total):`, candidates.map((c: any) => c.candidateId));
+      } catch (error: any) {
+        console.error("Error mapping IDs, aborting vote:", error);
+        
+        // Display detailed error to user
+        toast({
+          title: "Vote failed",
+          description: `Could not map election/candidate IDs properly: ${error?.message || 'Unknown error'}`,
+          variant: "destructive",
+          duration: 5000,
+        });
+        
+        // Reset vote state and exit
+        setVoteState('idle');
+        return;
       }
       
       // Get next nonce from blockchain to prevent replay attacks
@@ -432,7 +463,15 @@ export function SimpleVoteButton({
               // Reset the vote in our database since the blockchain transaction failed
               await resetVote(electionId, txHash);
               
-              throw new Error('Transaction failed with status: ' + (receipt.status ?? 'unknown'));
+              // Show detailed error with candidate mapping information
+              toast({
+                title: "Blockchain transaction failed",
+                description: `Election ${electionId}→${actualElectionId}, Candidate ${candidateId}→${mappedCandidateId}. The contract rejected the transaction.`,
+                variant: "destructive",
+                duration: 10000,
+              });
+              
+              throw new Error(`Transaction failed: Election ${electionId}→${actualElectionId}, Candidate ${candidateId}→${mappedCandidateId}`);
             }
           } else {
             // Reset the vote since we couldn't get a receipt

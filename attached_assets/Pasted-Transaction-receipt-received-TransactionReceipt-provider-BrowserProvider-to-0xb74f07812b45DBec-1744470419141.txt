@@ -1,0 +1,181 @@
+Transaction receipt received: TransactionReceipt {provider: BrowserProvider, to: '0xb74f07812b45DBec4eC3E577194F6a798a060e5D', from: '0xDfcC716668DF29e0D187dD37574247341305030D', contractAddress: null, hash: '0x3317261274853bd71117100999aac3b01dd8cc9167d092cbd26522603d12bd94', …}
+SimpleVoteButton.tsx:404 Receipt status type: number
+SimpleVoteButton.tsx:405 Receipt status value: 0
+SimpleVoteButton.tsx:430 Transaction status indicated failure: TransactionReceipt {provider: BrowserProvider, to: '0xb74f07812b45DBec4eC3E577194F6a798a060e5D', from: '0xDfcC716668DF29e0D187dD37574247341305030D', contractAddress: null, hash: '0x3317261274853bd71117100999aac3b01dd8cc9167d092cbd26522603d12bd94', …}
+handleVote @ SimpleVoteButton.tsx:430
+setTimeout
+(anonymous) @ inpage.js:1
+write @ inpage.js:1
+j @ inpage.js:12
+(anonymous) @ inpage.js:12
+M.write @ inpage.js:12
+f @ inpage.js:12
+a.emit @ inpage.js:10
+A @ inpage.js:12
+j @ inpage.js:12
+M.push @ inpage.js:12
+_write @ inpage.js:1
+j @ inpage.js:12
+(anonymous) @ inpage.js:12
+M.write @ inpage.js:12
+f @ inpage.js:12
+a.emit @ inpage.js:10
+A @ inpage.js:12
+j @ inpage.js:12
+M.push @ inpage.js:12
+_onData @ inpage.js:1
+_onMessage @ inpage.js:1
+postMessage
+_postMessage @ contentscript.js:1
+_write @ contentscript.js:1
+T @ contentscript.js:54
+(anonymous) @ contentscript.js:54
+_.write @ contentscript.js:54
+h @ contentscript.js:54
+a.emit @ contentscript.js:43
+k @ contentscript.js:54
+T @ contentscript.js:54
+_.push @ contentscript.js:54
+_write @ contentscript.js:1
+T @ contentscript.js:54
+(anonymous) @ contentscript.js:54
+_.write @ contentscript.js:54
+h @ contentscript.js:54
+a.emit @ contentscript.js:43
+k @ contentscript.js:54
+T @ contentscript.js:54
+_.push @ contentscript.js:54
+_write @ contentscript.js:1
+T @ contentscript.js:54
+(anonymous) @ contentscript.js:54
+_.write @ contentscript.js:54
+d @ contentscript.js:43
+a.emit @ contentscript.js:43
+Z @ contentscript.js:43
+Y @ contentscript.js:43
+X.push @ contentscript.js:43
+_onMessage @ contentscript.js:43
+(anonymous) @ contentscript.js:43Understand this error
+queryClient.ts:102 
+            
+            
+           POST https://ad0591da-b426-4a84-876d-4e36567ce223-00-3ktlote48pnrm.worf.replit.dev/api/test/reset-user-vote 400 (Bad Request)
+apiRequest @ queryClient.ts:102
+resetVote @ SimpleVoteButton.tsx:105
+handleVote @ SimpleVoteButton.tsx:433
+setTimeout
+(anonymous) @ inpage.js:1
+write @ inpage.js:1
+j @ inpage.js:12
+(anonymous) @ inpage.js:12
+M.write @ inpage.js:12
+f @ inpage.js:12
+a.emit @ inpage.js:10
+A @ inpage.js:12
+j @ inpage.js:12
+M.push @ inpage.js:12
+_write @ inpage.js:1
+j @ inpage.js:12
+(anonymous) @ inpage.js:12
+M.write @ inpage.js:12
+f @ inpage.js:12
+a.emit @ inpage.js:10
+A @ inpage.js:12
+j @ inpage.js:12
+M.push @ inpage.js:12
+_onData @ inpage.js:1
+_onMessage @ inpage.js:1
+postMessage
+_postMessage @ contentscript.js:1
+_write @ contentscript.js:1
+T @ contentscript.js:54
+(anonymous) @ contentscript.js:54
+_.write @ contentscript.js:54
+h @ contentscript.js:54
+a.emit @ contentscript.js:43
+k @ contentscript.js:54
+T @ contentscript.js:54
+_.push @ contentscript.js:54
+_write @ contentscript.js:1
+T @ contentscript.js:54
+(anonymous) @ contentscript.js:54
+_.write @ contentscript.js:54
+h @ contentscript.js:54
+a.emit @ contentscript.js:43
+k @ contentscript.js:54
+T @ contentscript.js:54
+_.push @ contentscript.js:54
+_write @ contentscript.js:1
+T @ contentscript.js:54
+(anonymous) @ contentscript.js:54
+_.write @ contentscript.js:54
+d @ contentscript.js:43
+a.emit @ contentscript.js:43
+Z @ contentscript.js:43
+Y @ contentscript.js:43
+X.push @ contentscript.js:43
+_onMessage @ contentscript.js:43
+(anonymous) @ contentscript.js:43Understand this error
+SimpleVoteButton.tsx:115 Failed to reset vote: Error: 400: No vote found to reset
+    at throwIfResNotOk (queryClient.ts:31:19)
+    at async apiRequest (queryClient.ts:129:3)
+    at async resetVote (SimpleVoteButton.tsx:105:24)
+    at async handleVote (SimpleVoteButton.tsx:433:15)
+resetVote @ SimpleVoteButton.tsx:115
+await in resetVote
+handleVote @ SimpleVoteButton.tsx:433
+setTimeout
+(anonymous) @ inpage.js:1
+write @ inpage.js:1
+j @ inpage.js:12
+(anonymous) @ inpage.js:12
+M.write @ inpage.js:12
+f @ inpage.js:12
+a.emit @ inpage.js:10
+A @ inpage.js:12
+j @ inpage.js:12
+M.push @ inpage.js:12
+_write @ inpage.js:1
+j @ inpage.js:12
+(anonymous) @ inpage.js:12
+M.write @ inpage.js:12
+f @ inpage.js:12
+a.emit @ inpage.js:10
+A @ inpage.js:12
+j @ inpage.js:12
+M.push @ inpage.js:12
+_onData @ inpage.js:1
+_onMessage @ inpage.js:1
+postMessage
+_postMessage @ contentscript.js:1
+_write @ contentscript.js:1
+T @ contentscript.js:54
+(anonymous) @ contentscript.js:54
+_.write @ contentscript.js:54
+h @ contentscript.js:54
+a.emit @ contentscript.js:43
+k @ contentscript.js:54
+T @ contentscript.js:54
+_.push @ contentscript.js:54
+_write @ contentscript.js:1
+T @ contentscript.js:54
+(anonymous) @ contentscript.js:54
+_.write @ contentscript.js:54
+h @ contentscript.js:54
+a.emit @ contentscript.js:43
+k @ contentscript.js:54
+T @ contentscript.js:54
+_.push @ contentscript.js:54
+_write @ contentscript.js:1
+T @ contentscript.js:54
+(anonymous) @ contentscript.js:54
+_.write @ contentscript.js:54
+d @ contentscript.js:43
+a.emit @ contentscript.js:43
+Z @ contentscript.js:43
+Y @ contentscript.js:43
+X.push @ contentscript.js:43
+_onMessage @ contentscript.js:43
+(anonymous) @ contentscript.js:43Understand this error
+SimpleVoteButton.tsx:443 Error waiting for transaction receipt: Error: Transaction failed with status: 0
+    at handleVote (SimpleVoteButton.tsx:435:21)
