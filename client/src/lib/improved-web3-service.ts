@@ -62,6 +62,46 @@ class ImprovedWeb3Service {
       return false;
     }
   }
+  
+  // Helper to ensure the service is initialized
+  async initializeIfNeeded(): Promise<boolean> {
+    // If already initialized, return success
+    if (this.isInitialized && this.contract && this.signer) {
+      return true;
+    }
+    
+    // If not initialized, try to initialize
+    console.log('Service not fully initialized, initializing on demand...');
+    
+    try {
+      // Connect to MetaMask
+      if (!window.ethereum) {
+        throw new Error('MetaMask is not installed. Please install MetaMask to use blockchain features.');
+      }
+      
+      console.log('Connecting to MetaMask...');
+      const ethersProvider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await ethersProvider.getSigner();
+      this.signer = signer;
+      this.walletAddress = await signer.getAddress();
+      
+      console.log('Connected to wallet:', this.walletAddress);
+      
+      // Initialize contract
+      this.contract = new ethers.Contract(
+        CONTRACT_ADDRESS,
+        IMPROVED_CONTRACT_ABI,
+        signer
+      );
+      
+      console.log('Contract initialized on demand');
+      this.isInitialized = true;
+      return true;
+    } catch (error) {
+      console.error('Failed to initialize on demand:', error);
+      return false;
+    }
+  }
 
   // Create an election on the blockchain - with time bounds
   async createElection(
@@ -430,6 +470,171 @@ Technical error: ${gasError.message}`);
     }
   }
 
+  // Try to activate an election using the autoUpdateElectionStatus function
+  // This is more reliable than direct activation as it has fewer restrictions
+  /**
+   * Automatically update an election's status based on its time bounds.
+   * This is a public function that calls the contract's autoUpdateElectionStatus function
+   * which performs automatic state transitions based on current time.
+   * 
+   * This function can be used to fix elections that are stuck in incorrect states.
+   * 
+   * @param electionId The ID of the election to update
+   */
+  async autoUpdateElectionStatus(electionId: number): Promise<void> {
+    try {
+      await this.initializeIfNeeded();
+      
+      console.log(`Running full election status auto-update for election ${electionId}`);
+      
+      // First, check the election's current status
+      const electionDetails = await this.getElectionDetails(electionId);
+      console.log(`Current election status: ${electionDetails.status}`);
+      console.log(`Start time: ${new Date(electionDetails.startTime * 1000).toLocaleString()}`);
+      console.log(`End time: ${new Date(electionDetails.endTime * 1000).toLocaleString()}`);
+      
+      // Get the current time
+      const currentTime = Math.floor(Date.now() / 1000);
+      console.log(`Current time: ${new Date(currentTime * 1000).toLocaleString()}`);
+      
+      // Calculate target status based on time
+      let targetStatus: ElectionStatus;
+      
+      if (currentTime < electionDetails.startTime) {
+        targetStatus = ElectionStatus.Pending;
+        console.log(`Election should be in Pending state (current time before start time)`);
+      } else if (currentTime <= electionDetails.endTime) {
+        targetStatus = ElectionStatus.Active;
+        console.log(`Election should be in Active state (current time between start and end time)`);
+      } else {
+        targetStatus = ElectionStatus.Completed;
+        console.log(`Election should be in Completed state (current time after end time)`);
+      }
+      
+      // If already in the correct state, nothing to do
+      if (electionDetails.status === targetStatus) {
+        console.log(`Election ${electionId} is already in the correct state (${targetStatus}). No action needed.`);
+        return;
+      }
+      
+      console.log(`Election ${electionId} should be in state ${targetStatus} but is in state ${electionDetails.status}. Attempting to update...`);
+      
+      // Create optimized gas settings for Polygon Amoy
+      const options = {
+        gasLimit: 1500000,
+        maxPriorityFeePerGas: ethers.parseUnits("25.0", "gwei"),
+        maxFeePerGas: ethers.parseUnits("60.0", "gwei"),
+        type: 2, // Use EIP-1559 transaction type
+      };
+      
+      // First try using autoUpdateElectionStatus
+      try {
+        console.log(`Trying autoUpdateElectionStatus first...`);
+        const tx = await this.contract.autoUpdateElectionStatus(electionId, options);
+        console.log(`Auto-update transaction sent: ${tx.hash}`);
+        
+        const receipt = await tx.wait(2);
+        console.log(`Auto-update transaction confirmed:`, receipt);
+        
+        // Check if the status was updated
+        const updatedDetails = await this.getElectionDetails(electionId);
+        if (updatedDetails.status === targetStatus) {
+          console.log(`Successfully updated election ${electionId} status to ${targetStatus} using autoUpdateElectionStatus.`);
+          return;
+        }
+        
+        console.log(`Auto-update method did not change status to ${targetStatus}. Current status: ${updatedDetails.status}. Trying direct method...`);
+      } catch (autoError) {
+        console.error(`Auto-update method failed:`, autoError);
+        console.log(`Falling back to direct method...`);
+      }
+      
+      // If auto-update didn't work, try direct method
+      try {
+        console.log(`Trying direct updateElectionStatus with status=${targetStatus}...`);
+        const directOptions = {
+          gasLimit: 2000000,
+          maxPriorityFeePerGas: ethers.parseUnits("30.0", "gwei"),
+          maxFeePerGas: ethers.parseUnits("70.0", "gwei"),
+          type: 2,
+        };
+        
+        const directTx = await this.contract.updateElectionStatus(electionId, targetStatus, directOptions);
+        console.log(`Direct update transaction sent: ${directTx.hash}`);
+        
+        const directReceipt = await directTx.wait(2);
+        console.log(`Direct update transaction confirmed:`, directReceipt);
+        
+        // Verify the result
+        const finalDetails = await this.getElectionDetails(electionId);
+        if (finalDetails.status === targetStatus) {
+          console.log(`Successfully updated election ${electionId} status to ${targetStatus} using direct method.`);
+        } else {
+          console.warn(`Failed to update election ${electionId} status. Current status: ${finalDetails.status}, Target status: ${targetStatus}`);
+        }
+      } catch (directError) {
+        console.error(`Direct update method failed:`, directError);
+        throw new Error(`Failed to update election status: ${directError.message}`);
+      }
+    } catch (error) {
+      console.error(`Election status update failed:`, error);
+      throw new Error(`Failed to update election status: ${error.message}`);
+    }
+  }
+  
+  async tryAutoUpdateElectionStatus(electionId: number): Promise<boolean> {
+    try {
+      // Initialize if needed
+      await this.initializeIfNeeded();
+      
+      // Create optimized gas settings for Polygon Amoy - medium settings
+      const options = {
+        gasLimit: 1000000,
+        maxPriorityFeePerGas: ethers.parseUnits("20.0", "gwei"),
+        maxFeePerGas: ethers.parseUnits("50.0", "gwei"),
+        type: 2, // Use EIP-1559 transaction type
+      };
+      
+      console.log(`Trying autoUpdateElectionStatus for election ${electionId}`);
+      
+      // Get current status first
+      const electionDetails = await this.getElectionDetails(electionId);
+      console.log(`Current election status: ${electionDetails.status}`);
+      
+      // If already active, nothing to do
+      if (electionDetails.status === ElectionStatus.Active) {
+        console.log(`Election ${electionId} is already active.`);
+        return true;
+      }
+      
+      // If completed, can't reactivate
+      if (electionDetails.status === ElectionStatus.Completed) {
+        console.log(`Election ${electionId} is completed. Cannot reactivate.`);
+        return false;
+      }
+      
+      // Call the autoUpdateElectionStatus function
+      const tx = await this.contract.autoUpdateElectionStatus(electionId, options);
+      console.log(`Auto-update transaction sent: ${tx.hash}`);
+      
+      // Wait for confirmations
+      const receipt = await tx.wait(2);
+      console.log(`Auto-update transaction confirmed:`, receipt);
+      
+      // Check if activation was successful by comparing before and after status
+      const updatedDetails = await this.getElectionDetails(electionId);
+      const wasSuccessful = updatedDetails.status === ElectionStatus.Active;
+      
+      console.log(`Auto-update ${wasSuccessful ? 'successfully activated' : 'did not activate'} election ${electionId}.`);
+      console.log(`New status: ${updatedDetails.status}`);
+      
+      return wasSuccessful;
+    } catch (error) {
+      console.error(`Auto-update election status failed:`, error);
+      return false;
+    }
+  }
+
   // Start an election with enhanced gas and transaction handling - with lazy initialization
   async startElection(electionId: number): Promise<void> {
     try {
@@ -481,6 +686,17 @@ Technical error: ${gasError.message}`);
       if (electionDetails.status === ElectionStatus.Completed || electionDetails.status === ElectionStatus.Cancelled) {
         throw new Error(`Cannot activate election ${electionId} because it is already in ${electionDetails.status === ElectionStatus.Completed ? 'completed' : 'cancelled'} state.`);
       }
+      
+      // First try to use autoUpdateElectionStatus which has fewer restrictions
+      console.log(`First attempting to activate using autoUpdateElectionStatus which has fewer restrictions...`);
+      const autoUpdateSuccessful = await this.tryAutoUpdateElectionStatus(electionId);
+      
+      if (autoUpdateSuccessful) {
+        console.log(`Successfully activated election ${electionId} using auto-update method`);
+        return; // Success, no need to continue with direct method
+      }
+      
+      console.log(`Auto-update method did not activate election. Falling back to direct activation...`);
 
       // Use ultra-high gas settings to ensure transaction success on Polygon Amoy
       const options = {
@@ -769,8 +985,8 @@ Technical error: ${gasError.message}`);
     }
   }
 
-  // Auto-update an election's status based on time (improved transaction handling) - with lazy initialization
-  async autoUpdateElectionStatus(electionId: number): Promise<void> {
+  // Legacy auto-update method for backward compatibility
+  async updateElectionStatusBasedOnTime(electionId: number): Promise<void> {
     try {
       // If no contract, try to initialize through MetaMask connection
       if (!this.contract && window.ethereum) {
