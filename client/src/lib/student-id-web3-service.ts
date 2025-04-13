@@ -446,6 +446,8 @@ class StudentIdWeb3Service {
         type: 2,
       };
       
+      console.log(`Voting in election with ID ${electionId} (timestamp) for candidate ${candidateId} with nonce ${nonce}`);
+      
       const tx = await this.contract.voteForSenator(
         electionId,
         candidateId,
@@ -453,7 +455,9 @@ class StudentIdWeb3Service {
         options
       );
       
+      console.log("Vote transaction sent, waiting for confirmation...");
       await tx.wait();
+      console.log("Vote transaction confirmed successfully!");
       return true;
     } catch (error) {
       console.error(`Failed to vote for senator in election ${electionId}:`, error);
@@ -476,6 +480,8 @@ class StudentIdWeb3Service {
         type: 2,
       };
       
+      console.log(`Voting in President/VP election with ID ${electionId} (timestamp) for ticket ${ticketId} with nonce ${nonce}`);
+      
       const tx = await this.contract.voteForPresidentVP(
         electionId,
         ticketId,
@@ -483,7 +489,9 @@ class StudentIdWeb3Service {
         options
       );
       
+      console.log("President/VP vote transaction sent, waiting for confirmation...");
       await tx.wait();
+      console.log("President/VP vote transaction confirmed successfully!");
       return true;
     } catch (error) {
       console.error(`Failed to vote for president/VP in election ${electionId}:`, error);
@@ -501,7 +509,10 @@ class StudentIdWeb3Service {
         throw new Error('No wallet address provided');
       }
       
-      return await this.contract.checkIfVoted(electionId, address);
+      console.log(`Checking if address ${address} has voted in election with ID ${electionId} (expected to be a timestamp)`);
+      const hasVoted = await this.contract.checkIfVoted(electionId, address);
+      console.log(`Result of checkIfVoted for election ${electionId}: ${hasVoted}`);
+      return hasVoted;
     } catch (error) {
       console.error(`Failed to check if address has voted in election ${electionId}:`, error);
       return false;

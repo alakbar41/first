@@ -277,6 +277,7 @@ export function EnhancedSimpleVoteButton({
           duration: 10000,
         });
         
+        console.log(`About to vote using the timestamp identifier: ${electionIdentifier} for candidate ID: ${blockchainCandidateId}`);
         // Now vote using the improved student ID web3 service
         const success = await voteForSenator(electionIdentifier, blockchainCandidateId);
         

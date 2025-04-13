@@ -545,14 +545,24 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                       ) : !isWalletConnected ? (
                         <ConnectWalletButton className="w-full sm:w-auto" />
                       ) : (
-                        <EnhancedSimpleVoteButton
-                          electionId={election.id}
-                          candidateId={president.id} // Using president ID as the ticket ID
-                          studentId={president.studentId || ""}
-                          disabled={!isElectionActive() || !isUserEligible() || hasVotedInElection || !president.studentId}
-                          onVoteSuccess={handleVoteSuccess}
-                          className="w-full sm:w-auto bg-gradient-to-r from-purple-700 to-purple-600 hover:from-purple-800 hover:to-purple-700 shadow-md"
-                        />
+                        <>
+                          <EnhancedSimpleVoteButton
+                            electionId={election.id}
+                            candidateId={president.id} // Using president ID as the ticket ID
+                            studentId={president.studentId || ""}
+                            disabled={!isElectionActive() || !isUserEligible() || hasVotedInElection || !president.studentId}
+                            onVoteSuccess={handleVoteSuccess}
+                            className="w-full sm:w-auto bg-gradient-to-r from-purple-700 to-purple-600 hover:from-purple-800 hover:to-purple-700 shadow-md"
+                          />
+                          
+                          {/* Add debug information */}
+                          <div className="mt-2 text-xs text-gray-500">
+                            <p>Election active: {isElectionActive() ? 'Yes' : 'No'}</p>
+                            <p>User eligible: {isUserEligible() ? 'Yes' : 'No'}</p>
+                            <p>Already voted: {hasVotedInElection ? 'Yes' : 'No'}</p>
+                            <p>Timestamp ID: {Math.floor(new Date(election.startDate).getTime() / 1000)}</p>
+                          </div>
+                        </>
                       )}
                     </div>
                   </div>
@@ -653,15 +663,24 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                         />
                       ) : (
                         <>
+                          {/* Vote button using the enhanced simple vote button */}
                           <EnhancedSimpleVoteButton
                             electionId={election.id}
                             candidateId={candidate.id}
                             studentId={candidate.studentId || ""}
                             disabled={!isElectionActive() || !isUserEligible() || hasVotedInElection || !candidate.studentId}
                             onVoteSuccess={handleVoteSuccess}
-                            className="w-full"
+                            className="w-full bg-purple-600 hover:bg-purple-700"
                             size="lg"
                           />
+                          
+                          {/* Add debug information */}
+                          <div className="mt-2 text-xs text-gray-500">
+                            <p>Election active: {isElectionActive() ? 'Yes' : 'No'}</p>
+                            <p>User eligible: {isUserEligible() ? 'Yes' : 'No'}</p>
+                            <p>Already voted: {hasVotedInElection ? 'Yes' : 'No'}</p>
+                            <p>Timestamp ID: {Math.floor(new Date(election.startDate).getTime() / 1000)}</p>
+                          </div>
                         </>
                       )}
                     </div>
