@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Candidate, Election, ElectionCandidate } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { UserCircle, Award, Check, Info, Clock, Calendar, AlertTriangle, RefreshCw } from "lucide-react";
@@ -353,26 +353,57 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
     candidateVoteCountRefs.current[candidateId] = refreshFn;
   };
   
-  // Handle successful vote
-  const handleVoteSuccess = (txHash: string) => {
+  // Handle successful vote with enhanced response
+  const handleVoteSuccess = (txHash: string, voteCount?: number) => {
+    const shortTxHash = txHash ? `${txHash.substring(0, 6)}...${txHash.substring(txHash.length - 4)}` : 'confirmed';
+    
     toast({
       title: "Vote Cast Successfully",
-      description: `Your vote has been recorded on the blockchain. Transaction: ${txHash.substring(0, 10)}...`,
+      description: voteCount !== undefined
+        ? `Your vote has been recorded and verified on the blockchain. The candidate now has ${voteCount} votes. TX: ${shortTxHash}`
+        : `Your vote has been recorded on the blockchain. TX: ${shortTxHash}`,
       variant: "default",
     });
     
     // Update UI state to indicate user has voted
     setHasVotedInElection(true);
     
-    // Wait a moment for the transaction to be processed, then update all vote counts
+    // Record this vote in the database
+    try {
+      apiRequest('POST', `/api/elections/${election.id}/record-vote`, {
+        transactionHash: txHash
+      }).catch(err => console.warn("Failed to record vote in database:", err));
+    } catch (error) {
+      console.warn("Error recording vote in database:", error);
+    }
+    
+    // Multiple refresh stages with increasing delays to account for blockchain confirmation time
+    
+    // Stage 1: Immediate refresh (visual feedback)
+    console.log("Stage 1: Immediate vote count refresh");
+    Object.values(candidateVoteCountRefs.current).forEach(refreshFn => {
+      if (typeof refreshFn === 'function') refreshFn();
+    });
+    
+    // Stage 2: Short delay refresh (1.5s)
     setTimeout(() => {
-      // Refresh vote counts for all candidates
+      console.log("Stage 2: Short-delay vote count refresh (1.5s)");
+      // Refresh vote counts for all candidates again
       Object.values(candidateVoteCountRefs.current).forEach(refreshFn => {
         if (typeof refreshFn === 'function') refreshFn();
       });
       
       // Also force re-fetch of the candidate list to refresh all data
       queryClient.invalidateQueries({ queryKey: [`/api/elections/${election.id}/candidates`] });
+    }, 1500);
+    
+    // Stage 3: Longer delay refresh (5s)
+    setTimeout(() => {
+      console.log("Stage 3: Longer-delay vote count refresh (5s)");
+      // Final refresh of vote counts after blockchain likely finalized
+      Object.values(candidateVoteCountRefs.current).forEach(refreshFn => {
+        if (typeof refreshFn === 'function') refreshFn();
+      });
     }, 2000);
   };
   

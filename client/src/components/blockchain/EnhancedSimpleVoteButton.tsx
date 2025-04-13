@@ -16,7 +16,7 @@ interface EnhancedSimpleVoteButtonProps {
   size?: "default" | "sm" | "lg" | "icon" | null | undefined;
   className?: string;
   disabled?: boolean;
-  onVoteSuccess?: (txHash: string) => void;
+  onVoteSuccess?: (txHash: string, voteCount?: number) => void;
 }
 
 // State for vote process
@@ -300,9 +300,9 @@ export function EnhancedSimpleVoteButton({
           // Log detailed success information
           console.log(`Vote success details: Transaction hash: ${txHash || 'unknown'}, Vote count: ${voteCount || 'pending verification'}`);
           
-          // Notify parent component with transaction hash if available
+          // Notify parent component with transaction hash and vote count if available
           if (onVoteSuccess) {
-            onVoteSuccess(txHash || "blockchain-transaction-success");
+            onVoteSuccess(txHash || "blockchain-transaction-success", voteCount);
           }
         } else {
           throw new Error("Vote transaction failed");
