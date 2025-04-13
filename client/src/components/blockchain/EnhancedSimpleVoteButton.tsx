@@ -229,7 +229,16 @@ export function EnhancedSimpleVoteButton({
         }
         
         // Step 5: Submit vote transaction using the student ID web3 service
-        console.log(`Voting for election ID: ${election.blockchainId}, candidate ID: ${blockchainCandidateId}`);
+        // Make sure blockchainId is numeric; if not, try using the timestamp
+        let electionIdentifier = election.blockchainId;
+        
+        // If using timestamp as identifier (our improved approach)
+        if (!electionIdentifier || isNaN(Number(electionIdentifier))) {
+          console.log("No valid blockchainId found, using timestamp as identifier");
+          electionIdentifier = Math.floor(new Date(election.startDate).getTime() / 1000);
+        }
+        
+        console.log(`Voting for election using identifier: ${electionIdentifier}, candidate ID: ${blockchainCandidateId}`);
         
         toast({
           title: "Submitting vote...",
@@ -238,7 +247,7 @@ export function EnhancedSimpleVoteButton({
         });
         
         // Now vote using the improved student ID web3 service
-        const success = await voteForSenator(election.blockchainId, blockchainCandidateId);
+        const success = await voteForSenator(electionIdentifier, blockchainCandidateId);
         
         if (success) {
           // Step 6: Mark token as used after successful vote

@@ -246,7 +246,9 @@ export function ImprovedBlockchainSyncButton({ className = '' }: ImprovedBlockch
             try {
               addSyncMessage(`Adding candidate ${candidateDetails.fullName} (ID: ${candidate.candidateId}) to election "${election.name}" (ID: ${election.id})...`);
               
-              await studentIdWeb3Service.addCandidateToElection(election.id, blockchainCandidateId);
+              // Use the election start timestamp as the election identifier
+              const startTime = Math.floor(new Date(election.startDate).getTime() / 1000);
+              await studentIdWeb3Service.addCandidateToElection(startTime, blockchainCandidateId);
               
               addSyncMessage(`Added candidate ${candidateDetails.fullName} to election "${election.name}"`);
             } catch (error: any) {
