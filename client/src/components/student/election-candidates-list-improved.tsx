@@ -131,15 +131,21 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
               if (candidate.studentId) {
                 try {
                   // First get the blockchain candidate ID from the student ID
-                  const blockchainCandidateId = await getCandidateIdByStudentId(candidate.studentId);
-                  
-                  if (blockchainCandidateId > 0) {
-                    // Now get the vote count for this candidate
-                    const voteCount = await getCandidateVoteCount(blockchainCandidateId);
-                    voteCountsMap[candidate.id] = voteCount;
-                    console.log(`Vote count for candidate ${candidate.fullName} (Student ID: ${candidate.studentId}): ${voteCount}`);
-                  } else {
-                    console.log(`Candidate with student ID ${candidate.studentId} not registered in blockchain yet`);
+                  try {
+                    const blockchainCandidateId = await getCandidateIdByStudentId(candidate.studentId);
+                    
+                    if (blockchainCandidateId > 0) {
+                      // Now get the vote count for this candidate
+                      const voteCount = await getCandidateVoteCount(blockchainCandidateId);
+                      voteCountsMap[candidate.id] = voteCount;
+                      console.log(`Vote count for candidate ${candidate.fullName} (Student ID: ${candidate.studentId}): ${voteCount}`);
+                    } else {
+                      console.log(`Candidate with student ID ${candidate.studentId} not registered in blockchain yet`);
+                      voteCountsMap[candidate.id] = 0;
+                    }
+                  } catch (idError) {
+                    // This is expected when a candidate isn't registered yet
+                    console.log(`Candidate with student ID ${candidate.studentId} not registered in blockchain yet:`, idError);
                     voteCountsMap[candidate.id] = 0;
                   }
                 } catch (error) {

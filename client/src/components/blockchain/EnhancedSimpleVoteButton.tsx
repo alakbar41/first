@@ -210,11 +210,18 @@ export function EnhancedSimpleVoteButton({
           }
           
           console.log(`Found blockchain candidate ID: ${blockchainCandidateId} for student ID: ${studentId}`);
-        } catch (err) {
+        } catch (err: any) {
           console.error("Error getting candidate by student ID:", err);
+          
+          // Extract more specific error for "No candidate found with this student ID"
+          let errorMsg = "Failed to find this candidate on the blockchain.";
+          if (err?.reason && typeof err.reason === 'string' && err.reason.includes("No candidate found")) {
+            errorMsg = "This candidate needs to be registered on the blockchain first.";
+          }
+          
           toast({
-            title: "Candidate lookup failed",
-            description: "Failed to find this candidate on the blockchain.",
+            title: "Candidate not registered on blockchain",
+            description: errorMsg,
             variant: "destructive",
             duration: 5000,
           });
