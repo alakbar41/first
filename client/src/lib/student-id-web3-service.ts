@@ -331,8 +331,11 @@ class StudentIdWeb3Service {
   }
 
   // Get candidate vote count
-  async getCandidateVoteCount(candidateId: number): Promise<number> {
+  async getCandidateVoteCount(candidateId: number, retryCount = 0): Promise<number> {
     try {
+      // Maximum number of retry attempts
+      const MAX_RETRIES = 3;
+      
       // Make sure we're initialized and properly connected
       if (!this.isInitialized || !this.contract) {
         console.log(`[Vote Count] Service not initialized. Initializing first...`);
@@ -340,6 +343,15 @@ class StudentIdWeb3Service {
         
         if (!this.isInitialized || !this.contract) {
           console.error('[Vote Count] Failed to initialize service after attempt');
+          
+          // Retry with exponential backoff if we've not exceeded max retries
+          if (retryCount < MAX_RETRIES) {
+            const backoffTime = Math.pow(2, retryCount) * 500; // Exponential backoff: 500ms, 1s, 2s
+            console.log(`[Vote Count] Retrying initialization in ${backoffTime}ms (attempt ${retryCount + 1}/${MAX_RETRIES})...`);
+            await new Promise(resolve => setTimeout(resolve, backoffTime));
+            return this.getCandidateVoteCount(candidateId, retryCount + 1);
+          }
+          
           return 0;
         }
       }
@@ -353,26 +365,58 @@ class StudentIdWeb3Service {
           await this.connectWallet();
         } catch (walletError) {
           console.warn(`[Vote Count] Failed to connect wallet: ${walletError}`);
-          // Continue anyway as read operations may not require a connected wallet
+          // For read operations, we can attempt to continue without a wallet
+          // but it's better to have one connected for consistent behavior
         }
       }
       
-      // Fetch the vote count
-      console.log(`[Vote Count] Calling contract.getCandidateVoteCount(${candidateId})...`);
-      const voteCount = await this.contract.getCandidateVoteCount(candidateId);
-      const numericVoteCount = Number(voteCount);
+      // Validate candidate ID is positive and reasonable 
+      if (candidateId <= 0) {
+        console.error(`[Vote Count] Invalid candidate ID: ${candidateId}`);
+        return 0;
+      }
       
-      console.log(`[Vote Count] Retrieved vote count for candidate ${candidateId}: ${numericVoteCount}`);
-      return numericVoteCount;
+      // Use try-catch to specifically handle any failures in contract call
+      try {
+        // Fetch the vote count
+        console.log(`[Vote Count] Calling contract.getCandidateVoteCount(${candidateId})...`);
+        const voteCount = await this.contract.getCandidateVoteCount(candidateId);
+        const numericVoteCount = Number(voteCount);
+        
+        console.log(`[Vote Count] Retrieved vote count for candidate ${candidateId}: ${numericVoteCount}`);
+        
+        // Validate the vote count (in case of invalid returns)
+        if (isNaN(numericVoteCount) || numericVoteCount < 0) {
+          throw new Error(`Invalid vote count returned: ${voteCount}`);
+        }
+        
+        return numericVoteCount;
+      } catch (contractError) {
+        console.error(`[Vote Count] Contract call error for candidate ${candidateId}:`, contractError);
+        
+        // Retry with exponential backoff if we've not exceeded max retries
+        if (retryCount < MAX_RETRIES) {
+          const backoffTime = Math.pow(2, retryCount) * 500; // Exponential backoff: 500ms, 1s, 2s
+          console.log(`[Vote Count] Retrying contract call in ${backoffTime}ms (attempt ${retryCount + 1}/${MAX_RETRIES})...`);
+          await new Promise(resolve => setTimeout(resolve, backoffTime));
+          return this.getCandidateVoteCount(candidateId, retryCount + 1);
+        }
+        
+        throw contractError;
+      }
     } catch (error) {
       console.error(`[Vote Count] Failed to get vote count for candidate ${candidateId}:`, error);
+      // Only return 0 after all retries have been exhausted
       return 0;
     }
   }
 
   // Get ticket vote count
-  async getTicketVoteCount(ticketId: number): Promise<number> {
+  async getTicketVoteCount(ticketId: number, retryCount = 0): Promise<number> {
     try {
+      // Maximum number of retry attempts
+      const MAX_RETRIES = 3;
+      
       // Make sure we're initialized and properly connected
       if (!this.isInitialized || !this.contract) {
         console.log(`[Ticket Vote Count] Service not initialized. Initializing first...`);
@@ -380,6 +424,15 @@ class StudentIdWeb3Service {
         
         if (!this.isInitialized || !this.contract) {
           console.error('[Ticket Vote Count] Failed to initialize service after attempt');
+          
+          // Retry with exponential backoff if we've not exceeded max retries
+          if (retryCount < MAX_RETRIES) {
+            const backoffTime = Math.pow(2, retryCount) * 500; // Exponential backoff: 500ms, 1s, 2s
+            console.log(`[Ticket Vote Count] Retrying initialization in ${backoffTime}ms (attempt ${retryCount + 1}/${MAX_RETRIES})...`);
+            await new Promise(resolve => setTimeout(resolve, backoffTime));
+            return this.getTicketVoteCount(ticketId, retryCount + 1);
+          }
+          
           return 0;
         }
       }
@@ -393,19 +446,48 @@ class StudentIdWeb3Service {
           await this.connectWallet();
         } catch (walletError) {
           console.warn(`[Ticket Vote Count] Failed to connect wallet: ${walletError}`);
-          // Continue anyway as read operations may not require a connected wallet
+          // For read operations, we can attempt to continue without a wallet
+          // but it's better to have one connected for consistent behavior
         }
       }
       
-      // Fetch the vote count
-      console.log(`[Ticket Vote Count] Calling contract.getTicketVoteCount(${ticketId})...`);
-      const voteCount = await this.contract.getTicketVoteCount(ticketId);
-      const numericVoteCount = Number(voteCount);
+      // Validate ticket ID is positive and reasonable 
+      if (ticketId <= 0) {
+        console.error(`[Ticket Vote Count] Invalid ticket ID: ${ticketId}`);
+        return 0;
+      }
       
-      console.log(`[Ticket Vote Count] Retrieved vote count for ticket ${ticketId}: ${numericVoteCount}`);
-      return numericVoteCount;
+      // Use try-catch to specifically handle any failures in contract call
+      try {
+        // Fetch the vote count
+        console.log(`[Ticket Vote Count] Calling contract.getTicketVoteCount(${ticketId})...`);
+        const voteCount = await this.contract.getTicketVoteCount(ticketId);
+        const numericVoteCount = Number(voteCount);
+        
+        console.log(`[Ticket Vote Count] Retrieved vote count for ticket ${ticketId}: ${numericVoteCount}`);
+        
+        // Validate the vote count (in case of invalid returns)
+        if (isNaN(numericVoteCount) || numericVoteCount < 0) {
+          throw new Error(`Invalid vote count returned: ${voteCount}`);
+        }
+        
+        return numericVoteCount;
+      } catch (contractError) {
+        console.error(`[Ticket Vote Count] Contract call error for ticket ${ticketId}:`, contractError);
+        
+        // Retry with exponential backoff if we've not exceeded max retries
+        if (retryCount < MAX_RETRIES) {
+          const backoffTime = Math.pow(2, retryCount) * 500; // Exponential backoff: 500ms, 1s, 2s
+          console.log(`[Ticket Vote Count] Retrying contract call in ${backoffTime}ms (attempt ${retryCount + 1}/${MAX_RETRIES})...`);
+          await new Promise(resolve => setTimeout(resolve, backoffTime));
+          return this.getTicketVoteCount(ticketId, retryCount + 1);
+        }
+        
+        throw contractError;
+      }
     } catch (error) {
       console.error(`[Ticket Vote Count] Failed to get vote count for ticket ${ticketId}:`, error);
+      // Only return 0 after all retries have been exhausted
       return 0;
     }
   }
@@ -505,7 +587,48 @@ class StudentIdWeb3Service {
   // Vote for a senator
   async voteForSenator(electionId: number, candidateId: number): Promise<boolean> {
     try {
-      await this.initializeIfNeeded();
+      // First, ensure service is fully initialized and connected
+      if (!this.isInitialized || !this.contract) {
+        console.log(`[Vote] Service not fully initialized. Initializing first...`);
+        await this.initialize();
+        
+        if (!this.isInitialized || !this.contract) {
+          throw new Error('Failed to initialize blockchain service before voting');
+        }
+      }
+      
+      // Ensure wallet is connected
+      if (!this.walletAddress) {
+        console.log(`[Vote] Wallet not connected. Connecting first...`);
+        try {
+          await this.connectWallet();
+        } catch (walletError) {
+          throw new Error(`Failed to connect wallet for voting: ${walletError}`);
+        }
+      }
+      
+      // Verify candidate exists and is registered for this election before voting
+      console.log(`[Vote] Verifying candidate ${candidateId} is registered for election ${electionId}...`);
+      
+      try {
+        const electionCandidates = await this.getElectionCandidates(electionId);
+        console.log(`[Vote] Found ${electionCandidates.length} candidates for election ${electionId}`);
+        console.log(`[Vote] Candidate IDs: ${electionCandidates.join(', ')}`);
+        
+        if (!electionCandidates.includes(candidateId)) {
+          console.warn(`[Vote] Candidate ${candidateId} is not registered for election ${electionId}`);
+          // Continue anyway - the contract will validate this
+        } else {
+          console.log(`[Vote] Candidate ${candidateId} is properly registered for election ${electionId}`);
+          
+          // Check current vote count before voting
+          const beforeVoteCount = await this.getCandidateVoteCount(candidateId);
+          console.log(`[Vote] Current vote count for candidate ${candidateId}: ${beforeVoteCount}`);
+        }
+      } catch (verifyError) {
+        console.warn(`[Vote] Verification error (non-fatal): ${verifyError}`);
+        // Continue anyway - this is just a verification step
+      }
       
       // Get next nonce
       const nonce = await this.getNextNonce();
@@ -517,7 +640,7 @@ class StudentIdWeb3Service {
         type: 2,
       };
       
-      console.log(`Voting in election with ID ${electionId} (timestamp) for candidate ${candidateId} with nonce ${nonce}`);
+      console.log(`[Vote] Submitting vote in election ID ${electionId} (timestamp) for candidate ${candidateId} with nonce ${nonce}`);
       
       const tx = await this.contract.voteForSenator(
         electionId,
@@ -526,12 +649,25 @@ class StudentIdWeb3Service {
         options
       );
       
-      console.log("Vote transaction sent, waiting for confirmation...");
-      await tx.wait();
-      console.log("Vote transaction confirmed successfully!");
+      console.log("[Vote] Transaction sent, waiting for confirmation...");
+      const receipt = await tx.wait();
+      console.log(`[Vote] Transaction confirmed successfully! Transaction hash: ${receipt.hash}`);
+      
+      // Check vote count after successful voting to verify it increased
+      try {
+        // Allow some time for blockchain to update
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        const afterVoteCount = await this.getCandidateVoteCount(candidateId);
+        console.log(`[Vote] Vote count for candidate ${candidateId} after voting: ${afterVoteCount}`);
+      } catch (countError) {
+        console.warn(`[Vote] Failed to get updated vote count (non-fatal): ${countError}`);
+        // Continue anyway - this is just for verification
+      }
+      
       return true;
     } catch (error) {
-      console.error(`Failed to vote for senator in election ${electionId}:`, error);
+      console.error(`[Vote] Failed to vote for senator in election ${electionId}:`, error);
       throw error;
     }
   }
@@ -539,7 +675,48 @@ class StudentIdWeb3Service {
   // Vote for a president/VP ticket
   async voteForPresidentVP(electionId: number, ticketId: number): Promise<boolean> {
     try {
-      await this.initializeIfNeeded();
+      // First, ensure service is fully initialized and connected
+      if (!this.isInitialized || !this.contract) {
+        console.log(`[President/VP Vote] Service not fully initialized. Initializing first...`);
+        await this.initialize();
+        
+        if (!this.isInitialized || !this.contract) {
+          throw new Error('Failed to initialize blockchain service before voting');
+        }
+      }
+      
+      // Ensure wallet is connected
+      if (!this.walletAddress) {
+        console.log(`[President/VP Vote] Wallet not connected. Connecting first...`);
+        try {
+          await this.connectWallet();
+        } catch (walletError) {
+          throw new Error(`Failed to connect wallet for voting: ${walletError}`);
+        }
+      }
+      
+      // Verify ticket exists and is registered for this election before voting
+      console.log(`[President/VP Vote] Verifying ticket ${ticketId} is registered for election ${electionId}...`);
+      
+      try {
+        const electionTickets = await this.getElectionTickets(electionId);
+        console.log(`[President/VP Vote] Found ${electionTickets.length} tickets for election ${electionId}`);
+        console.log(`[President/VP Vote] Ticket IDs: ${electionTickets.join(', ')}`);
+        
+        if (!electionTickets.includes(ticketId)) {
+          console.warn(`[President/VP Vote] Ticket ${ticketId} is not registered for election ${electionId}`);
+          // Continue anyway - the contract will validate this
+        } else {
+          console.log(`[President/VP Vote] Ticket ${ticketId} is properly registered for election ${electionId}`);
+          
+          // Check current vote count before voting
+          const beforeVoteCount = await this.getTicketVoteCount(ticketId);
+          console.log(`[President/VP Vote] Current vote count for ticket ${ticketId}: ${beforeVoteCount}`);
+        }
+      } catch (verifyError) {
+        console.warn(`[President/VP Vote] Verification error (non-fatal): ${verifyError}`);
+        // Continue anyway - this is just a verification step
+      }
       
       // Get next nonce
       const nonce = await this.getNextNonce();
@@ -551,7 +728,7 @@ class StudentIdWeb3Service {
         type: 2,
       };
       
-      console.log(`Voting in President/VP election with ID ${electionId} (timestamp) for ticket ${ticketId} with nonce ${nonce}`);
+      console.log(`[President/VP Vote] Submitting vote in election ID ${electionId} (timestamp) for ticket ${ticketId} with nonce ${nonce}`);
       
       const tx = await this.contract.voteForPresidentVP(
         electionId,
@@ -560,12 +737,25 @@ class StudentIdWeb3Service {
         options
       );
       
-      console.log("President/VP vote transaction sent, waiting for confirmation...");
-      await tx.wait();
-      console.log("President/VP vote transaction confirmed successfully!");
+      console.log("[President/VP Vote] Transaction sent, waiting for confirmation...");
+      const receipt = await tx.wait();
+      console.log(`[President/VP Vote] Transaction confirmed successfully! Transaction hash: ${receipt.hash}`);
+      
+      // Check vote count after successful voting to verify it increased
+      try {
+        // Allow some time for blockchain to update
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        const afterVoteCount = await this.getTicketVoteCount(ticketId);
+        console.log(`[President/VP Vote] Vote count for ticket ${ticketId} after voting: ${afterVoteCount}`);
+      } catch (countError) {
+        console.warn(`[President/VP Vote] Failed to get updated vote count (non-fatal): ${countError}`);
+        // Continue anyway - this is just for verification
+      }
+      
       return true;
     } catch (error) {
-      console.error(`Failed to vote for president/VP in election ${electionId}:`, error);
+      console.error(`[President/VP Vote] Failed to vote for president/VP in election ${electionId}:`, error);
       throw error;
     }
   }
