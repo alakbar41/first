@@ -44,19 +44,28 @@ export function ConnectWalletButton({
 
     setIsConnecting(true);
     try {
-      await connectWallet();
+      console.log("ConnectWalletButton: Initiating wallet connection...");
+      const address = await connectWallet();
+      console.log("ConnectWalletButton: Wallet connected with address:", address);
+      
+      // Force a component refresh to update UI state
+      window.setTimeout(() => {
+        console.log("ConnectWalletButton: Triggering state refresh...");
+        setIsConnecting(false); // This re-render should pick up the new wallet connection state
+      }, 500);
+      
       toast({
         title: "Wallet Connected",
-        description: "Your wallet has been successfully connected.",
+        description: "Your wallet has been successfully connected to address: " + address.substring(0, 6) + "...",
         variant: "default",
       });
     } catch (error: any) {
+      console.error("ConnectWalletButton: Connection failed:", error);
       toast({
         title: "Connection Failed",
         description: error.message || "Failed to connect wallet. Please make sure you have MetaMask installed.",
         variant: "destructive",
       });
-    } finally {
       setIsConnecting(false);
     }
   };
