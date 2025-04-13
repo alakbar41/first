@@ -278,22 +278,31 @@ export function EnhancedSimpleVoteButton({
         });
         
         console.log(`About to vote using the timestamp identifier: ${electionIdentifier} for candidate ID: ${blockchainCandidateId}`);
-        // Now vote using the improved student ID web3 service
-        const success = await voteForSenator(electionIdentifier, blockchainCandidateId);
+        
+        // Now vote using the improved student ID web3 service with enhanced response
+        const { success, txHash, voteCount } = await voteForSenator(electionIdentifier, blockchainCandidateId);
         
         if (success) {
           // Step 6: Mark token as used after successful vote
-          await markTokenAsUsed(token, "blockchain-transaction-hash"); // We don't get a txHash from the service
+          await markTokenAsUsed(token, txHash || "blockchain-transaction-hash");
+          
+          const voteVerified = voteCount !== undefined;
+          const description = voteVerified 
+            ? `Your vote has been recorded and verified on the blockchain. The candidate now has ${voteCount} vote(s).`
+            : "Your vote has been recorded on the blockchain. Vote count verification is pending.";
           
           toast({
             title: "Vote recorded successfully!",
-            description: "Your vote has been recorded on the blockchain.",
+            description: description,
             duration: 5000,
           });
           
-          // Notify parent component
+          // Log detailed success information
+          console.log(`Vote success details: Transaction hash: ${txHash || 'unknown'}, Vote count: ${voteCount || 'pending verification'}`);
+          
+          // Notify parent component with transaction hash if available
           if (onVoteSuccess) {
-            onVoteSuccess("blockchain-transaction-success");
+            onVoteSuccess(txHash || "blockchain-transaction-success");
           }
         } else {
           throw new Error("Vote transaction failed");

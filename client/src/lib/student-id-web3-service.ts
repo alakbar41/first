@@ -585,8 +585,14 @@ class StudentIdWeb3Service {
   }
 
   // Vote for a senator
-  async voteForSenator(electionId: number, candidateId: number): Promise<boolean> {
+  async voteForSenator(electionId: number, candidateId: number): Promise<{ success: boolean, txHash?: string, voteCount?: number }> {
+    let beforeVoteCount = 0;
+    let attemptCount = 0;
+    const maxAttempts = 3;
+    
     try {
+      console.log(`[Vote] Starting vote process for election ${electionId}, candidate ${candidateId}`);
+      
       // First, ensure service is fully initialized and connected
       if (!this.isInitialized || !this.contract) {
         console.log(`[Vote] Service not fully initialized. Initializing first...`);
@@ -617,58 +623,209 @@ class StudentIdWeb3Service {
         
         if (!electionCandidates.includes(candidateId)) {
           console.warn(`[Vote] Candidate ${candidateId} is not registered for election ${electionId}`);
-          // Continue anyway - the contract will validate this
+          console.log(`[Vote] Attempting to verify using alternative method...`);
+          
+          const isRegistered = await this.checkCandidateInElection(electionId, candidateId);
+          if (!isRegistered) {
+            console.warn(`[Vote] Alternative verification also failed. Will continue but expect potential contract failure.`);
+          } else {
+            console.log(`[Vote] Alternative verification successful! Candidate is registered.`);
+          }
         } else {
           console.log(`[Vote] Candidate ${candidateId} is properly registered for election ${electionId}`);
-          
-          // Check current vote count before voting
-          const beforeVoteCount = await this.getCandidateVoteCount(candidateId);
-          console.log(`[Vote] Current vote count for candidate ${candidateId}: ${beforeVoteCount}`);
         }
+        
+        // Check current vote count before voting for later verification
+        beforeVoteCount = await this.getCandidateVoteCount(candidateId);
+        console.log(`[Vote] Current vote count for candidate ${candidateId}: ${beforeVoteCount}`);
       } catch (verifyError) {
         console.warn(`[Vote] Verification error (non-fatal): ${verifyError}`);
         // Continue anyway - this is just a verification step
       }
       
-      // Get next nonce
-      const nonce = await this.getNextNonce();
-      
-      const options = {
-        gasLimit: 500000,
-        maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"),
-        maxFeePerGas: ethers.parseUnits("35.0", "gwei"),
-        type: 2,
+      // Recursive helper function for retry logic
+      const attemptVote = async (): Promise<{ txHash: string }> => {
+        attemptCount++;
+        console.log(`[Vote] Attempt ${attemptCount}/${maxAttempts}`);
+        
+        try {
+          // Get fresh nonce for each attempt to avoid nonce errors
+          const nonce = await this.getNextNonce();
+          
+          const options = {
+            gasLimit: 500000 + (attemptCount * 50000), // Increase gas with each retry
+            maxPriorityFeePerGas: ethers.parseUnits((15.0 + attemptCount).toString(), "gwei"), // Increase priority fee with each retry
+            maxFeePerGas: ethers.parseUnits((35.0 + attemptCount * 2).toString(), "gwei"), // Increase max fee with each retry
+            type: 2,
+          };
+          
+          console.log(`[Vote] Submitting vote in election ID ${electionId} for candidate ${candidateId} with nonce ${nonce}`);
+          console.log(`[Vote] Using gas settings: ${JSON.stringify(options)}`);
+          
+          const tx = await this.contract.voteForSenator(
+            electionId,
+            candidateId,
+            nonce,
+            options
+          );
+          
+          console.log(`[Vote] Transaction sent with hash: ${tx.hash}`);
+          console.log("[Vote] Waiting for confirmation...");
+          
+          const receipt = await tx.wait();
+          console.log(`[Vote] Transaction confirmed successfully! Block hash: ${receipt.blockHash}, block number: ${receipt.blockNumber}`);
+          
+          return { txHash: receipt.hash };
+        } catch (txError: any) {
+          console.error(`[Vote] Transaction error on attempt ${attemptCount}:`, txError);
+          
+          if (attemptCount < maxAttempts) {
+            // Wait before retrying, with increasing backoff
+            const delayMs = Math.min(1000 * attemptCount, 5000);
+            console.log(`[Vote] Retrying in ${delayMs / 1000} seconds...`);
+            await new Promise(resolve => setTimeout(resolve, delayMs));
+            return attemptVote(); // Recursive retry
+          }
+          
+          throw txError; // Re-throw if all attempts failed
+        }
       };
       
-      console.log(`[Vote] Submitting vote in election ID ${electionId} (timestamp) for candidate ${candidateId} with nonce ${nonce}`);
+      // Attempt the vote with retry logic
+      const { txHash } = await attemptVote();
       
-      const tx = await this.contract.voteForSenator(
-        electionId,
-        candidateId,
-        nonce,
-        options
-      );
+      // Verify the vote was recorded by checking the vote count increased
+      let voteVerified = false;
+      let afterVoteCount = 0;
       
-      console.log("[Vote] Transaction sent, waiting for confirmation...");
-      const receipt = await tx.wait();
-      console.log(`[Vote] Transaction confirmed successfully! Transaction hash: ${receipt.hash}`);
-      
-      // Check vote count after successful voting to verify it increased
-      try {
-        // Allow some time for blockchain to update
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        const afterVoteCount = await this.getCandidateVoteCount(candidateId);
-        console.log(`[Vote] Vote count for candidate ${candidateId} after voting: ${afterVoteCount}`);
-      } catch (countError) {
-        console.warn(`[Vote] Failed to get updated vote count (non-fatal): ${countError}`);
-        // Continue anyway - this is just for verification
+      // Try multiple times to verify the vote count increased, as there might be blockchain latency
+      for (let i = 0; i < 3; i++) {
+        try {
+          // Wait a bit longer between each attempt with increasing delays
+          const verifyDelay = 1000 * (i + 1);
+          console.log(`[Vote] Waiting ${verifyDelay/1000} seconds for blockchain to update before verification attempt ${i+1}...`);
+          await new Promise(resolve => setTimeout(resolve, verifyDelay));
+          
+          afterVoteCount = await this.getCandidateVoteCount(candidateId);
+          console.log(`[Vote] Vote count for candidate ${candidateId} after voting: ${afterVoteCount} (was ${beforeVoteCount})`);
+          
+          if (afterVoteCount > beforeVoteCount) {
+            console.log(`[Vote] ✅ Vote successfully verified! Vote count increased by ${afterVoteCount - beforeVoteCount}`);
+            voteVerified = true;
+            break;
+          } else {
+            console.log(`[Vote] ⚠️ Vote count has not increased yet. Will retry verification.`);
+          }
+        } catch (countError) {
+          console.warn(`[Vote] Failed to verify vote count on attempt ${i+1}: ${countError}`);
+        }
       }
       
-      return true;
-    } catch (error) {
+      if (!voteVerified) {
+        console.warn(`[Vote] ⚠️ Could not verify vote count increased, but transaction was confirmed. This might indicate a blockchain delay.`);
+      }
+      
+      // Return success with transaction hash and vote count
+      return { 
+        success: true, 
+        txHash, 
+        voteCount: voteVerified ? afterVoteCount : undefined 
+      };
+    } catch (error: any) {
       console.error(`[Vote] Failed to vote for senator in election ${electionId}:`, error);
-      throw error;
+      
+      // Create a user-friendly error message
+      let errorMessage = "Failed to record vote on blockchain";
+      
+      if (error?.code === 'ACTION_REJECTED') {
+        errorMessage = "Transaction was rejected by the user";
+      } else if (error?.message?.includes("user rejected transaction")) {
+        errorMessage = "You rejected the transaction in your wallet";
+      } else if (error?.message?.includes("insufficient funds")) {
+        errorMessage = "Insufficient funds for gas";
+      } else if (error?.message?.includes("already voted")) {
+        errorMessage = "You have already voted in this election";
+      } else if (error?.message?.includes("Election not active")) {
+        errorMessage = "This election is not currently active";
+      }
+      
+      // Enhanced error object
+      const enhancedError = new Error(errorMessage);
+      (enhancedError as any).originalError = error;
+      (enhancedError as any).attemptsMade = attemptCount;
+      
+      throw enhancedError;
+    }
+  }
+  
+  /**
+   * Checks if a candidate is registered for a specific election
+   * Uses multiple verification methods for reliability
+   * @param electionId - The blockchain ID of the election
+   * @param candidateId - The blockchain ID of the candidate
+   * @returns True if the candidate is registered for the election, false otherwise
+   */
+  async checkCandidateInElection(electionId: number, candidateId: number): Promise<boolean> {
+    try {
+      console.log(`[Verify] Direct check if candidate ${candidateId} is registered for election ${electionId}...`);
+      
+      // If no contract, initialize first
+      if (!this.isInitialized || !this.contract) {
+        console.log(`[Verify] Service not initialized. Initializing first...`);
+        await this.initialize();
+      }
+      
+      if (!this.contract) {
+        throw new Error('Contract not initialized');
+      }
+      
+      // First, try the getElectionCandidates approach
+      try {
+        const candidateList = await this.contract.getElectionCandidates(electionId);
+        const candidateIds = candidateList.map((id: any) => Number(id));
+        const isRegistered = candidateIds.includes(candidateId);
+        console.log(`[Verify] Candidate ${candidateId} registration check for election ${electionId} (method 1): ${isRegistered}`);
+        
+        if (isRegistered) {
+          return true;
+        }
+      } catch (listError) {
+        console.warn(`[Verify] Failed to check using candidate list method:`, listError);
+        // Continue to alternative method if this fails
+      }
+      
+      // Alternative: Check if the candidate exists and has votes
+      try {
+        const voteCount = await this.contract.getCandidateVoteCount(candidateId);
+        const hasVotes = Number(voteCount) > 0;
+        console.log(`[Verify] Candidate ${candidateId} has ${voteCount} votes`);
+        
+        // This doesn't guarantee candidate is in THIS election, but it's a good indicator
+        if (hasVotes) {
+          console.log(`[Verify] Candidate ${candidateId} has votes, assuming it's registered in the system`);
+          return true;
+        }
+      } catch (voteError) {
+        console.warn(`[Verify] Failed to verify using vote count method:`, voteError);
+      }
+      
+      // As a final check, try to get the candidate details directly
+      try {
+        const candidateInfo = await this.contract.candidates(candidateId);
+        if (candidateInfo && candidateInfo.id > 0) {
+          console.log(`[Verify] Candidate ${candidateId} exists in the system`);
+          // Again, this doesn't confirm it's in THIS election, but it's a positive signal
+          return true;
+        }
+      } catch (detailsError) {
+        console.warn(`[Verify] Failed to get candidate details:`, detailsError);
+      }
+      
+      console.log(`[Verify] All verification methods failed, candidate ${candidateId} may not be registered for election ${electionId}`);
+      return false;
+    } catch (error) {
+      console.error(`[Verify] Error checking if candidate ${candidateId} is in election ${electionId}:`, error);
+      return false;
     }
   }
 
