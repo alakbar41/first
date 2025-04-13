@@ -1,0 +1,21 @@
+Trying autoUpdateElectionStatus for election 7
+improved-web3-service.ts:1470  Failed to get election details for ID 7: Error: could not decode result data (value="0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000067fb890b0000000000000000000000000000000000000000000000000000000067fb8ea400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", info={ "method": "getElectionDetails", "signature": "getElectionDetails(uint256)" }, code=BAD_DATA, version=6.13.5)
+    at makeError (errors.ts:694:21)
+    at assert (errors.ts:715:25)
+    at _Interface.decodeFunctionResult (interface.ts:916:9)
+    at staticCallResult (contract.ts:346:35)
+    at async staticCall (contract.ts:303:24)
+    at async Proxy.getElectionDetails (contract.ts:351:41)
+    at async ImprovedWeb3Service.getElectionDetails (improved-web3-service.ts:1458:23)
+    at async ImprovedWeb3Service.tryAutoUpdateElectionStatus (improved-web3-service.ts:601:31)
+    at async ImprovedWeb3Service.startElection (improved-web3-service.ts:692:36)
+    at async attemptActivation (activate-election-button.tsx:141:13)
+getElectionDetails @ improved-web3-service.ts:1470
+improved-web3-service.ts:602 Current election status: 0
+inpage.js:1  MetaMask - RPC Error: Internal JSON-RPC error. Object
+(anonymous) @ inpage.js:1
+improved-web3-service.ts:633  Auto-update election status failed: Error: could not coalesce error (error={ "code": -32603, "message": "Internal JSON-RPC error." }, payload={ "id": 17, "jsonrpc": "2.0", "method": "eth_sendTransaction", "params": [ { "data": "0x393380170000000000000000000000000000000000000000000000000000000000000007", "from": "0x0e6ed3eb1acc94f03006b326c939ceaf8d0953d5", "gas": "0xf4240", "maxFeePerGas": "0xba43b7400", "maxPriorityFeePerGas": "0x4a817c800", "to": "0x903389c84cdd36bec37373300cf7546dbb9d4ee2", "type": "0x2" } ] }, code=UNKNOWN_ERROR, version=6.13.5)
+    at makeError (errors.ts:694:21)
+    at BrowserProvider.getRpcError (provider-jsonrpc.ts:1059:16)
+    at BrowserProvider.getRpcError (provider-browser.ts:122:22)
+    at provider-jsonrpc.ts:563:45
