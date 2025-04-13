@@ -100,7 +100,10 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
       // Then check with blockchain for confirmation
       if (isInitialized && isWalletConnected && election) {
         try {
-          const hasVoted = await checkIfVoted(election.id);
+          // ALWAYS use timestamp as election identifier for consistency between Web2 and Web3
+          const electionTimestamp = Math.floor(new Date(election.startDate).getTime() / 1000);
+          console.log(`Checking if voted using election timestamp ${electionTimestamp} instead of ID ${election.id}`);
+          const hasVoted = await checkIfVoted(electionTimestamp);
           setHasVotedInElection(hasVoted);
         } catch (error) {
           console.error("Error checking blockchain voting status:", error);

@@ -289,10 +289,30 @@ export function ImprovedBlockchainSyncButton({ className = '' }: ImprovedBlockch
           } catch (electionError: any) {
             // Check if error message contains "already exists"
             if (electionError.message && electionError.message.toLowerCase().includes("already exists")) {
-              addSyncMessage(`Election "${election.name}" (ID: ${election.id}) already exists on blockchain with timestamp ${startTime}`);
+              addSyncMessage(`Election "${election.name}" already exists on blockchain with timestamp ${startTime}`);
               
-              // Still try to add candidates to this existing election
-              addSyncMessage(`Adding candidates to existing election "${election.name}"...`);
+              // Update the database with the timestamp identifier to ensure consistency
+              try {
+                const updateResponse = await fetch(`/api/elections/${election.id}/blockchain-id`, {
+                  method: 'PATCH',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    blockchainId: String(startTime), // ALWAYS use timestamp as blockchain ID
+                  }),
+                });
+                
+                if (updateResponse.ok) {
+                  addSyncMessage(`⚠️ IMPORTANT: Updated existing election in database with timestamp ${startTime}`);
+                  addSyncMessage(`Now using timestamp ${startTime} as consistent identifier for "${election.name}"`);
+                }
+              } catch (updateError: any) {
+                addSyncError(`Failed to update database with timestamp: ${updateError.message || updateError}`);
+              }
+              
+              // Still try to add candidates to this existing election using the timestamp
+              addSyncMessage(`Adding candidates to existing election "${election.name}" using timestamp ${startTime}...`);
               
               for (const candidate of electionCandidates) {
                 const candidateDetails = candidates.find(c => c.id === candidate.candidateId);
@@ -303,10 +323,10 @@ export function ImprovedBlockchainSyncButton({ className = '' }: ImprovedBlockch
                 
                 try {
                   await studentIdWeb3Service.addCandidateToElection(startTime, blockchainCandidateId);
-                  addSyncMessage(`Added candidate ${candidateDetails.fullName} to existing election "${election.name}"`);
+                  addSyncMessage(`Added candidate ${candidateDetails.fullName} to existing election using timestamp ${startTime}`);
                 } catch (addError: any) {
                   if (addError.message && addError.message.toLowerCase().includes("already added")) {
-                    addSyncMessage(`Candidate ${candidateDetails.fullName} already exists in election "${election.name}"`);
+                    addSyncMessage(`Candidate ${candidateDetails.fullName} already exists in election "${election.name}" (timestamp: ${startTime})`);
                   } else {
                     addSyncError(`Failed to add to existing election: ${addError.message || addError}`);
                   }
