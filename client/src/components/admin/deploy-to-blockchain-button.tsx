@@ -133,35 +133,76 @@ export function DeployToBlockchainButton({
     try {
       console.log(`Registering candidate ${candidate.fullName} with student ID ${candidate.studentId}`);
       
-      // First check if this candidate is already registered on blockchain
-      try {
-        const existingId = await studentIdWeb3Service.getCandidateIdByStudentId(candidate.studentId);
-        console.log(`Candidate with student ID ${candidate.studentId} already registered with ID ${existingId}`);
-        return existingId;
-      } catch (error) {
-        // If not found, proceed with registration
-        console.log(`Candidate with student ID ${candidate.studentId} not found, registering now`);
+      // Make sure we have a valid student ID
+      if (!candidate.studentId || candidate.studentId.trim() === '') {
+        throw new Error(`Candidate ${candidate.fullName} has no valid student ID`);
       }
       
-      // Register candidate on blockchain
-      const blockchainId = await studentIdWeb3Service.registerCandidate(candidate.studentId);
-      console.log(`Successfully registered candidate with student ID ${candidate.studentId} as blockchain ID ${blockchainId}`);
+      let blockchainId: number | null = null;
+      let retryCount = 0;
+      const maxRetries = 2;
+      
+      // First check if this candidate is already registered on blockchain
+      while (blockchainId === null && retryCount <= maxRetries) {
+        try {
+          if (retryCount > 0) {
+            console.log(`Retry attempt ${retryCount} for candidate ${candidate.fullName}`);
+          }
+          
+          try {
+            // Try to get existing ID first
+            blockchainId = await studentIdWeb3Service.getCandidateIdByStudentId(candidate.studentId);
+            console.log(`Candidate with student ID ${candidate.studentId} already registered with ID ${blockchainId}`);
+            break;
+          } catch (lookupError) {
+            // If not found, proceed with registration
+            console.log(`Candidate with student ID ${candidate.studentId} not found, registering now`);
+            
+            // Initialize web3 service to ensure connection is fresh
+            await studentIdWeb3Service.initialize();
+            
+            // Register candidate on blockchain
+            blockchainId = await studentIdWeb3Service.registerCandidate(candidate.studentId);
+            console.log(`Successfully registered candidate with student ID ${candidate.studentId} as blockchain ID ${blockchainId}`);
+            break;
+          }
+        } catch (retryError) {
+          retryCount++;
+          if (retryCount > maxRetries) {
+            console.error(`Failed after ${maxRetries} attempts to register candidate ${candidate.fullName}`);
+            throw retryError;
+          }
+          console.log(`Attempt ${retryCount} failed, retrying...`);
+          // Wait a bit before retrying (exponential backoff)
+          await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+        }
+      }
+      
+      if (blockchainId === null) {
+        throw new Error(`Failed to register or find candidate ${candidate.fullName} with student ID ${candidate.studentId}`);
+      }
       
       // Update candidate in database with blockchain ID
-      const csrfToken = await getCsrfToken();
-      const response = await fetch(`/api/candidates/${candidate.id}/blockchain-id`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': csrfToken
-        },
-        body: JSON.stringify({ blockchainId }),
-      });
-      
-      if (!response.ok) {
-        console.warn(`Failed to update candidate ${candidate.id} with blockchain ID ${blockchainId} in database`);
-      } else {
-        console.log(`Updated candidate ${candidate.id} with blockchain ID ${blockchainId} in database`);
+      try {
+        const csrfToken = await getCsrfToken();
+        const response = await fetch(`/api/candidates/${candidate.id}/blockchain-id`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken
+          },
+          body: JSON.stringify({ blockchainId }),
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.warn(`Failed to update candidate ${candidate.id} with blockchain ID ${blockchainId} in database: ${errorText}`);
+        } else {
+          console.log(`Updated candidate ${candidate.id} with blockchain ID ${blockchainId} in database`);
+        }
+      } catch (dbError) {
+        // Don't let DB errors stop the process, just log them
+        console.warn(`Database update failed for candidate ${candidate.id}, but blockchain registration was successful:`, dbError);
       }
       
       return blockchainId;
@@ -189,24 +230,70 @@ export function DeployToBlockchainButton({
       
       // Get or register candidate on blockchain
       let blockchainCandidateId: number | null = null;
+      let retryCount = 0;
+      const maxRetries = 2;
+      
+      while (blockchainCandidateId === null && retryCount <= maxRetries) {
+        try {
+          if (retryCount > 0) {
+            console.log(`Retry attempt ${retryCount} for registering candidate ${candidateDetails.fullName}`);
+          }
+          
+          blockchainCandidateId = await registerCandidateWithStudentId(candidateDetails);
+          
+          if (!blockchainCandidateId) {
+            throw new Error(`Could not get blockchain ID for candidate ${candidateId}`);
+          }
+          
+          console.log(`Got blockchain ID ${blockchainCandidateId} for candidate ${candidateDetails.fullName}`);
+          
+          // Initialize web3 service to ensure connection is fresh
+          await studentIdWeb3Service.initialize();
+          
+          // Register candidate for election on blockchain
+          console.log(`Adding candidate ${blockchainCandidateId} to election ${blockchainElectionId} on blockchain`);
+          await studentIdWeb3Service.registerCandidateForElection(
+            blockchainElectionId, 
+            blockchainCandidateId
+          );
+          
+          console.log(`Successfully registered candidate ${candidateDetails.fullName} for election ${electionId} on blockchain`);
+          break; // Exit the loop if successful
+        } catch (retryError: any) {
+          retryCount++;
+          console.error(`Attempt ${retryCount} failed:`, retryError);
+          
+          if (retryCount > maxRetries) {
+            console.error(`Failed after ${maxRetries} attempts to register candidate ${candidateDetails.fullName} for election`);
+            throw retryError;
+          }
+          
+          console.log(`Waiting before retry ${retryCount}...`);
+          // Wait a bit before retrying (exponential backoff)
+          await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+        }
+      }
+      
+      // Final verification - check if candidate is correctly registered for the election
       try {
-        blockchainCandidateId = await registerCandidateWithStudentId(candidateDetails);
-      } catch (error) {
-        console.error(`Failed to register candidate ${candidateDetails.fullName}:`, error);
-        throw error;
+        const electionCandidates = await studentIdWeb3Service.getElectionCandidates(blockchainElectionId);
+        const isRegistered = electionCandidates.includes(blockchainCandidateId);
+        
+        if (!isRegistered) {
+          console.warn(`Verification failed: Candidate ${candidateDetails.fullName} (ID: ${blockchainCandidateId}) is not listed in election ${blockchainElectionId} candidates`);
+          // If we're on the last retry and still not registered, try one more time specifically for the election link
+          if (retryCount >= maxRetries) {
+            console.log(`Final attempt to link candidate ${blockchainCandidateId} to election ${blockchainElectionId}`);
+            await studentIdWeb3Service.registerCandidateForElection(blockchainElectionId, blockchainCandidateId);
+          }
+        } else {
+          console.log(`Verified: Candidate ${candidateDetails.fullName} (ID: ${blockchainCandidateId}) is correctly registered for election ${blockchainElectionId}`);
+        }
+      } catch (verifyError) {
+        console.warn(`Could not verify candidate registration for election:`, verifyError);
+        // Don't fail the process for verification errors
       }
       
-      if (!blockchainCandidateId) {
-        throw new Error(`Could not get blockchain ID for candidate ${candidateId}`);
-      }
-      
-      // Register candidate for election on blockchain
-      await studentIdWeb3Service.registerCandidateForElection(
-        blockchainElectionId,
-        blockchainCandidateId
-      );
-      
-      console.log(`Successfully registered candidate ${candidateDetails.fullName} for election ${electionId} on blockchain`);
     } catch (error: any) {
       console.error(`Failed to register candidate ${candidateId} for election ${electionId}:`, error);
       throw error;
