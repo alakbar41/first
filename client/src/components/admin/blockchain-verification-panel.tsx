@@ -32,6 +32,7 @@ interface CandidateVerificationResult extends VerificationResult {
   blockchainId?: number;
   studentId?: string;
   registeredForElection?: boolean;
+  voteCount?: number;
 }
 
 interface ElectionVerificationResult extends VerificationResult {
@@ -180,12 +181,24 @@ export function BlockchainVerificationPanel() {
             continue;
           }
           
+          // Get vote count for candidate if registered
+          let voteCount = 0;
+          if (registeredForElection) {
+            try {
+              voteCount = await studentIdWeb3Service.getCandidateVoteCount(blockchainCandidateId);
+            } catch (voteCountError) {
+              console.warn(`Failed to get vote count for candidate ${blockchainCandidateId}:`, voteCountError);
+              // Don't fail verification for vote count errors
+            }
+          }
+          
           // All checks passed, update the results
           newCandidateResults[candidate.id] = {
             exists: true,
             blockchainId: blockchainCandidateId,
             studentId: candidate.studentId,
-            registeredForElection
+            registeredForElection,
+            voteCount
           };
           
         } catch (error: any) {
@@ -441,6 +454,7 @@ export function BlockchainVerificationPanel() {
                         <TableHead>Registered</TableHead>
                         <TableHead>Election Link</TableHead>
                         <TableHead>Blockchain ID</TableHead>
+                        <TableHead>Votes</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -495,6 +509,15 @@ export function BlockchainVerificationPanel() {
                             <TableCell>
                               {result?.blockchainId ? (
                                 <code className="px-1 py-0.5 bg-slate-100 dark:bg-slate-800 rounded">{result.blockchainId}</code>
+                              ) : (
+                                <span className="text-muted-foreground">-</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {result?.exists && result?.registeredForElection ? (
+                                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                                  {result.voteCount !== undefined ? result.voteCount : '-'}
+                                </Badge>
                               ) : (
                                 <span className="text-muted-foreground">-</span>
                               )}
