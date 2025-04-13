@@ -6,6 +6,7 @@ import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { ImprovedBlockchainSyncButton } from "@/components/admin/ImprovedBlockchainSyncButton";
 import { useStudentIdWeb3 } from '@/hooks/use-student-id-web3';
 import { BlockchainRoleManager } from '@/components/admin/blockchain-role-manager';
+import { BlockchainVerificationPanel } from '@/components/admin/blockchain-verification-panel';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EnhancedBlockchainDeploymentStatus } from "@/components/admin/enhanced-blockchain-deployment-status";
@@ -155,6 +156,8 @@ export default function AdminBlockchain() {
                   </div>
                 </CardContent>
               </Card>
+              
+              <BlockchainVerificationPanel />
             </TabsContent>
           </Tabs>
         </div>
