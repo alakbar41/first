@@ -13,7 +13,7 @@ import studentIdWeb3Service from './student-id-web3-service';
  * match Web3 IDs, which breaks when records are deleted from the database.
  */
 
-// Election mapping approach: Use timestamps for stable identification
+// Election mapping approach: Use the blockchain ID stored in the database
 export async function mapElectionFromWeb2ToWeb3(electionId: number): Promise<number | null> {
   try {
     // Fetch election details from Web2 database
@@ -25,35 +25,15 @@ export async function mapElectionFromWeb2ToWeb3(electionId: number): Promise<num
     
     const election = await response.json();
     
-    // Use startTime as a stable identifier
-    if (!election.startTime) {
-      console.warn(`Election ${electionId} has no start time, cannot reliably map to blockchain`);
-      return null;
+    // Use the blockchain ID stored in the database (if available)
+    if (election.blockchainId) {
+      console.log(`Using stored blockchain ID ${election.blockchainId} for election ${electionId}`);
+      return election.blockchainId;
     }
     
-    // Convert database timestamp to Unix timestamp (seconds)
-    const startTimestamp = Math.floor(new Date(election.startTime).getTime() / 1000);
-    
-    // TODO: Fetch elections from blockchain and find one with matching timestamp
-    // For now, we'll just return a simple placeholder approach 
-    
-    // Placeholder: Try to use the same ID if blockchain IDs start from 1
-    return electionId;
-    
-    // Future implementation:
-    /*
-    // Get elections from blockchain (via Web3 service)
-    const blockchainElections = await getAllBlockchainElections();
-    
-    // Find election with matching timestamp
-    for (const blkElection of blockchainElections) {
-      if (blkElection.startTime === startTimestamp) {
-        return blkElection.id;
-      }
-    }
-    
+    // If no blockchain ID is stored, election hasn't been deployed to blockchain yet
+    console.warn(`Election ${electionId} has no blockchain ID stored, has it been deployed?`);
     return null;
-    */
   } catch (error) {
     console.error(`Failed to map election ${electionId} from Web2 to Web3:`, error);
     return null;
