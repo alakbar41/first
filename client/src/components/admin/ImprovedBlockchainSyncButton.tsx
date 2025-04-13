@@ -231,6 +231,7 @@ export function ImprovedBlockchainSyncButton({ className = '' }: ImprovedBlockch
             );
             
             // Update the election with blockchain ID in database using the timestamp as identifier
+            // This is critical for ensuring we use the same identifier in both systems
             try {
               const updateResponse = await fetch(`/api/elections/${election.id}/blockchain-id`, {
                 method: 'PATCH',
@@ -238,12 +239,13 @@ export function ImprovedBlockchainSyncButton({ className = '' }: ImprovedBlockch
                   'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                  blockchainId: startTime, // Use timestamp as blockchain ID
+                  blockchainId: String(startTime), // ALWAYS use timestamp as blockchain ID, stored as string
                 }),
               });
               
               if (updateResponse.ok) {
-                addSyncMessage(`Updated election ${election.id} with blockchain timestamp identifier: ${startTime}`);
+                addSyncMessage(`Successfully updated election ${election.id} with blockchain timestamp identifier: ${startTime}`);
+                addSyncMessage(`⚠️ IMPORTANT: Always use this timestamp (${startTime}) as the election ID for blockchain operations`);
               }
             } catch (updateError: any) {
               addSyncError(`Failed to update election database with blockchain ID: ${updateError.message || updateError}`);

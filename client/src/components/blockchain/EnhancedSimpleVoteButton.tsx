@@ -264,14 +264,10 @@ export function EnhancedSimpleVoteButton({
         }
         
         // Step 5: Submit vote transaction using the student ID web3 service
-        // Make sure blockchainId is numeric; if not, try using the timestamp
-        let electionIdentifier = election.blockchainId;
-        
-        // If using timestamp as identifier (our improved approach)
-        if (!electionIdentifier || isNaN(Number(electionIdentifier))) {
-          console.log("No valid blockchainId found, using timestamp as identifier");
-          electionIdentifier = Math.floor(new Date(election.startDate).getTime() / 1000);
-        }
+        // ALWAYS use the timestamp as the election identifier for consistency
+        // This ensures we have the same identifier in both Web2 and Web3 systems
+        const electionIdentifier = Math.floor(new Date(election.startDate).getTime() / 1000);
+        console.log(`Using election start timestamp ${electionIdentifier} as the blockchain identifier`);
         
         console.log(`Voting for election using identifier: ${electionIdentifier}, candidate ID: ${blockchainCandidateId}`);
         
