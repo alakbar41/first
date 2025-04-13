@@ -13,7 +13,11 @@ interface StudentIdWeb3ContextType {
   getTicketVoteCount: (ticketId: number) => Promise<number>;
   getCandidateIdByStudentId: (studentId: string, forceRegister?: boolean) => Promise<number>;
   getTicketIdByStudentIds: (presidentId: string, vpId: string) => Promise<number>;
-  voteForSenator: (electionId: number, candidateId: number) => Promise<boolean>;
+  voteForSenator: (electionId: number, candidateId: number) => Promise<{ 
+    success: boolean;
+    txHash?: string;
+    voteCount?: number; 
+  }>;
   voteForPresidentVP: (electionId: number, ticketId: number) => Promise<boolean>;
   checkIfVoted: (electionId: number, address?: string) => Promise<boolean>;
 }
@@ -175,9 +179,10 @@ export function StudentIdWeb3Provider({ children }: { children: ReactNode }) {
     }
   };
 
-  const handleVoteForSenator = async (electionId: number, candidateId: number): Promise<boolean> => {
+  const handleVoteForSenator = async (electionId: number, candidateId: number): Promise<{ success: boolean, txHash?: string, voteCount?: number }> => {
     try {
-      return await studentIdWeb3Service.voteForSenator(electionId, candidateId);
+      const result = await studentIdWeb3Service.voteForSenator(electionId, candidateId);
+      return result;
     } catch (error) {
       console.error(`Failed to vote for senator in election ${electionId}:`, error);
       throw error;
