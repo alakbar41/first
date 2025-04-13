@@ -1,166 +1,183 @@
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useStudentIdWeb3 } from '@/hooks/use-student-id-web3';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Info, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
+import studentIdWeb3Service from '@/lib/student-id-web3-service';
+import { Card } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
+import { CheckIcon, XIcon, AlertTriangleIcon, Loader2 } from 'lucide-react';
 
-interface EnhancedBlockchainDeploymentStatusProps {
-  contractAddress?: string;
-  onConnect?: () => void;
-}
-
-export function EnhancedBlockchainDeploymentStatus({
-  contractAddress,
-  onConnect
-}: EnhancedBlockchainDeploymentStatusProps) {
+export function EnhancedBlockchainDeploymentStatus() {
   const { toast } = useToast();
-  const { 
-    isInitialized, 
-    isInitializing, 
-    initializationError,
-    isWalletConnected,
-    walletAddress,
-    connectWallet,
-    reinitialize 
-  } = useStudentIdWeb3();
+  const { isInitialized, walletAddress, connectWallet } = useStudentIdWeb3();
   
-  const [connecting, setConnecting] = useState(false);
+  const [contractStatus, setContractStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isElectionManager, setIsElectionManager] = useState(false);
+  const [isVoterManager, setIsVoterManager] = useState(false);
+  const [electionCount, setElectionCount] = useState<number | null>(null);
+  const [candidateCount, setCandidateCount] = useState<number | null>(null);
   
-  const handleConnectWallet = async () => {
+  useEffect(() => {
+    if (isInitialized) {
+      checkContractStatus();
+    } else {
+      setContractStatus('disconnected');
+    }
+  }, [isInitialized, walletAddress]);
+  
+  const checkContractStatus = async () => {
     try {
-      setConnecting(true);
-      await connectWallet();
+      setContractStatus('checking');
       
-      toast({
-        title: "Wallet Connected",
-        description: "Your blockchain wallet has been connected successfully.",
-      });
+      if (!walletAddress) {
+        setContractStatus('disconnected');
+        return;
+      }
       
-      if (onConnect) onConnect();
-    } catch (error: any) {
-      console.error('Wallet connection failed:', error);
+      // Check for roles
+      const [admin, electionManager, voterManager] = await Promise.all([
+        studentIdWeb3Service.isAdmin(),
+        studentIdWeb3Service.isElectionManager(),
+        studentIdWeb3Service.isVoterManager()
+      ]);
       
-      toast({
-        title: "Connection Failed",
-        description: error.message || "Failed to connect to your wallet. Please ensure MetaMask is installed and unlocked.",
-        variant: "destructive"
-      });
-    } finally {
-      setConnecting(false);
+      setIsAdmin(admin);
+      setIsElectionManager(electionManager);
+      setIsVoterManager(voterManager);
+      
+      // Get blockchain data (where available)
+      try {
+        // Try to get election count
+        const electionCountCall = await studentIdWeb3Service.contract.getElectionCount();
+        setElectionCount(Number(electionCountCall));
+      } catch (error) {
+        console.error('Failed to get election count:', error);
+        setElectionCount(null);
+      }
+      
+      try {
+        // Try to get candidate count
+        const candidateCountCall = await studentIdWeb3Service.contract.getCandidateCount();
+        setCandidateCount(Number(candidateCountCall));
+      } catch (error) {
+        console.error('Failed to get candidate count:', error);
+        setCandidateCount(null);
+      }
+      
+      setContractStatus('connected');
+    } catch (error) {
+      console.error('Failed to check contract status:', error);
+      setContractStatus('disconnected');
     }
   };
   
-  const handleReinitialize = async () => {
-    try {
-      await reinitialize();
-      
-      toast({
-        title: "Blockchain Reconnected",
-        description: "Successfully reconnected to the blockchain network.",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Reconnection Failed",
-        description: error.message || "Failed to reconnect to the blockchain network.",
-        variant: "destructive"
-      });
+  const renderStatusBadge = () => {
+    if (contractStatus === 'checking') {
+      return (
+        <Badge variant="outline" className="bg-muted">
+          <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+          Checking
+        </Badge>
+      );
+    } else if (contractStatus === 'connected') {
+      return (
+        <Badge variant="default" className="bg-green-600">
+          <CheckIcon className="mr-1 h-3 w-3" />
+          Connected
+        </Badge>
+      );
+    } else {
+      return (
+        <Badge variant="destructive">
+          <XIcon className="mr-1 h-3 w-3" />
+          Disconnected
+        </Badge>
+      );
     }
+  };
+  
+  const renderRoleStatus = () => {
+    return (
+      <div className="flex flex-wrap gap-2">
+        <Badge variant={isAdmin ? "default" : "outline"} className={isAdmin ? "bg-green-600" : ""}>
+          Admin
+        </Badge>
+        <Badge variant={isElectionManager ? "default" : "outline"} className={isElectionManager ? "bg-blue-600" : ""}>
+          Election Manager
+        </Badge>
+        <Badge variant={isVoterManager ? "default" : "outline"} className={isVoterManager ? "bg-purple-600" : ""}>
+          Voter Manager
+        </Badge>
+      </div>
+    );
   };
   
   return (
-    <Card className="overflow-hidden">
-      <CardHeader className="bg-muted/50">
-        <CardTitle className="text-lg flex items-center">
-          <Info className="mr-2 h-5 w-5" />
-          Enhanced Blockchain Integration Status
-        </CardTitle>
-        <CardDescription>
-          Status of the connection to the enhanced student ID-based voting contract
-        </CardDescription>
-      </CardHeader>
-      
-      <CardContent className="pt-6 space-y-4">
-        {initializationError && (
-          <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Initialization Error</AlertTitle>
-            <AlertDescription>
-              {initializationError}
-            </AlertDescription>
-          </Alert>
-        )}
-        
-        <div className="grid gap-2">
-          <div className="flex justify-between items-center">
-            <span className="text-sm font-medium">Contract Address:</span>
-            <span className="text-xs font-mono bg-muted p-1 rounded">
-              {contractAddress || 'Not configured'}
-            </span>
-          </div>
-          
-          <div className="flex justify-between items-center">
-            <span className="text-sm font-medium">Blockchain Connection:</span>
-            <Badge variant={isInitialized ? "outline" : "destructive"}>
-              {isInitializing ? 'Connecting...' : isInitialized ? 'Connected' : 'Disconnected'}
-            </Badge>
-          </div>
-          
-          <div className="flex justify-between items-center">
-            <span className="text-sm font-medium">Wallet Status:</span>
-            <Badge variant={isWalletConnected ? "outline" : "secondary"}>
-              {isWalletConnected ? 'Connected' : 'Not Connected'}
-            </Badge>
-          </div>
-          
-          {isWalletConnected && (
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Wallet Address:</span>
-              <span className="text-xs font-mono bg-muted p-1 rounded overflow-hidden text-ellipsis max-w-[200px]">
-                {walletAddress}
-              </span>
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card className="p-4 flex flex-col justify-between">
+          <div className="mb-2">
+            <p className="text-sm font-medium">Contract Status</p>
+            <div className="mt-1">
+              {renderStatusBadge()}
             </div>
+          </div>
+          
+          {contractStatus === 'connected' && (
+            <p className="text-xs text-muted-foreground mt-2">
+              Connected to Polygon Amoy
+            </p>
           )}
-        </div>
-      </CardContent>
-      
-      <CardFooter className="flex gap-2 bg-muted/30 py-4">
-        {!isWalletConnected ? (
-          <Button 
-            variant="default" 
-            className="w-full"
-            onClick={handleConnectWallet}
-            disabled={connecting || !isInitialized}
-          >
-            {connecting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Connecting Wallet...
-              </>
-            ) : (
-              'Connect Wallet'
-            )}
-          </Button>
-        ) : (
-          <Button 
-            variant="outline" 
-            className="w-full"
-            onClick={handleReinitialize}
-            disabled={isInitializing}
-          >
-            {isInitializing ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Reconnecting...
-              </>
-            ) : (
-              'Reconnect'
-            )}
-          </Button>
-        )}
-      </CardFooter>
-    </Card>
+          
+          {contractStatus === 'disconnected' && (
+            <p className="text-xs text-destructive mt-2">
+              <AlertTriangleIcon className="inline h-3 w-3 mr-1" />
+              Wallet connection required
+            </p>
+          )}
+        </Card>
+        
+        <Card className="p-4 flex flex-col justify-between">
+          <div className="mb-2">
+            <p className="text-sm font-medium">Your Roles</p>
+            <div className="mt-1">
+              {contractStatus === 'connected' ? renderRoleStatus() : (
+                <p className="text-xs text-muted-foreground">
+                  Connect wallet to view roles
+                </p>
+              )}
+            </div>
+          </div>
+          
+          {contractStatus === 'connected' && !isAdmin && !isElectionManager && !isVoterManager && (
+            <p className="text-xs text-amber-600 mt-2">
+              <AlertTriangleIcon className="inline h-3 w-3 mr-1" />
+              No admin roles assigned
+            </p>
+          )}
+        </Card>
+        
+        <Card className="p-4 flex flex-col justify-between">
+          <div className="mb-2">
+            <p className="text-sm font-medium">Blockchain Records</p>
+            <div className="mt-1 space-y-1">
+              <div className="flex justify-between items-center">
+                <span className="text-xs">Elections</span>
+                <Badge variant="outline">
+                  {electionCount !== null ? electionCount : '-'}
+                </Badge>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs">Candidates</span>
+                <Badge variant="outline">
+                  {candidateCount !== null ? candidateCount : '-'}
+                </Badge>
+              </div>
+            </div>
+          </div>
+        </Card>
+      </div>
+    </div>
   );
 }

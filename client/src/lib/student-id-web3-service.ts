@@ -86,7 +86,7 @@ export interface Ticket {
 
 class StudentIdWeb3Service {
   private provider: ethers.BrowserProvider | null = null;
-  private contract: any = null;
+  contract: any = null; // Make public for direct access by components
   private signer: ethers.Signer | null = null;
   private isInitialized = false;
   private walletAddress = '';
