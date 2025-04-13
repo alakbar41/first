@@ -60,9 +60,9 @@ contract ImprovedStudentIdVoting is Ownable {
     mapping(uint256 => Candidate) public candidates;
     mapping(uint256 => Ticket) public tickets;
     
-    // Additional mappings for student ID lookups
-    mapping(string => uint256) private studentIdToCandidateId;
-    mapping(string => uint256) private compositeIdToTicketId; // presidentId_vpId format
+    // Additional mappings for student ID lookups (optimized with keccak256 hashes)
+    mapping(bytes32 => uint256) private studentIdHashToCandidateId;
+    mapping(bytes32 => uint256) private compositeIdHashToTicketId; // hash of presidentId_vpId
     
     // Improved relations between entities
     mapping(uint256 => mapping(uint256 => bool)) private electionCandidateMap;  // electionId => candidateId => exists
@@ -86,7 +86,9 @@ contract ImprovedStudentIdVoting is Ownable {
     event CandidateRegistered(uint256 indexed candidateId, string studentId);
     event TicketCreated(uint256 indexed ticketId, string presidentStudentId, string vpStudentId);
     event VoteCast(uint256 indexed electionId, address indexed voter, uint256 nonce);
+    event VoteRejected(uint256 indexed electionId, address indexed voter, string reason);
     event ResultsFinalized(uint256 indexed electionId, uint256 winnerId, uint256 winnerVotes);
+    event TieDetected(uint256 indexed electionId, uint256[] winnerIds, uint256 tiedVoteCount);
     
     /**
      * @dev Constructor sets contract deployer as the owner
@@ -319,6 +321,7 @@ contract ImprovedStudentIdVoting is Ownable {
     
     /**
      * @dev Finalize the results of an election and determine the winner
+     * Enhanced to detect and handle tied elections
      */
     function finalizeResults(uint256 electionId) 
         external 
@@ -337,32 +340,75 @@ contract ImprovedStudentIdVoting is Ownable {
             "Election must be completed to finalize results"
         );
         
-        // Find the winner
+        // Find the winner(s)
         uint256 winnerId = 0;
         uint256 maxVotes = 0;
         
+        // Arrays to track potential ties
+        uint256[] memory tiedCandidates = new uint256[](50); // Arbitrary max size
+        uint256 tieCount = 0;
+        
         if (election.electionType == ElectionType.Senator) {
-            // Find candidate with most votes
+            // Find candidate(s) with most votes
             uint256[] memory candidateIds = electionCandidateIds[electionId];
+            
+            // First pass: find the maximum vote count
             for (uint256 i = 0; i < candidateIds.length; i++) {
                 uint256 candidateId = candidateIds[i];
                 uint256 votes = candidates[candidateId].voteCount;
                 if (votes > maxVotes) {
                     maxVotes = votes;
                     winnerId = candidateId;
+                    // Reset tie tracking when a new maximum is found
+                    tieCount = 0;
+                } else if (votes == maxVotes && maxVotes > 0) {
+                    // If equal votes, track as potential tie
+                    if (tieCount == 0) {
+                        // Add the current leader to the tie list
+                        tiedCandidates[tieCount++] = winnerId;
+                    }
+                    // Add this tied candidate
+                    tiedCandidates[tieCount++] = candidateId;
                 }
             }
         } else {
-            // Find ticket with most votes
+            // Find ticket(s) with most votes
             uint256[] memory ticketIds = electionTicketIds[electionId];
+            
+            // First pass: find the maximum vote count
             for (uint256 i = 0; i < ticketIds.length; i++) {
                 uint256 ticketId = ticketIds[i];
                 uint256 votes = tickets[ticketId].voteCount;
                 if (votes > maxVotes) {
                     maxVotes = votes;
                     winnerId = ticketId;
+                    // Reset tie tracking when a new maximum is found
+                    tieCount = 0;
+                } else if (votes == maxVotes && maxVotes > 0) {
+                    // If equal votes, track as potential tie
+                    if (tieCount == 0) {
+                        // Add the current leader to the tie list
+                        tiedCandidates[tieCount++] = winnerId;
+                    }
+                    // Add this tied candidate
+                    tiedCandidates[tieCount++] = ticketId;
                 }
             }
+        }
+        
+        // Check if there was a tie
+        if (tieCount > 0) {
+            // Create properly sized array for tied candidates/tickets
+            uint256[] memory properTiedCandidates = new uint256[](tieCount);
+            for (uint256 i = 0; i < tieCount; i++) {
+                properTiedCandidates[i] = tiedCandidates[i];
+            }
+            
+            // Emit tie event - winner will still be set to the first one found
+            emit TieDetected(electionId, properTiedCandidates, maxVotes);
+            
+            // In case of a tie, we select the first one found as the winner
+            // This can be refined with additional tie-breaking logic if needed
         }
         
         // Save the winner
@@ -386,9 +432,12 @@ contract ImprovedStudentIdVoting is Ownable {
         // Validate the student ID
         require(bytes(studentId).length > 0, "Student ID cannot be empty");
         
+        // Hash the student ID for efficient storage
+        bytes32 studentIdHash = keccak256(abi.encodePacked(studentId));
+        
         // Ensure student ID is unique
         require(
-            studentIdToCandidateId[studentId] == 0,
+            studentIdHashToCandidateId[studentIdHash] == 0,
             "Candidate with this student ID already exists"
         );
         
@@ -400,8 +449,8 @@ contract ImprovedStudentIdVoting is Ownable {
             voteCount: 0
         });
         
-        // Add student ID mapping
-        studentIdToCandidateId[studentId] = candidateId;
+        // Add student ID hash mapping
+        studentIdHashToCandidateId[studentIdHash] = candidateId;
         
         emit CandidateRegistered(candidateId, studentId);
         
@@ -416,7 +465,8 @@ contract ImprovedStudentIdVoting is Ownable {
         view 
         returns (uint256) 
     {
-        uint256 candidateId = studentIdToCandidateId[studentId];
+        bytes32 studentIdHash = keccak256(abi.encodePacked(studentId));
+        uint256 candidateId = studentIdHashToCandidateId[studentIdHash];
         require(candidateId != 0, "No candidate found with this student ID");
         return candidateId;
     }
@@ -466,12 +516,12 @@ contract ImprovedStudentIdVoting is Ownable {
             "President and VP must be different"
         );
         
-        // Create composite ID
-        string memory compositeId = string(abi.encodePacked(presidentStudentId, "_", vpStudentId));
+        // Create composite ID hash directly (no need for string concatenation)
+        bytes32 compositeIdHash = keccak256(abi.encodePacked(presidentStudentId, "_", vpStudentId));
         
         // Ensure ticket doesn't already exist
         require(
-            compositeIdToTicketId[compositeId] == 0,
+            compositeIdHashToTicketId[compositeIdHash] == 0,
             "Ticket with these student IDs already exists"
         );
         
@@ -484,8 +534,8 @@ contract ImprovedStudentIdVoting is Ownable {
             voteCount: 0
         });
         
-        // Add composite ID mapping
-        compositeIdToTicketId[compositeId] = ticketId;
+        // Add composite ID hash mapping
+        compositeIdHashToTicketId[compositeIdHash] = ticketId;
         
         emit TicketCreated(ticketId, presidentStudentId, vpStudentId);
         
@@ -503,8 +553,8 @@ contract ImprovedStudentIdVoting is Ownable {
         view 
         returns (uint256) 
     {
-        string memory compositeId = string(abi.encodePacked(presidentStudentId, "_", vpStudentId));
-        uint256 ticketId = compositeIdToTicketId[compositeId];
+        bytes32 compositeIdHash = keccak256(abi.encodePacked(presidentStudentId, "_", vpStudentId));
+        uint256 ticketId = compositeIdHashToTicketId[compositeIdHash];
         require(ticketId != 0, "No ticket found with these student IDs");
         return ticketId;
     }
