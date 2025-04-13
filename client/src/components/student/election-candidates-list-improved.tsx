@@ -15,8 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { useStudentIdWeb3 } from "@/hooks/use-student-id-web3";
-import { ConnectWalletButton, CandidateVoteCount } from "@/components/blockchain";
-import { SimpleVoteButton } from "@/components/blockchain/SimpleVoteButton";
+import { ConnectWalletButton, CandidateVoteCount, EnhancedSimpleVoteButton } from "@/components/blockchain";
 import { ResetUserVoteButton } from "@/components/admin/reset-user-vote-button";
 
 interface ElectionCandidatesListProps {
@@ -515,11 +514,11 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                       ) : !isWalletConnected ? (
                         <ConnectWalletButton className="w-full sm:w-auto" />
                       ) : (
-                        <SimpleVoteButton
+                        <EnhancedSimpleVoteButton
                           electionId={election.id}
                           candidateId={president.id} // Using president ID as the ticket ID
-                          blockchainId={election.blockchainId || undefined}
-                          disabled={!isElectionActive() || !isUserEligible() || hasVotedInElection}
+                          studentId={president.studentId || ""}
+                          disabled={!isElectionActive() || !isUserEligible() || hasVotedInElection || !president.studentId}
                           onVoteSuccess={handleVoteSuccess}
                           className="w-full sm:w-auto bg-gradient-to-r from-purple-700 to-purple-600 hover:from-purple-800 hover:to-purple-700 shadow-md"
                         />
@@ -623,11 +622,11 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                         />
                       ) : (
                         <>
-                          <SimpleVoteButton
+                          <EnhancedSimpleVoteButton
                             electionId={election.id}
                             candidateId={candidate.id}
-                            blockchainId={election.blockchainId || undefined}
-                            disabled={!isElectionActive() || !isUserEligible() || hasVotedInElection}
+                            studentId={candidate.studentId || ""}
+                            disabled={!isElectionActive() || !isUserEligible() || hasVotedInElection || !candidate.studentId}
                             onVoteSuccess={handleVoteSuccess}
                             className="w-full"
                             size="lg"
