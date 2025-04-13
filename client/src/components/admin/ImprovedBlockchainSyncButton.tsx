@@ -1,521 +1,493 @@
 import { useState } from 'react';
-import { useToast } from '@/hooks/use-toast';
-import { useStudentIdWeb3 } from '@/hooks/use-student-id-web3';
-import studentIdWeb3Service from '@/lib/student-id-web3-service';
-import { Button } from '@/components/ui/button';
-import { Loader2, Shield, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
+import { useWeb3 } from "@/hooks/use-web3";
+import { Loader2, Cloud, RotateCw, ServerCog } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import studentIdWeb3Service from "@/lib/student-id-web3-service";
+import web3Service from "@/lib/improved-web3-service";
 import { 
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import { Progress } from '@/components/ui/progress';
-import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
-import { useQuery } from '@tanstack/react-query';
-import { Election, Candidate } from '@shared/schema';
-import { ElectionType } from '@/lib/student-id-web3-service';
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface ImprovedBlockchainSyncButtonProps {
+  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link" | null | undefined;
+  size?: "default" | "sm" | "lg" | "icon" | null | undefined;
   className?: string;
 }
 
-export function ImprovedBlockchainSyncButton({ className = '' }: ImprovedBlockchainSyncButtonProps) {
+export function ImprovedBlockchainSyncButton({
+  variant = "outline",
+  size = "sm",
+  className = "",
+}: ImprovedBlockchainSyncButtonProps) {
   const { toast } = useToast();
-  const { isInitialized, walletAddress } = useStudentIdWeb3();
+  const queryClient = useQueryClient();
+  const { 
+    isInitialized,
+    isWalletConnected,
+    connectWallet
+  } = useWeb3();
   
   const [isSyncing, setIsSyncing] = useState(false);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [syncingStep, setSyncingStep] = useState(0);
-  const [progressPercent, setProgressPercent] = useState(0);
-  const [syncMessages, setSyncMessages] = useState<string[]>([]);
-  const [syncErrors, setSyncErrors] = useState<string[]>([]);
-  const [candidateIdMap, setCandidateIdMap] = useState<Record<number, number>>({});
-  
-  // Query for elections
-  const { data: elections, isLoading: isLoadingElections } = useQuery<Election[]>({
-    queryKey: ["/api/elections"],
+  const [showDialog, setShowDialog] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<{ 
+    elections: number; 
+    candidates: number; 
+    registrations: number; 
+    total: number;
+    current: number;
+    errors: string[];
+  }>({
+    elections: 0,
+    candidates: 0,
+    registrations: 0,
+    total: 0,
+    current: 0,
+    errors: [],
+  });
+
+  // Fetch elections from database
+  const { data: elections } = useQuery({
+    queryKey: ['/api/elections'],
     queryFn: async () => {
-      const response = await fetch("/api/elections");
+      const response = await fetch('/api/elections');
       if (!response.ok) throw new Error("Failed to fetch elections");
       return response.json();
     },
-    enabled: isDialogOpen,
+    enabled: showDialog, // Only fetch when dialog is open
   });
-  
-  // Query for candidates
-  const { data: candidates, isLoading: isLoadingCandidates } = useQuery<Candidate[]>({
-    queryKey: ["/api/candidates"],
+
+  // Fetch candidates from database
+  const { data: candidates } = useQuery({
+    queryKey: ['/api/candidates'],
     queryFn: async () => {
-      const response = await fetch("/api/candidates");
+      const response = await fetch('/api/candidates');
       if (!response.ok) throw new Error("Failed to fetch candidates");
       return response.json();
     },
-    enabled: isDialogOpen,
+    enabled: showDialog, // Only fetch when dialog is open
   });
-  
-  // Sync function
-  const startSync = async () => {
-    if (!isInitialized || !walletAddress) {
-      toast({
-        title: "Cannot Sync",
-        description: "Please connect your wallet first",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    if (!elections || !candidates) {
-      toast({
-        title: "Cannot Sync",
-        description: "Unable to load elections or candidates data",
-        variant: "destructive"
-      });
-      return;
-    }
-    
+
+  // Fetch election-candidate relationships
+  const { data: electionCandidates } = useQuery({
+    queryKey: ['/api/election-candidates'],
+    queryFn: async () => {
+      const response = await fetch('/api/election-candidates');
+      if (!response.ok) throw new Error("Failed to fetch election candidates");
+      return response.json();
+    },
+    enabled: showDialog, // Only fetch when dialog is open
+  });
+
+  // Function to get CSRF token
+  const getCsrfToken = async (): Promise<string> => {
     try {
-      setIsSyncing(true);
-      setSyncingStep(1);
-      setProgressPercent(10);
-      setSyncMessages([]);
-      setSyncErrors([]);
-      setCandidateIdMap({});
+      const csrfResponse = await fetch('/api/csrf-token');
+      const csrfData = await csrfResponse.json();
+      return csrfData.csrfToken;
+    } catch (error) {
+      console.error('Failed to get CSRF token:', error);
+      throw new Error('Failed to get CSRF token');
+    }
+  };
+
+  // Register candidate with student ID on blockchain and update database when successful
+  const registerCandidateWithStudentId = async (candidate: any): Promise<number | null> => {
+    try {
+      console.log(`Registering candidate ${candidate.fullName} with student ID ${candidate.studentId}`);
       
-      // Step 1: Register ALL candidates with student IDs FIRST
-      addSyncMessage("Registering candidates with student IDs on blockchain...");
-      
-      const candidateMap: Record<number, number> = {};
-      const totalCandidates = candidates.length;
-      
-      for (let i = 0; i < totalCandidates; i++) {
-        const candidate = candidates[i];
-        
-        try {
-          // Skip if student ID isn't available
-          if (!candidate.studentId) {
-            addSyncError(`Candidate ${candidate.fullName} (ID: ${candidate.id}) has no student ID, skipping registration`);
-            continue;
-          }
-          
-          // First check if candidate already exists
-          let blockchainCandidateId: number;
-          
-          try {
-            blockchainCandidateId = await studentIdWeb3Service.getCandidateIdByStudentId(candidate.studentId);
-            
-            if (blockchainCandidateId > 0) {
-              candidateMap[candidate.id] = blockchainCandidateId;
-              addSyncMessage(`Candidate ${candidate.fullName} (ID: ${candidate.id}, Student ID: ${candidate.studentId}) already exists on blockchain with ID ${blockchainCandidateId}`);
-              continue;
-            }
-          } catch (error) {
-            console.log(`Candidate with Student ID ${candidate.studentId} not found on blockchain, registering...`);
-          }
-          
-          // Register candidate
-          addSyncMessage(`Registering candidate ${candidate.fullName} with Student ID: ${candidate.studentId}...`);
-          blockchainCandidateId = await studentIdWeb3Service.registerCandidate(candidate.studentId);
-          candidateMap[candidate.id] = blockchainCandidateId;
-          
-          addSyncMessage(`Registered candidate ${candidate.fullName} (ID: ${candidate.id}) with blockchain ID ${blockchainCandidateId}`);
-          
-          // Update progress
-          setProgressPercent(10 + Math.floor((i / totalCandidates) * 30));
-        } catch (error: any) {
-          // Check if error message contains "already registered"
-          if (error.message && error.message.toLowerCase().includes("already registered")) {
-            addSyncMessage(`Candidate with student ID ${candidate.studentId} already registered`);
-            
-            // Try to get the blockchain ID for this student ID
-            try {
-              const blockchainCandidateId = await studentIdWeb3Service.getCandidateIdByStudentId(candidate.studentId);
-              candidateMap[candidate.id] = blockchainCandidateId;
-              addSyncMessage(`Retrieved blockchain ID ${blockchainCandidateId} for existing candidate ${candidate.fullName}`);
-            } catch (idError: any) {
-              addSyncError(`Failed to get blockchain ID for candidate ${candidate.fullName}: ${idError.message || idError}`);
-            }
-          } else {
-            addSyncError(`Failed to register candidate ${candidate.fullName}: ${error.message || error}`);
-          }
-        }
+      // First check if this candidate is already registered on blockchain
+      try {
+        const existingId = await studentIdWeb3Service.getCandidateIdByStudentId(candidate.studentId);
+        console.log(`Candidate with student ID ${candidate.studentId} already registered with ID ${existingId}`);
+        return existingId;
+      } catch (error) {
+        // If not found, proceed with registration
+        console.log(`Candidate with student ID ${candidate.studentId} not found, registering now`);
       }
       
-      // Verify all candidates were registered successfully
-      if (Object.keys(candidateMap).length === 0) {
-        throw new Error("No candidates were registered successfully. Cannot proceed with election creation.");
-      }
+      // Register candidate on blockchain
+      const blockchainId = await studentIdWeb3Service.registerCandidate(candidate.studentId);
+      console.log(`Successfully registered candidate with student ID ${candidate.studentId} as blockchain ID ${blockchainId}`);
       
-      setCandidateIdMap(candidateMap);
-      addSyncMessage(`Successfully registered ${Object.keys(candidateMap).length} candidates on blockchain`);
-      
-      // Step 2: Create each election AND immediately add its candidates
-      setSyncingStep(2);
-      setProgressPercent(40);
-      addSyncMessage("Creating elections and adding candidates in one process...");
-      
-      const totalElections = elections.length;
-      
-      for (let i = 0; i < totalElections; i++) {
-        const election = elections[i];
-        
-        try {
-          // Get all candidates for this election FIRST to ensure they exist
-          const candidatesResponse = await fetch(`/api/elections/${election.id}/candidates`);
-          if (!candidatesResponse.ok) {
-            throw new Error(`Failed to fetch candidates for election ${election.id}`);
-          }
-          const electionCandidates = await candidatesResponse.json();
-          
-          if (electionCandidates.length === 0) {
-            addSyncError(`Election "${election.name}" has no candidates assigned. Skipping creation.`);
-            continue;
-          }
-          
-          // Convert position to ElectionType
-          const electionType = election.position === 'Senator' ? ElectionType.Senator : ElectionType.PresidentVP;
-          
-          // Convert dates to Unix timestamps (seconds)
-          const startTime = Math.floor(new Date(election.startDate).getTime() / 1000);
-          const endTime = Math.floor(new Date(election.endDate).getTime() / 1000);
-          
-          // Log the timestamps for debugging
-          addSyncMessage(`Election ${election.name} (ID: ${election.id}) timestamps - Start: ${startTime}, End: ${endTime}`);
-          
-          // Verify we have blockchain IDs for all candidates in this election
-          const missingCandidates = electionCandidates.filter((ec: any) => !candidateMap[ec.candidateId]);
-          if (missingCandidates.length > 0) {
-            addSyncError(`Election "${election.name}" has ${missingCandidates.length} candidates with missing blockchain IDs. Trying to register them now...`);
-            
-            // Try to register them again
-            for (const ec of missingCandidates) {
-              const candidateDetails = candidates.find(c => c.id === ec.candidateId);
-              if (!candidateDetails || !candidateDetails.studentId) {
-                addSyncError(`Cannot find details or student ID for candidate ID: ${ec.candidateId}`);
-                continue;
-              }
-              
-              try {
-                addSyncMessage(`Re-registering candidate ${candidateDetails.fullName} with Student ID: ${candidateDetails.studentId}...`);
-                const blockchainCandidateId = await studentIdWeb3Service.registerCandidate(candidateDetails.studentId);
-                candidateMap[candidateDetails.id] = blockchainCandidateId;
-                addSyncMessage(`Re-registered candidate ${candidateDetails.fullName} with blockchain ID ${blockchainCandidateId}`);
-              } catch (regError: any) {
-                if (regError.message && regError.message.toLowerCase().includes("already registered")) {
-                  try {
-                    const blockchainCandidateId = await studentIdWeb3Service.getCandidateIdByStudentId(candidateDetails.studentId);
-                    candidateMap[candidateDetails.id] = blockchainCandidateId;
-                    addSyncMessage(`Retrieved blockchain ID ${blockchainCandidateId} for existing candidate ${candidateDetails.fullName}`);
-                  } catch (idError: any) {
-                    addSyncError(`Failed to get blockchain ID for candidate ${candidateDetails.fullName}: ${idError.message || idError}`);
-                  }
-                } else {
-                  addSyncError(`Failed to re-register candidate: ${regError.message || regError}`);
-                }
-              }
-            }
-          }
-          
-          // Create election on blockchain
-          addSyncMessage(`Creating election "${election.name}" (ID: ${election.id}) on blockchain...`);
-          
-          try {
-            await studentIdWeb3Service.createElection(
-              electionType,
-              startTime,
-              endTime
-            );
-            
-            // Update the election with blockchain ID in database using the timestamp as identifier
-            // This is critical for ensuring we use the same identifier in both systems
-            try {
-              const updateResponse = await fetch(`/api/elections/${election.id}/blockchain-id`, {
-                method: 'PATCH',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  blockchainId: String(startTime), // ALWAYS use timestamp as blockchain ID, stored as string
-                }),
-              });
-              
-              if (updateResponse.ok) {
-                addSyncMessage(`Successfully updated election ${election.id} with blockchain timestamp identifier: ${startTime}`);
-                addSyncMessage(`⚠️ IMPORTANT: Always use this timestamp (${startTime}) as the election ID for blockchain operations`);
-              }
-            } catch (updateError: any) {
-              addSyncError(`Failed to update election database with blockchain ID: ${updateError.message || updateError}`);
-            }
-            
-            addSyncMessage(`Created election "${election.name}" (ID: ${election.id}) on blockchain with ID ${startTime}`);
-            
-            // Immediately add candidates to this election
-            addSyncMessage(`Adding ${electionCandidates.length} candidates to election "${election.name}"...`);
-            
-            for (const candidate of electionCandidates) {
-              // Get the database candidate ID
-              const candidateDetails = candidates.find(c => c.id === candidate.candidateId);
-              if (!candidateDetails) {
-                addSyncError(`Could not find candidate details for ID ${candidate.candidateId}`);
-                continue;
-              }
-              
-              const blockchainCandidateId = candidateMap[candidate.candidateId];
-              
-              if (!blockchainCandidateId) {
-                addSyncError(`No blockchain mapping for candidate ${candidateDetails.fullName} (ID: ${candidate.candidateId})`);
-                continue;
-              }
-              
-              try {
-                addSyncMessage(`Adding candidate ${candidateDetails.fullName} (Student ID: ${candidateDetails.studentId}, Blockchain ID: ${blockchainCandidateId}) to election "${election.name}" (timestamp: ${startTime})...`);
-                
-                await studentIdWeb3Service.addCandidateToElection(startTime, blockchainCandidateId);
-                
-                addSyncMessage(`Successfully added candidate ${candidateDetails.fullName} to election "${election.name}"`);
-              } catch (error: any) {
-                // Check if error contains "already added"
-                if (error.message && error.message.toLowerCase().includes("already added")) {
-                  addSyncMessage(`Candidate ${candidateDetails.fullName} already added to election "${election.name}"`);
-                } else {
-                  addSyncError(`Failed to add candidate ${candidateDetails.fullName} to election "${election.name}": ${error.message || error}`);
-                }
-              }
-            }
-          } catch (electionError: any) {
-            // Check if error message contains "already exists"
-            if (electionError.message && electionError.message.toLowerCase().includes("already exists")) {
-              addSyncMessage(`Election "${election.name}" already exists on blockchain with timestamp ${startTime}`);
-              
-              // Update the database with the timestamp identifier to ensure consistency
-              try {
-                const updateResponse = await fetch(`/api/elections/${election.id}/blockchain-id`, {
-                  method: 'PATCH',
-                  headers: {
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({
-                    blockchainId: String(startTime), // ALWAYS use timestamp as blockchain ID
-                  }),
-                });
-                
-                if (updateResponse.ok) {
-                  addSyncMessage(`⚠️ IMPORTANT: Updated existing election in database with timestamp ${startTime}`);
-                  addSyncMessage(`Now using timestamp ${startTime} as consistent identifier for "${election.name}"`);
-                }
-              } catch (updateError: any) {
-                addSyncError(`Failed to update database with timestamp: ${updateError.message || updateError}`);
-              }
-              
-              // Still try to add candidates to this existing election using the timestamp
-              addSyncMessage(`Adding candidates to existing election "${election.name}" using timestamp ${startTime}...`);
-              
-              for (const candidate of electionCandidates) {
-                const candidateDetails = candidates.find(c => c.id === candidate.candidateId);
-                if (!candidateDetails) continue;
-                
-                const blockchainCandidateId = candidateMap[candidate.candidateId];
-                if (!blockchainCandidateId) continue;
-                
-                try {
-                  await studentIdWeb3Service.addCandidateToElection(startTime, blockchainCandidateId);
-                  addSyncMessage(`Added candidate ${candidateDetails.fullName} to existing election using timestamp ${startTime}`);
-                } catch (addError: any) {
-                  if (addError.message && addError.message.toLowerCase().includes("already added")) {
-                    addSyncMessage(`Candidate ${candidateDetails.fullName} already exists in election "${election.name}" (timestamp: ${startTime})`);
-                  } else {
-                    addSyncError(`Failed to add to existing election: ${addError.message || addError}`);
-                  }
-                }
-              }
-            } else {
-              addSyncError(`Failed to create election "${election.name}": ${electionError.message || electionError}`);
-            }
-          }
-          
-          // Update progress
-          setProgressPercent(40 + Math.floor((i / totalElections) * 60));
-        } catch (error: any) {
-          addSyncError(`Failed to process election "${election.name}": ${error.message || error}`);
-        }
-      }
-      
-      // Skip Step 3 as we already linked candidates to elections in Step 2
-      setSyncingStep(3);
-      setProgressPercent(100);
-      addSyncMessage("All candidates already linked to elections in previous step!");
-      
-      setSyncingStep(4);
-      setProgressPercent(100);
-      addSyncMessage("Synchronization completed!");
-      
-      toast({
-        title: "Sync Completed",
-        description: syncErrors.length ? "Completed with some errors. See details." : "All items synchronized successfully",
-        variant: syncErrors.length ? "destructive" : "default"
+      // Update candidate in database with blockchain ID
+      const csrfToken = await getCsrfToken();
+      const response = await fetch(`/api/candidates/${candidate.id}/blockchain-id`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken
+        },
+        body: JSON.stringify({ blockchainId }),
       });
       
+      if (!response.ok) {
+        console.warn(`Failed to update candidate ${candidate.id} with blockchain ID ${blockchainId} in database`);
+      } else {
+        console.log(`Updated candidate ${candidate.id} with blockchain ID ${blockchainId} in database`);
+      }
+      
+      return blockchainId;
     } catch (error: any) {
-      console.error("Sync error:", error);
-      toast({
-        title: "Sync Failed",
-        description: error.message || "An unexpected error occurred",
-        variant: "destructive"
+      console.error(`Failed to register candidate ${candidate.fullName} with student ID ${candidate.studentId}:`, error);
+      throw error;
+    }
+  };
+
+  // Deploy an election to blockchain and update database with blockchain ID
+  const deployElectionToBlockchain = async (election: any): Promise<number | null> => {
+    try {
+      // Skip if already has blockchain ID
+      if (election.blockchainId) {
+        console.log(`Election ${election.id} already has blockchain ID ${election.blockchainId}`);
+        return election.blockchainId;
+      }
+      
+      console.log(`Deploying election ${election.name} to blockchain`);
+      
+      // Convert dates to timestamps
+      const startTimestamp = Math.floor(new Date(election.startDate).getTime() / 1000);
+      const endTimestamp = Math.floor(new Date(election.endDate).getTime() / 1000);
+      
+      // Map election type
+      const electionType = election.position.toLowerCase().includes('president') ? 1 : 0;
+      
+      // Deploy to blockchain
+      const blockchainId = await web3Service.createElection(
+        electionType,
+        startTimestamp,
+        endTimestamp
+      );
+      
+      console.log(`Successfully deployed election ${election.name} as blockchain ID ${blockchainId}`);
+      
+      // Update election in database with blockchain ID
+      const csrfToken = await getCsrfToken();
+      const response = await fetch(`/api/elections/${election.id}/blockchain-id`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken
+        },
+        body: JSON.stringify({ blockchainId }),
       });
-      addSyncError(`Sync failed: ${error.message || error}`);
+      
+      if (!response.ok) {
+        console.warn(`Failed to update election ${election.id} with blockchain ID ${blockchainId} in database`);
+      } else {
+        console.log(`Updated election ${election.id} with blockchain ID ${blockchainId} in database`);
+      }
+      
+      return blockchainId;
+    } catch (error: any) {
+      console.error(`Failed to deploy election ${election.name}:`, error);
+      throw error;
+    }
+  };
+
+  // Register a candidate for an election on blockchain
+  const registerCandidateForElection = async (candidateId: number, electionId: number): Promise<void> => {
+    try {
+      // Find candidate in our list
+      const candidate = candidates?.find(c => c.id === candidateId);
+      const election = elections?.find(e => e.id === electionId);
+      
+      if (!candidate || !election) {
+        throw new Error(`Candidate ${candidateId} or election ${electionId} not found`);
+      }
+      
+      console.log(`Registering candidate ${candidate.fullName} for election ${election.name}`);
+      
+      // Get blockchain IDs
+      let blockchainCandidateId: number | null = null;
+      let blockchainElectionId: number | null = null;
+      
+      // Get or register candidate on blockchain
+      try {
+        blockchainCandidateId = await registerCandidateWithStudentId(candidate);
+      } catch (error) {
+        console.error(`Failed to register candidate ${candidate.fullName}:`, error);
+        throw error;
+      }
+      
+      // Get or deploy election to blockchain
+      try {
+        blockchainElectionId = await deployElectionToBlockchain(election);
+      } catch (error) {
+        console.error(`Failed to deploy election ${election.name}:`, error);
+        throw error;
+      }
+      
+      if (!blockchainCandidateId || !blockchainElectionId) {
+        throw new Error(`Could not get blockchain IDs for candidate ${candidateId} or election ${electionId}`);
+      }
+      
+      // Register candidate for election on blockchain
+      await studentIdWeb3Service.registerCandidateForElection(
+        blockchainElectionId,
+        blockchainCandidateId
+      );
+      
+      console.log(`Successfully registered candidate ${candidate.fullName} for election ${election.name} on blockchain`);
+    } catch (error: any) {
+      console.error(`Failed to register candidate ${candidateId} for election ${electionId}:`, error);
+      throw error;
+    }
+  };
+
+  const handleSync = async () => {
+    if (!isWalletConnected) {
+      try {
+        await connectWallet();
+      } catch (error) {
+        toast({
+          title: "Wallet Connection Required",
+          description: "Please connect your wallet to sync with blockchain.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    setIsSyncing(true);
+    setSyncStatus({
+      elections: 0,
+      candidates: 0,
+      registrations: 0,
+      total: 0,
+      current: 0,
+      errors: [],
+    });
+
+    try {
+      // Calculate total operations
+      const totalOperations = (elections?.length || 0) + (candidates?.length || 0) + (electionCandidates?.length || 0);
+      setSyncStatus(prev => ({ ...prev, total: totalOperations }));
+
+      // 1. Register all candidates on blockchain by student ID
+      if (candidates && candidates.length > 0) {
+        for (const candidate of candidates) {
+          try {
+            await registerCandidateWithStudentId(candidate);
+            
+            setSyncStatus(prev => ({ 
+              ...prev, 
+              candidates: prev.candidates + 1,
+              current: prev.current + 1
+            }));
+          } catch (error: any) {
+            console.error(`Failed to register candidate ${candidate.id}:`, error);
+            setSyncStatus(prev => ({ 
+              ...prev,
+              current: prev.current + 1,
+              errors: [...prev.errors, `Candidate ${candidate.id} (${candidate.fullName}): ${error.message || 'Failed to register'}`]
+            }));
+          }
+        }
+      }
+
+      // 2. Deploy all elections to blockchain
+      if (elections && elections.length > 0) {
+        for (const election of elections) {
+          try {
+            await deployElectionToBlockchain(election);
+            
+            setSyncStatus(prev => ({ 
+              ...prev, 
+              elections: prev.elections + 1,
+              current: prev.current + 1
+            }));
+          } catch (error: any) {
+            console.error(`Failed to deploy election ${election.id}:`, error);
+            setSyncStatus(prev => ({ 
+              ...prev,
+              current: prev.current + 1,
+              errors: [...prev.errors, `Election ${election.id} (${election.name}): ${error.message || 'Failed to deploy'}`]
+            }));
+          }
+        }
+      }
+
+      // 3. Register all candidates for elections on blockchain
+      if (electionCandidates && electionCandidates.length > 0) {
+        for (const ec of electionCandidates) {
+          try {
+            await registerCandidateForElection(ec.candidateId, ec.electionId);
+            
+            setSyncStatus(prev => ({ 
+              ...prev, 
+              registrations: prev.registrations + 1,
+              current: prev.current + 1
+            }));
+          } catch (error: any) {
+            console.error(`Failed to register candidate ${ec.candidateId} for election ${ec.electionId}:`, error);
+            setSyncStatus(prev => ({ 
+              ...prev,
+              current: prev.current + 1,
+              errors: [...prev.errors, `Registration for candidate ${ec.candidateId} in election ${ec.electionId}: ${error.message || 'Failed'}`]
+            }));
+          }
+        }
+      }
+
+      // Invalidate queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ['/api/elections'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/candidates'] });
+
+      toast({
+        title: "Blockchain Sync Completed",
+        description: `Successfully synced ${syncStatus.elections} elections, ${syncStatus.candidates} candidates, and ${syncStatus.registrations} election registrations.`,
+        variant: "default",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Blockchain Sync Failed",
+        description: error.message || "Failed to sync with blockchain",
+        variant: "destructive",
+      });
     } finally {
       setIsSyncing(false);
     }
   };
-  
-  const addSyncMessage = (message: string) => {
-    setSyncMessages(prev => [...prev, message]);
-  };
-  
-  const addSyncError = (error: string) => {
-    setSyncErrors(prev => [...prev, error]);
-  };
-  
-  const syncButtonText = () => {
-    if (!isInitialized) return "Connect Wallet to Sync";
-    if (isSyncing) return "Syncing...";
-    return "Synchronize with Blockchain";
-  };
-  
+
   return (
-    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-      <DialogTrigger asChild>
-        <Button 
-          variant="default" 
-          className={cn("bg-purple-600 hover:bg-purple-700", className)}
-          onClick={() => {
-            if (!isInitialized) {
-              toast({
-                title: "Wallet Not Connected",
-                description: "Please connect your wallet first",
-                variant: "destructive"
-              });
-            } else {
-              setIsDialogOpen(true);
-            }
-          }}
-          disabled={isSyncing || !isInitialized}
-        >
-          {isSyncing ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <RefreshCw className="mr-2 h-4 w-4" />
-          )}
-          {syncButtonText()}
-        </Button>
-      </DialogTrigger>
-      
-      <DialogContent className="sm:max-w-[550px]">
-        <DialogHeader>
-          <DialogTitle>Blockchain Synchronization</DialogTitle>
-          <DialogDescription>
-            Sync elections and candidates from the database to the blockchain using student IDs
-          </DialogDescription>
-        </DialogHeader>
-        
-        <div className="py-4 space-y-4">
-          {isLoadingElections || isLoadingCandidates ? (
-            <div className="flex items-center justify-center p-4">
-              <Loader2 className="h-6 w-6 animate-spin mr-2" />
-              <span>Loading data...</span>
+    <>
+      <Button
+        variant={variant}
+        size={size}
+        className={`${className} gap-2`}
+        onClick={() => setShowConfirmDialog(true)}
+        disabled={isSyncing || !isInitialized}
+      >
+        {isSyncing ? (
+          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+        ) : (
+          <RotateCw className="h-4 w-4 mr-2" />
+        )}
+        SYNC WITH BLOCKCHAIN
+      </Button>
+
+      {/* Confirmation Dialog */}
+      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sync with Blockchain</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will perform a full synchronization between your database and the blockchain. 
+              The process will:
+              
+              <ul className="list-disc pl-5 my-2 space-y-1 text-sm">
+                <li>Register all candidates on the blockchain with their student IDs</li>
+                <li>Deploy all elections to the blockchain</li>
+                <li>Register candidates for their respective elections on the blockchain</li>
+              </ul>
+              
+              <p className="mt-2">Make sure you have MetaMask installed and connected to Polygon Amoy testnet.</p>
+              <p className="mt-2 font-medium">Are you sure you want to proceed?</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              setShowConfirmDialog(false);
+              setShowDialog(true);
+            }}>
+              Proceed
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Sync Status Dialog */}
+      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Blockchain Synchronization</DialogTitle>
+            <DialogDescription>
+              {isSyncing ? "Synchronizing with blockchain..." : "Blockchain synchronization complete"}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4 space-y-4">
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Candidate Registrations:</span>
+                <span className="font-medium">{syncStatus.candidates} / {candidates?.length || 0}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Election Deployments:</span>
+                <span className="font-medium">{syncStatus.elections} / {elections?.length || 0}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Election-Candidate Registrations:</span>
+                <span className="font-medium">{syncStatus.registrations} / {electionCandidates?.length || 0}</span>
+              </div>
+
+              {/* Progress bar */}
+              <div className="w-full bg-gray-200 rounded-full h-2.5 my-4">
+                <div 
+                  className="bg-purple-600 h-2.5 rounded-full transition-all duration-300" 
+                  style={{ 
+                    width: syncStatus.total > 0 
+                      ? `${(syncStatus.current / syncStatus.total) * 100}%` 
+                      : '0%' 
+                  }}
+                ></div>
+              </div>
             </div>
-          ) : (
-            <>
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <h4 className="text-sm font-medium">Database Summary</h4>
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div className="bg-muted p-2 rounded flex justify-between">
-                    <span>Elections:</span>
-                    <Badge variant="outline">{elections?.length || 0}</Badge>
-                  </div>
-                  <div className="bg-muted p-2 rounded flex justify-between">
-                    <span>Candidates:</span>
-                    <Badge variant="outline">{candidates?.length || 0}</Badge>
-                  </div>
+
+            {/* Error list */}
+            {syncStatus.errors.length > 0 && (
+              <div className="space-y-2 mt-4">
+                <h4 className="font-medium text-sm text-red-600">Errors:</h4>
+                <div className="max-h-40 overflow-y-auto border border-red-200 rounded bg-red-50 p-2">
+                  <ul className="text-xs text-red-800 space-y-1">
+                    {syncStatus.errors.map((error, index) => (
+                      <li key={index}>{error}</li>
+                    ))}
+                  </ul>
                 </div>
               </div>
-              
-              {isSyncing && (
-                <div className="space-y-2">
-                  <h4 className="text-sm font-medium">Sync Progress</h4>
-                  <Progress value={progressPercent} className="h-2" />
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>Step {syncingStep} of 4</span>
-                    <span>{progressPercent}%</span>
-                  </div>
-                </div>
-              )}
-              
-              {(syncMessages.length > 0 || syncErrors.length > 0) && (
-                <div className="space-y-2">
-                  <h4 className="text-sm font-medium">Sync Log</h4>
-                  <div className="bg-muted rounded-md p-2 text-xs font-mono h-48 overflow-y-auto">
-                    {syncMessages.map((message, index) => (
-                      <div key={`msg-${index}`} className="text-slate-700 dark:text-slate-300">
-                        <span className="text-green-600 dark:text-green-400">✓</span> {message}
-                      </div>
-                    ))}
-                    {syncErrors.map((error, index) => (
-                      <div key={`err-${index}`} className="text-red-600 dark:text-red-400">
-                        <span>✗</span> {error}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              {syncErrors.length > 0 && !isSyncing && (
-                <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md p-3 flex items-start space-x-2">
-                  <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <h4 className="text-sm font-medium text-amber-800 dark:text-amber-300">Warning</h4>
-                    <p className="text-xs text-amber-700 dark:text-amber-400">
-                      {syncErrors.length} error(s) occurred during synchronization. Some items may not have been properly synchronized.
-                    </p>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-        
-        <DialogFooter>
-          {!isSyncing && (
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-              Close
-            </Button>
-          )}
-          
-          <Button
-            onClick={startSync}
-            disabled={isSyncing || isLoadingElections || isLoadingCandidates}
-            className="bg-purple-600 hover:bg-purple-700"
-          >
+            )}
+          </div>
+
+          <DialogFooter>
             {isSyncing ? (
-              <>
+              <Button disabled>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Syncing...
-              </>
+                Synchronizing...
+              </Button>
             ) : (
               <>
-                <Shield className="mr-2 h-4 w-4" />
-                Start Sync
+                <Button variant="outline" onClick={() => setShowDialog(false)}>
+                  Close
+                </Button>
+                <Button onClick={handleSync}>
+                  <ServerCog className="mr-2 h-4 w-4" />
+                  Start Sync
+                </Button>
               </>
             )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

@@ -563,6 +563,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Update a candidate's blockchain ID (after successful registration)
+  app.patch("/api/candidates/:id/blockchain-id", isAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid candidate ID" });
+      }
+      
+      const { blockchainId } = req.body;
+      if (typeof blockchainId !== 'number' && typeof blockchainId !== 'string') {
+        return res.status(400).json({ message: "Valid blockchain ID is required" });
+      }
+      
+      const candidate = await storage.getCandidate(id);
+      if (!candidate) {
+        return res.status(404).json({ message: "Candidate not found" });
+      }
+      
+      // If candidate already has a blockchain ID, don't update it
+      if (candidate.blockchainId !== null && candidate.blockchainId !== undefined) {
+        console.log(`Candidate ${id} already has blockchainId ${candidate.blockchainId}, refusing to update to ${blockchainId}`);
+        return res.status(409).json({ 
+          message: "Candidate already has a blockchain ID",
+          detail: "This candidate has already been registered on the blockchain. The blockchain ID cannot be changed.",
+          currentBlockchainId: candidate.blockchainId
+        });
+      }
+      
+      console.log(`Updating blockchain ID for candidate ${id} to ${blockchainId}`);
+      console.log(`Candidate student ID: ${candidate.studentId} (used as stable identifier for blockchain mapping)`);
+      
+      const updatedCandidate = await storage.updateCandidate(id, { blockchainId: Number(blockchainId) });
+      
+      console.log(`Candidate ${id} (${candidate.fullName}) now has blockchain ID ${blockchainId}`);
+      
+      res.json(updatedCandidate);
+    } catch (error: any) {
+      console.error("Error updating candidate blockchain ID:", error);
+      res.status(500).json({ message: error.message || "Failed to update candidate blockchain ID" });
+    }
+  });
+  
   // Check if a candidate is in any election (either as main candidate or running mate)
   app.get("/api/candidates/:id/in-elections", isAdmin, async (req, res) => {
     try {
