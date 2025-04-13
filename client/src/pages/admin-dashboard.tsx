@@ -1,6 +1,6 @@
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
-import { Plus, Search, X, Filter } from "lucide-react";
+import { Plus, Search, X, Filter, Server } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Election } from "@shared/schema";
@@ -313,7 +313,7 @@ export default function AdminDashboard() {
                     // We'll set this custom filter and handle separately
                   }}
                 >
-                  <ServerIcon className="mr-1 h-4 w-4" />
+                  <Server className="mr-1 h-4 w-4" />
                   Blockchain Deployed
                 </button>
                 <button 
@@ -385,7 +385,7 @@ export default function AdminDashboard() {
                   </Pagination>
                 </div>
               </>
-            )
+            )}
           </div>
         </div>
       </main>

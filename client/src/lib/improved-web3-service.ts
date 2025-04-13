@@ -572,13 +572,15 @@ Technical error: ${gasError.message}`);
         } else {
           console.warn(`Failed to update election ${electionId} status. Current status: ${finalDetails.status}, Target status: ${targetStatus}`);
         }
-      } catch (directError) {
+      } catch (directError: unknown) {
         console.error(`Direct update method failed:`, directError);
-        throw new Error(`Failed to update election status: ${directError.message}`);
+        const errorMessage = directError instanceof Error ? directError.message : 'Unknown error';
+        throw new Error(`Failed to update election status: ${errorMessage}`);
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error(`Election status update failed:`, error);
-      throw new Error(`Failed to update election status: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Failed to update election status: ${errorMessage}`);
     }
   }
   

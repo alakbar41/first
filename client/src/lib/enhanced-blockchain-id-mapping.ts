@@ -133,45 +133,8 @@ export async function mapTicketFromWeb2ToWeb3(ticketId: number): Promise<number 
   }
 }
 
-// Helper function to get vote count for a candidate using enhanced ID mapping
-export async function getEnhancedCandidateVoteCount(candidateId: number): Promise<number> {
-  try {
-    // Map Web2 candidate ID to Web3 candidate ID
-    const blockchainCandidateId = await mapCandidateFromWeb2ToWeb3(candidateId);
-    
-    if (!blockchainCandidateId) {
-      console.warn(`Could not map candidate ${candidateId} to blockchain ID`);
-      return 0;
-    }
-    
-    // Get vote count from blockchain
-    const voteCount = await studentIdWeb3Service.getCandidateVoteCount(blockchainCandidateId);
-    return voteCount;
-  } catch (error: any) {
-    console.error(`Failed to get vote count for candidate ${candidateId}:`, error);
-    return 0;
-  }
-}
-
-// Helper function to get vote count for a ticket using enhanced ID mapping
-export async function getEnhancedTicketVoteCount(ticketId: number): Promise<number> {
-  try {
-    // Map Web2 ticket ID to Web3 ticket ID
-    const blockchainTicketId = await mapTicketFromWeb2ToWeb3(ticketId);
-    
-    if (!blockchainTicketId) {
-      console.warn(`Could not map ticket ${ticketId} to blockchain ID`);
-      return 0;
-    }
-    
-    // Get vote count from blockchain
-    const voteCount = await studentIdWeb3Service.getTicketVoteCount(blockchainTicketId);
-    return voteCount;
-  } catch (error) {
-    console.error(`Failed to get vote count for ticket ${ticketId}:`, error);
-    return 0;
-  }
-}
+// Note: The previous getEnhancedCandidateVoteCount and getEnhancedTicketVoteCount functions
+// have been removed as they were not used in the current application version
 
 // Helper function for voting using enhanced ID mapping
 export async function voteForCandidateEnhanced(

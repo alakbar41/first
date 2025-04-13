@@ -168,11 +168,12 @@ export async function getBlockchainCandidateId(
     }
     
     return blockchainCandidateId;
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error mapping candidate ID:', error);
     
     // Never use a fallback ID - throw an error instead for proper error handling
-    throw new Error(`Unable to map candidate ${databaseCandidateId} in election ${databaseElectionId} to blockchain ID: ${error.message}`);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    throw new Error(`Unable to map candidate ${databaseCandidateId} in election ${databaseElectionId} to blockchain ID: ${errorMessage}`);
   }
 }
 
