@@ -553,8 +553,40 @@ class StudentIdWeb3Service {
   }
 
   async connectWallet(): Promise<string> {
-    await this.initializeIfNeeded();
-    return this.walletAddress;
+    try {
+      if (!window.ethereum) {
+        throw new Error('MetaMask is not installed. Please install MetaMask to use blockchain features.');
+      }
+      
+      console.log('Explicitly requesting accounts from MetaMask...');
+      // Request accounts from MetaMask - this is the key step that's missing
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      
+      if (!accounts || accounts.length === 0) {
+        throw new Error('No accounts returned from MetaMask');
+      }
+      
+      // Then initialize the provider and contract
+      const ethersProvider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await ethersProvider.getSigner();
+      this.signer = signer;
+      this.walletAddress = await signer.getAddress();
+      
+      console.log('Connected to wallet:', this.walletAddress);
+      
+      // Initialize contract
+      this.contract = new ethers.Contract(
+        CONTRACT_ADDRESS,
+        IMPROVED_STUDENT_ID_CONTRACT_ABI,
+        signer
+      );
+      
+      this.isInitialized = true;
+      return this.walletAddress;
+    } catch (error) {
+      console.error('Failed to connect wallet:', error);
+      throw error;
+    }
   }
   
   // Role management functions

@@ -344,20 +344,30 @@ export function EnhancedSimpleVoteButton({
     }
   };
   
+  // Enhanced button rendering logic with debug info
   return (
-    <Button
-      variant={variant}
-      size={size}
-      className={className}
-      onClick={handleVote}
-      disabled={isVoting || disabled || !isInitialized}
-    >
-      {isVoting ? (
-        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-      ) : (
-        <VoteIcon className="mr-2 h-4 w-4" />
-      )}
-      {getButtonText()}
-    </Button>
+    <>
+      <Button
+        variant={variant}
+        size={size}
+        className={className}
+        onClick={handleVote}
+        disabled={isVoting || disabled}
+      >
+        {isVoting ? (
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        ) : (
+          <VoteIcon className="mr-2 h-4 w-4" />
+        )}
+        {getButtonText()}
+      </Button>
+      
+      {/* Add hidden debug info - remove in production */}
+      <div className="hidden">
+        <p>isInitialized: {isInitialized ? 'Yes' : 'No'}</p>
+        <p>isVoting: {isVoting ? 'Yes' : 'No'}</p>
+        <p>voteState: {voteState}</p>
+      </div>
+    </>
   );
 }
