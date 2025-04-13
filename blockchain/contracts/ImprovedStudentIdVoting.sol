@@ -517,7 +517,7 @@ contract ImprovedStudentIdVoting is AccessControl {
      */
     function addCandidateToElection(uint256 electionId, uint256 candidateId) 
         external 
-        onlyOwner 
+        onlyRole(ELECTION_MANAGER_ROLE) 
         electionExists(electionId)
         candidateExists(candidateId)
     {
@@ -546,7 +546,7 @@ contract ImprovedStudentIdVoting is AccessControl {
         string calldata vpStudentId
     ) 
         external 
-        onlyOwner 
+        onlyRole(ELECTION_MANAGER_ROLE)
         returns (uint256)
     {
         // Validate student IDs
@@ -605,7 +605,7 @@ contract ImprovedStudentIdVoting is AccessControl {
      */
     function addTicketToElection(uint256 electionId, uint256 ticketId)
         external
-        onlyOwner
+        onlyRole(ELECTION_MANAGER_ROLE)
         electionExists(electionId)
         ticketExists(ticketId)
     {
@@ -906,5 +906,75 @@ contract ImprovedStudentIdVoting is AccessControl {
             election.totalVotesCast,
             election.resultsFinalized
         );
+    }
+    
+    /**
+     * @dev Check if an address has a specific role
+     */
+    function hasRole(bytes32 role, address account) public view override returns (bool) {
+        return super.hasRole(role, account);
+    }
+    
+    /**
+     * @dev Check specific predefined roles for an address
+     */
+    function checkRoles(address account) external view returns (bool isAdmin, bool isElectionManager, bool isVoterManager) {
+        isAdmin = hasRole(ADMIN_ROLE, account);
+        isElectionManager = hasRole(ELECTION_MANAGER_ROLE, account);
+        isVoterManager = hasRole(VOTER_MANAGER_ROLE, account);
+    }
+    
+    /**
+     * @dev Get role constants to use in frontend
+     */
+    function getRoleConstants() external pure returns (bytes32 adminRole, bytes32 electionManagerRole, bytes32 voterManagerRole) {
+        return (ADMIN_ROLE, ELECTION_MANAGER_ROLE, VOTER_MANAGER_ROLE);
+    }
+    
+    /**
+     * @dev Manage multiple roles for a user at once
+     * @param user The address to manage roles for
+     * @param isAdmin Whether the user should have admin role
+     * @param isElectionManager Whether the user should have election manager role
+     * @param isVoterManager Whether the user should have voter manager role
+     */
+    function manageRoles(
+        address user, 
+        bool isAdmin, 
+        bool isElectionManager, 
+        bool isVoterManager
+    ) 
+        external 
+        onlyRole(ADMIN_ROLE) 
+    {
+        // Get current role status
+        (bool currentAdmin, bool currentElectionManager, bool currentVoterManager) = this.checkRoles(user);
+        
+        // Update admin role if needed
+        if (currentAdmin != isAdmin) {
+            if (isAdmin) {
+                grantRole(ADMIN_ROLE, user);
+            } else {
+                revokeRole(ADMIN_ROLE, user);
+            }
+        }
+        
+        // Update election manager role if needed
+        if (currentElectionManager != isElectionManager) {
+            if (isElectionManager) {
+                grantRole(ELECTION_MANAGER_ROLE, user);
+            } else {
+                revokeRole(ELECTION_MANAGER_ROLE, user);
+            }
+        }
+        
+        // Update voter manager role if needed
+        if (currentVoterManager != isVoterManager) {
+            if (isVoterManager) {
+                grantRole(VOTER_MANAGER_ROLE, user);
+            } else {
+                revokeRole(VOTER_MANAGER_ROLE, user);
+            }
+        }
     }
 }
