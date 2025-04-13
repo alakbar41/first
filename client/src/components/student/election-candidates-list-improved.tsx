@@ -341,8 +341,8 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
       return;
     }
     
-    // For actual implementation, we use the VoteForSenatorButton and VoteForTicketButton components
-    // which handle the blockchain integration directly
+    // For actual implementation, we use the EnhancedSimpleVoteButton component
+    // which handles the blockchain integration directly
   };
   
   // Create a reference to all CandidateVoteCount components for refreshing
