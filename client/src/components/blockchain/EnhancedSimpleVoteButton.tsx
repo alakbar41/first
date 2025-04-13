@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
-import { voteForCandidateEnhanced, voteForTicketEnhanced } from '@/lib/enhanced-blockchain-id-mapping';
+import { voteForCandidateEnhanced, voteForTicketEnhanced, mapElectionFromWeb2ToWeb3, mapCandidateFromWeb2ToWeb3 } from '@/lib/enhanced-blockchain-id-mapping';
 import { useStudentIdWeb3 } from '@/hooks/use-student-id-web3';
 import { Loader2 } from 'lucide-react';
 
@@ -29,6 +29,47 @@ export function EnhancedSimpleVoteButton({
   const { isInitialized, walletAddress, connectWallet } = useStudentIdWeb3();
   const [isVoting, setIsVoting] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
+  const [blockchainElectionId, setBlockchainElectionId] = useState<number | null>(null);
+  const [blockchainCandidateId, setBlockchainCandidateId] = useState<number | null>(null);
+  const [blockchainTicketId, setBlockchainTicketId] = useState<number | null>(null);
+  const [electionDetails, setElectionDetails] = useState<any>(null);
+  const [candidateDetails, setCandidateDetails] = useState<any>(null);
+
+  // Load election and candidate details when component mounts
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        // Fetch election details to get the start timestamp
+        const electionResponse = await apiRequest('GET', `/api/elections/${electionId}`);
+        if (electionResponse.ok) {
+          const election = await electionResponse.json();
+          setElectionDetails(election);
+        }
+
+        // Fetch candidate details if candidateId is provided
+        if (candidateId) {
+          const candidateResponse = await apiRequest('GET', `/api/candidates/${candidateId}`);
+          if (candidateResponse.ok) {
+            const candidate = await candidateResponse.json();
+            setCandidateDetails(candidate);
+          }
+        }
+
+        // Map the Web2 IDs to Web3 IDs using our new approach
+        const web3ElectionId = await mapElectionFromWeb2ToWeb3(electionId);
+        setBlockchainElectionId(web3ElectionId);
+        
+        if (candidateId) {
+          const web3CandidateId = await mapCandidateFromWeb2ToWeb3(candidateId);
+          setBlockchainCandidateId(web3CandidateId);
+        }
+      } catch (error) {
+        console.error('Failed to load election or candidate details:', error);
+      }
+    };
+
+    loadData();
+  }, [electionId, candidateId]);
 
   // Ensure only one of candidateId or ticketId is provided
   if (candidateId && ticketId) {
@@ -44,7 +85,7 @@ export function EnhancedSimpleVoteButton({
       setIsVoting(true);
       
       // Check if already voted
-      const votedResponse = await apiRequest('GET', `/api/elections/${electionId}/voted`);
+      const votedResponse = await apiRequest('GET', `/api/elections/${electionId}/user-voted`);
       if (votedResponse.ok) {
         const votedData = await votedResponse.json();
         if (votedData.hasVoted) {
@@ -75,19 +116,51 @@ export function EnhancedSimpleVoteButton({
         }
       }
       
+      // Log the mapping details for debugging
+      if (electionDetails && candidateDetails) {
+        console.log(`Voting for election ID: ${electionId} candidate ID: ${candidateId} with student ID: ${candidateDetails.studentId}`);
+        console.log(`Database election ID: ${electionId} Blockchain election ID: ${blockchainElectionId}`);
+        console.log(`Database candidate ID: ${candidateId} Blockchain candidate ID: ${blockchainCandidateId}`);
+      }
+      
+      // Get voting token before proceeding
+      const tokenResponse = await apiRequest('POST', '/api/voting-tokens', { electionId });
+      if (!tokenResponse.ok) {
+        throw new Error('Failed to generate voting token');
+      }
+      
+      const tokenData = await tokenResponse.json();
+      const votingToken = tokenData.token;
+      
+      // Verify the token is valid
+      const verifyResponse = await apiRequest('POST', '/api/voting-tokens/verify', { 
+        token: votingToken, 
+        electionId
+      });
+      
+      if (!verifyResponse.ok) {
+        throw new Error('Invalid voting token');
+      }
+      
       // Vote based on whether we have a candidateId or ticketId
       let success = false;
-      if (candidateId) {
-        console.log(`Voting for election ID ${electionId}, candidate ID ${candidateId}`);
+      if (candidateId && blockchainElectionId !== null && blockchainCandidateId !== null) {
+        // Use the blockchain IDs for voting
         success = await voteForCandidateEnhanced(electionId, candidateId);
-      } else if (ticketId) {
-        console.log(`Voting for election ID ${electionId}, ticket ID ${ticketId}`);
+      } else if (ticketId && blockchainElectionId !== null && blockchainTicketId !== null) {
         success = await voteForTicketEnhanced(electionId, ticketId);
+      } else {
+        throw new Error('Could not map Web2 IDs to blockchain IDs');
       }
       
       if (success) {
-        // Record vote in database for tracking
-        await apiRequest('POST', `/api/elections/${electionId}/vote`, { candidateId, ticketId });
+        // Mark the token as used
+        await apiRequest('POST', '/api/voting-tokens/use', { 
+          token: votingToken, 
+          electionId, 
+          candidateId, 
+          ticketId 
+        });
         
         toast({
           title: "Vote Successful!",
