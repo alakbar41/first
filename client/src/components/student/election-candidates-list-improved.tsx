@@ -14,7 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { useWeb3 } from "@/hooks/use-web3";
+import { useStudentIdWeb3 } from "@/hooks/use-student-id-web3";
 import { ConnectWalletButton, CandidateVoteCount } from "@/components/blockchain";
 import { SimpleVoteButton } from "@/components/blockchain/SimpleVoteButton";
 import { ResetUserVoteButton } from "@/components/admin/reset-user-vote-button";
@@ -36,15 +36,13 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
     isWalletConnected,
     walletAddress,
     connectWallet,
-    getElectionDetails,
-    getCandidateDetails,
     getCandidateVoteCount,
-    getTicketDetails,
     getTicketVoteCount,
     checkIfVoted,
     voteForSenator,
-    voteForPresidentVP
-  } = useWeb3();
+    voteForPresidentVP,
+    getCandidateIdByStudentId
+  } = useStudentIdWeb3();
   
   // Check if the election is active (for enabling/disabling voting)
   const isElectionActive = () => {
@@ -126,36 +124,39 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
         try {
           const voteCountsMap: {[key: number]: number} = {};
           
-          // Process each candidate in the candidatesData array
+          // Process each candidate in the candidatesData array using student IDs
           // We've already checked that candidatesData exists and has length > 0
-          (candidatesData || []).forEach(async (candidate) => {
+          for (const candidate of (candidatesData || [])) {
             try {
-              // In a production environment, we'd need a mapping between database IDs and blockchain IDs
-              // For now, we're using hardcoded mappings for demonstration purposes
-              
-              // Check if the blockchain has been initialized with this candidate
-              // For simplicity, we'll just use candidates 1 and 2 for now
-              let blockchainCandidateId = candidate.id;
-              
-              // Only use candidates that exist in the blockchain (IDs 1 and 2 for demo)
-              if (blockchainCandidateId <= 2) {
+              // The improved contract uses student IDs for identification
+              if (candidate.studentId) {
                 try {
-                  const voteCount = await getCandidateVoteCount(blockchainCandidateId);
-                  voteCountsMap[candidate.id] = voteCount;
+                  // First get the blockchain candidate ID from the student ID
+                  const blockchainCandidateId = await getCandidateIdByStudentId(candidate.studentId);
+                  
+                  if (blockchainCandidateId > 0) {
+                    // Now get the vote count for this candidate
+                    const voteCount = await getCandidateVoteCount(blockchainCandidateId);
+                    voteCountsMap[candidate.id] = voteCount;
+                    console.log(`Vote count for candidate ${candidate.fullName} (Student ID: ${candidate.studentId}): ${voteCount}`);
+                  } else {
+                    console.log(`Candidate with student ID ${candidate.studentId} not registered in blockchain yet`);
+                    voteCountsMap[candidate.id] = 0;
+                  }
                 } catch (error) {
-                  console.error(`Error getting vote count for candidate ${candidate.id}:`, error);
+                  console.error(`Error getting vote count for candidate ${candidate.fullName} (Student ID: ${candidate.studentId}):`, error);
                   voteCountsMap[candidate.id] = 0;
                 }
               } else {
-                // For candidates not in the blockchain, display 0 votes
+                console.log(`Candidate ${candidate.fullName} has no student ID`);
                 voteCountsMap[candidate.id] = 0;
               }
             } catch (err) {
-              console.error(`Error processing candidate ${candidate.id}:`, err);
+              console.error(`Error processing candidate ${candidate.fullName}:`, err);
               // Don't show error to user, just use 0 votes
               voteCountsMap[candidate.id] = 0;
             }
-          });
+          }
           
           setBlockchainVoteCounts(voteCountsMap);
         } catch (error) {
