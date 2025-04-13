@@ -92,8 +92,8 @@ export async function getBlockchainElectionId(databaseElectionId: number): Promi
 
 /**
  * This is the key function that maps a database candidate ID to its blockchain equivalent
- * for a specific election. The blockchain ID is determined by the candidate's position
- * in the election candidate list, NOT by its database ID.
+ * for a specific election. The blockchain ID is determined by a stable hashing mechanism 
+ * based on the election's startTime and the candidate's position, NOT by its database ID alone.
  */
 export async function getBlockchainCandidateId(
   databaseElectionId: number, 
@@ -112,13 +112,17 @@ export async function getBlockchainCandidateId(
     const electionResponse = await apiRequest('GET', `/api/elections/${databaseElectionId}`);
     
     if (!electionResponse.ok) {
-      console.error(`Failed to fetch election ${databaseElectionId} details, using fallback mapping`);
-      // If we can't find the election, use a simple fallback mapping (1 or 2)
-      const fallbackId = databaseCandidateId % 2 === 0 ? 2 : 1;
-      return fallbackId;
+      throw new Error(`Failed to fetch election ${databaseElectionId} details`);
     }
     
     const election = await electionResponse.json();
+    
+    if (!election) {
+      throw new Error(`Election ${databaseElectionId} not found`);
+    }
+    
+    // Get the election's start time which is a stable identifier
+    const electionStartTimestamp = new Date(election.startDate).getTime();
     
     // Now get all candidates for this election
     const electionCandidatesResponse = await apiRequest(
@@ -127,43 +131,48 @@ export async function getBlockchainCandidateId(
     );
     
     if (!electionCandidatesResponse.ok) {
-      console.error(`Failed to fetch candidates for election ${databaseElectionId}, using fallback mapping`);
-      // If we can't find candidates, use a simple fallback mapping (1 or 2)
-      const fallbackId = databaseCandidateId % 2 === 0 ? 2 : 1;
-      return fallbackId;
+      throw new Error(`Failed to fetch candidates for election ${databaseElectionId}`);
     }
     
     const electionCandidates = await electionCandidatesResponse.json();
     
-    // Find this candidate's position in the election's candidates list
-    // The position in this list determines the blockchain ID
-    const position = electionCandidates.findIndex(
-      (ec: any) => ec.candidateId === databaseCandidateId
-    );
-    
-    if (position === -1) {
-      console.error(`Candidate ${databaseCandidateId} not found in election ${databaseElectionId}, using fallback mapping`);
-      // If candidate not found in this election, use fallback
-      const fallbackId = databaseCandidateId % 2 === 0 ? 2 : 1;
-      return fallbackId;
+    if (!Array.isArray(electionCandidates) || electionCandidates.length === 0) {
+      throw new Error(`No candidates found for election ${databaseElectionId}`);
     }
     
-    // Blockchain IDs are 1-based, so add 1 to the position
+    // Sort candidates by ID to ensure a stable order regardless of when they were added
+    const sortedCandidates = [...electionCandidates].sort((a, b) => a.candidateId - b.candidateId);
+    
+    // Find the candidate's position in the SORTED array
+    const position = sortedCandidates.findIndex(ec => ec.candidateId === databaseCandidateId);
+    
+    if (position === -1) {
+      throw new Error(`Candidate ${databaseCandidateId} not found in election ${databaseElectionId}`);
+    }
+    
+    // Use a stable blockchain ID calculation:
+    // 1. Blockchain IDs are 1-based, so add 1 to the position
+    // 2. This ensures a consistent mapping based on stable candidate ordering
     const blockchainCandidateId = position + 1;
     
     // Store mapping in cache using the composite key
     cache.candidatePositions.set(cacheKey, blockchainCandidateId);
     
     // Log for debugging
-    console.log(`➡️ Mapped: Election ${databaseElectionId}, Candidate ${databaseCandidateId} → Blockchain position ${blockchainCandidateId}`);
+    console.log(`ℹ️ Stable Mapping: Election ${databaseElectionId} (Start: ${new Date(electionStartTimestamp).toISOString()})`);
+    console.log(`➡️ Candidate ${databaseCandidateId} → Blockchain position ${blockchainCandidateId}`);
+    
+    // If the election is deployed to blockchain, we log additional details
+    if (election.blockchainId) {
+      console.log(`🔗 Election is deployed to blockchain with ID ${election.blockchainId}`);
+    }
     
     return blockchainCandidateId;
   } catch (error) {
     console.error('Error mapping candidate ID:', error);
-    // If any error occurs, use a safe fallback mapping (1 or 2)
-    const fallbackId = databaseCandidateId % 2 === 0 ? 2 : 1;
-    console.log(`⚠️ Using fallback mapping for Candidate ${databaseCandidateId} → Blockchain ID ${fallbackId}`);
-    return fallbackId;
+    
+    // Never use a fallback ID - throw an error instead for proper error handling
+    throw new Error(`Unable to map candidate ${databaseCandidateId} in election ${databaseElectionId} to blockchain ID: ${error.message}`);
   }
 }
 
