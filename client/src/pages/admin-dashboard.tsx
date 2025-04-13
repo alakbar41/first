@@ -254,8 +254,82 @@ export default function AdminDashboard() {
           </div>
           
           <div className="shadow-sm rounded-md overflow-hidden">
-            <div className="px-6 py-4 bg-white border-b border-gray-200 flex justify-between items-center">
-              <h2 className="text-lg font-medium text-gray-800">All Elections</h2>
+            <div className="px-6 py-4 bg-white border-b border-gray-200">
+              <h2 className="text-lg font-medium text-gray-800 mb-4">Elections Management</h2>
+              
+              {/* Tabs for different election categories */}
+              <div className="flex overflow-x-auto border-b border-gray-200 -mx-6 px-6 pb-1">
+                <button 
+                  className={`px-4 py-2 text-sm font-medium whitespace-nowrap ${
+                    statusFilter === 'all' 
+                      ? 'text-purple-700 border-b-2 border-purple-700'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                  onClick={() => setStatusFilter('all')}
+                >
+                  All Elections
+                </button>
+                <button 
+                  className={`px-4 py-2 text-sm font-medium whitespace-nowrap ${
+                    statusFilter === 'active' 
+                      ? 'text-purple-700 border-b-2 border-purple-700'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                  onClick={() => setStatusFilter('active')}
+                >
+                  Active
+                </button>
+                <button 
+                  className={`px-4 py-2 text-sm font-medium whitespace-nowrap ${
+                    statusFilter === 'upcoming' 
+                      ? 'text-purple-700 border-b-2 border-purple-700'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                  onClick={() => setStatusFilter('upcoming')}
+                >
+                  Upcoming
+                </button>
+                <button 
+                  className={`px-4 py-2 text-sm font-medium whitespace-nowrap ${
+                    statusFilter === 'completed' 
+                      ? 'text-purple-700 border-b-2 border-purple-700'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                  onClick={() => setStatusFilter('completed')}
+                >
+                  Completed
+                </button>
+                
+                {/* Blockchain-specific tabs */}
+                <div className="border-l border-gray-300 mx-2"></div>
+                <button 
+                  className={`px-4 py-2 text-sm font-medium whitespace-nowrap flex items-center ${
+                    statusFilter === 'blockchain-deployed' 
+                      ? 'text-purple-700 border-b-2 border-purple-700'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                  onClick={() => {
+                    setStatusFilter('blockchain-deployed');
+                    // We'll set this custom filter and handle separately
+                  }}
+                >
+                  <ServerIcon className="mr-1 h-4 w-4" />
+                  Blockchain Deployed
+                </button>
+                <button 
+                  className={`px-4 py-2 text-sm font-medium whitespace-nowrap flex items-center ${
+                    statusFilter === 'not-deployed' 
+                      ? 'text-purple-700 border-b-2 border-purple-700'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                  onClick={() => {
+                    setStatusFilter('not-deployed');
+                    // We'll set this custom filter and handle separately
+                  }}
+                >
+                  Not Deployed
+                </button>
+              </div>
             </div>
             
             {isLoading ? (
@@ -265,7 +339,14 @@ export default function AdminDashboard() {
             ) : (
               <>
                 <ElectionsTable 
-                  elections={filteredElections} 
+                  elections={
+                    // Handle special blockchain filter cases
+                    statusFilter === 'blockchain-deployed' 
+                      ? elections?.filter(e => e.blockchainId !== null && e.blockchainId !== undefined) || []
+                      : statusFilter === 'not-deployed'
+                      ? elections?.filter(e => e.blockchainId === null || e.blockchainId === undefined) || []
+                      : filteredElections
+                  } 
                   onDelete={handleDeleteElection}
                   onEdit={handleEditElection}
                   onAddCandidates={handleAddCandidates}
@@ -274,7 +355,13 @@ export default function AdminDashboard() {
                 
                 <div className="px-6 py-4 bg-white border-t border-gray-200 flex justify-between items-center">
                   <div className="text-sm text-gray-500">
-                    Rows per page: <span className="font-medium">8</span>
+                    <span className="font-medium">{
+                      statusFilter === 'blockchain-deployed' 
+                        ? elections?.filter(e => e.blockchainId !== null && e.blockchainId !== undefined).length
+                        : statusFilter === 'not-deployed'
+                        ? elections?.filter(e => e.blockchainId === null || e.blockchainId === undefined).length
+                        : filteredElections.length
+                    }</span> elections found
                   </div>
                   
                   <Pagination>
@@ -298,7 +385,7 @@ export default function AdminDashboard() {
                   </Pagination>
                 </div>
               </>
-            )}
+            )
           </div>
         </div>
       </main>
