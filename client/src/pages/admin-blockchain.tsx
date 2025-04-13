@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
-import { EnhancedBlockchainSyncButton } from "@/components/admin/enhanced-blockchain-sync-button";
+import { ImprovedBlockchainSyncButton } from "@/components/admin/ImprovedBlockchainSyncButton";
 import { useStudentIdWeb3 } from '@/hooks/use-student-id-web3';
 import { BlockchainRoleManager } from '@/components/admin/blockchain-role-manager';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -151,7 +151,7 @@ export default function AdminBlockchain() {
                   </div>
                   
                   <div className="flex justify-center pt-4">
-                    <EnhancedBlockchainSyncButton className="w-full md:w-auto" />
+                    <ImprovedBlockchainSyncButton className="w-full md:w-auto" />
                   </div>
                 </CardContent>
               </Card>

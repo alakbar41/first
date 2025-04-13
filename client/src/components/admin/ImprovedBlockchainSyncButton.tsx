@@ -162,8 +162,8 @@ export function ImprovedBlockchainSyncButton({ className = '' }: ImprovedBlockch
           const electionType = election.position === 'Senator' ? ElectionType.Senator : ElectionType.PresidentVP;
           
           // Convert dates to Unix timestamps (seconds)
-          const startTime = Math.floor(new Date(election.startTime).getTime() / 1000);
-          const endTime = Math.floor(new Date(election.endTime).getTime() / 1000);
+          const startTime = Math.floor(new Date(election.startDate).getTime() / 1000);
+          const endTime = Math.floor(new Date(election.endDate).getTime() / 1000);
           
           // Log the timestamps for debugging
           addSyncMessage(`Election ${election.name} (ID: ${election.id}) timestamps - Start: ${startTime}, End: ${endTime}`);
@@ -179,13 +179,13 @@ export function ImprovedBlockchainSyncButton({ className = '' }: ImprovedBlockch
           
           // Update the election with blockchain ID in database using the timestamp as identifier
           try {
-            const updateResponse = await fetch(`/api/elections/${election.id}/blockchain-info`, {
+            const updateResponse = await fetch(`/api/elections/${election.id}/blockchain-id`, {
               method: 'PATCH',
               headers: {
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({
-                startTimestamp: startTime,
+                blockchainId: startTime, // Use timestamp as blockchain ID
               }),
             });
             
