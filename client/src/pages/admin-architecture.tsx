@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { Loader2 } from "lucide-react";
 
-const ArchitectureView: React.FC = () => {
+export default function AdminArchitecture() {
   const { user, isLoading } = useAuth();
   const [_, navigate] = useLocation();
 
@@ -818,6 +818,4 @@ DevOps Pipeline:
       </div>
     </div>
   );
-};
-
-export default ArchitectureView;
+}

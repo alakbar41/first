@@ -16,6 +16,7 @@ import AdminTickets from "@/pages/admin-tickets";
 import AdminArchitecture from "@/pages/admin-architecture";
 import AdminBlockchain from "@/pages/admin-blockchain";
 import { ProtectedRoute, AdminProtectedRoute } from "./lib/protected-route";
+import { FC, ReactNode } from 'react';
 import { AuthProvider } from "./hooks/use-auth";
 import { Web3Provider } from "./hooks/use-web3";
 import { StudentIdWeb3Provider } from "./hooks/use-student-id-web3";
