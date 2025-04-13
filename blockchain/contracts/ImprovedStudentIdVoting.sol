@@ -7,6 +7,13 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  * @title ImprovedStudentIdVoting
  * @dev An enhanced smart contract for university voting that uses student IDs 
  * for stable candidate identification across Web2 and Web3 systems
+ * 
+ * Key features:
+ * - Uses student IDs for stable candidate identification
+ * - Uses timestamp-based election identification
+ * - Supports concurrent elections with individual tracking
+ * - Implements time-bound automatic status updates
+ * - Protects against replay attacks with nonces
  */
 contract ImprovedStudentIdVoting is Ownable {
     
@@ -75,6 +82,7 @@ contract ImprovedStudentIdVoting is Ownable {
     event ElectionCreated(uint256 indexed electionId, uint8 electionType, uint256 startTime, uint256 endTime);
     event ElectionStatusChanged(uint256 indexed electionId, uint8 status);
     event VoterRegistered(address indexed voter);
+    event VoterDeregistered(address indexed voter);
     event CandidateRegistered(uint256 indexed candidateId, string studentId);
     event TicketCreated(uint256 indexed ticketId, string presidentStudentId, string vpStudentId);
     event VoteCast(uint256 indexed electionId, address indexed voter, uint256 nonce);
@@ -194,6 +202,22 @@ contract ImprovedStudentIdVoting is Ownable {
                 emit VoterRegistered(voters[i]);
             }
         }
+    }
+    
+    /**
+     * @dev Deregister a voter
+     */
+    function deregisterVoter(address voter) external onlyOwner {
+        require(registeredVoters[voter], "Voter not registered");
+        registeredVoters[voter] = false;
+        emit VoterDeregistered(voter);
+    }
+    
+    /**
+     * @dev Check if an address is a registered voter - directly exposed for easier integration
+     */
+    function isRegisteredVoter(address voter) external view returns (bool) {
+        return registeredVoters[voter];
     }
     
     /**
