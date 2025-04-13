@@ -543,7 +543,26 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                           />
                         </>
                       ) : !isWalletConnected ? (
-                        <ConnectWalletButton className="w-full sm:w-auto" />
+                        <div className="space-y-4">
+                          <ConnectWalletButton className="w-full sm:w-auto" />
+                          <Button
+                            variant="outline"
+                            className="w-full sm:w-auto"
+                            onClick={async () => {
+                              try {
+                                await connectWallet();
+                              } catch (error: any) {
+                                toast({
+                                  title: "Connection Failed",
+                                  description: error.message || "Failed to connect wallet", 
+                                  variant: "destructive"
+                                });
+                              }
+                            }}
+                          >
+                            Connect Wallet (Alternative)
+                          </Button>
+                        </div>
                       ) : (
                         <>
                           <EnhancedSimpleVoteButton
@@ -658,9 +677,28 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                           />
                         </div>
                       ) : !isWalletConnected ? (
-                        <ConnectWalletButton 
-                          className="w-full text-xs sm:text-sm"
-                        />
+                        <div className="space-y-4">
+                          <ConnectWalletButton 
+                            className="w-full text-xs sm:text-sm"
+                          />
+                          <Button
+                            variant="outline"
+                            className="w-full sm:w-auto text-xs sm:text-sm"
+                            onClick={async () => {
+                              try {
+                                await connectWallet();
+                              } catch (error: any) {
+                                toast({
+                                  title: "Connection Failed",
+                                  description: error.message || "Failed to connect wallet", 
+                                  variant: "destructive"
+                                });
+                              }
+                            }}
+                          >
+                            Connect Wallet (Alternative)
+                          </Button>
+                        </div>
                       ) : (
                         <>
                           {/* Vote button using the enhanced simple vote button */}
