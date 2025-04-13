@@ -63,7 +63,10 @@ export function Web3Provider({ children }: { children: ReactNode }) {
   // Connect wallet
   const handleConnectWallet = async (): Promise<string> => {
     try {
+      console.log("Web3Provider: Initiating wallet connection...");
       const address = await connectWallet();
+      console.log("Web3Provider: Wallet connected successfully with address:", address);
+      
       setIsWalletConnected(true);
       setWalletAddress(address);
       
@@ -72,6 +75,30 @@ export function Web3Provider({ children }: { children: ReactNode }) {
       const voter = await isRegisteredVoter(address);
       setIsVoter(voter);
       setIsCheckingVoter(false);
+      
+      // Also connect the student ID service if available
+      try {
+        // This is needed to synchronize the two web3 services
+        const studentIdWeb3Service = await import('@/lib/student-id-web3-service');
+        console.log("Web3Provider: Attempting to synchronize with student ID service");
+        const studentIdWeb3 = studentIdWeb3Service.default;
+        
+        if (studentIdWeb3) {
+          console.log("Web3Provider: Synchronizing wallet connection with student ID service");
+          await studentIdWeb3.connectWallet().catch(e => {
+            console.log("Web3Provider: Non-critical error synchronizing with student ID service:", e);
+          });
+        }
+      } catch (syncError) {
+        console.log("Web3Provider: Could not synchronize with student ID service:", syncError);
+      }
+      
+      // Force a refresh to ensure components update
+      window.setTimeout(() => {
+        console.log("Web3Provider: Forcing global state refresh");
+        const event = new Event('walletConnected');
+        window.dispatchEvent(event);
+      }, 300);
       
       return address;
     } catch (error: any) {

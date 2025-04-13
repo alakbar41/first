@@ -49,12 +49,40 @@ export function StudentIdWeb3Provider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Connect wallet
+  // Connect wallet - with improved handling
   const handleConnectWallet = async (): Promise<string> => {
     try {
+      console.log("StudentIdWeb3Provider: Initiating wallet connection...");
       const address = await studentIdWeb3Service.connectWallet();
+      
+      console.log("StudentIdWeb3Provider: Wallet connected successfully, address:", address);
+      
+      // Update state synchronously
       setIsWalletConnected(true);
       setWalletAddress(address);
+      
+      // Force refresh of the contract initialization status
+      setIsInitialized(true);
+      
+      // Force a global page state refresh to ensure components react to connection
+      window.setTimeout(() => {
+        // This is a hack to force React to re-render all components that depend on this state
+        console.log("StudentIdWeb3Provider: Forcing global state refresh");
+        const event = new Event('walletConnected');
+        window.dispatchEvent(event);
+        
+        // Double-check initialization status
+        const isInit = studentIdWeb3Service.isWeb3Initialized();
+        if (!isInit) {
+          console.log("StudentIdWeb3Provider: Service still not initialized after connection, reinitializing...");
+          studentIdWeb3Service.initialize()
+            .then(success => {
+              console.log("StudentIdWeb3Provider: Reinitialization result:", success);
+              setIsInitialized(success);
+            });
+        }
+      }, 300);
+      
       return address;
     } catch (error: any) {
       console.error('Failed to connect wallet:', error);
