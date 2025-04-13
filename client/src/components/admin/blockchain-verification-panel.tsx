@@ -99,10 +99,13 @@ export function BlockchainVerificationPanel() {
   const verifyElectionOnBlockchain = async (election: any) => {
     try {
       // Initialize web3 services
-      await Promise.all([
+      console.log("Initializing web3 services for verification...");
+      const [web3Initialized, studentIdInitialized] = await Promise.all([
         web3Service.initialize(),
         studentIdWeb3Service.initialize()
       ]);
+      
+      console.log(`Web3 service initialization results: web3Service=${web3Initialized}, studentIdWeb3Service=${studentIdInitialized}`);
       
       // Reset previous verification results
       setElectionVerificationResult(null);
@@ -185,10 +188,12 @@ export function BlockchainVerificationPanel() {
           let voteCount = 0;
           if (registeredForElection) {
             try {
+              console.log(`Attempting to get vote count for candidate with blockchain ID ${blockchainCandidateId}`);
               voteCount = await studentIdWeb3Service.getCandidateVoteCount(blockchainCandidateId);
+              console.log(`Successfully retrieved vote count: ${voteCount} for candidate ID ${blockchainCandidateId}`);
             } catch (voteCountError) {
-              console.warn(`Failed to get vote count for candidate ${blockchainCandidateId}:`, voteCountError);
-              // Don't fail verification for vote count errors
+              console.error(`Failed to get vote count for candidate ${blockchainCandidateId}:`, voteCountError);
+              // Don't fail verification for vote count errors, but log the error
             }
           }
           
@@ -514,7 +519,9 @@ export function BlockchainVerificationPanel() {
                               )}
                             </TableCell>
                             <TableCell>
-                              {result?.exists && result?.registeredForElection ? (
+                              {isVerifying ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : result?.exists && result?.registeredForElection ? (
                                 <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
                                   {result.voteCount !== undefined ? result.voteCount : '-'}
                                 </Badge>
