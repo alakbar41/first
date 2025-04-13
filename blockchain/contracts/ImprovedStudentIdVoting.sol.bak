@@ -257,6 +257,8 @@ contract ImprovedStudentIdVoting is AccessControl {
         return voterNonces[msg.sender] + 1;
     }
     
+    // Role checking functions moved to avoid duplication - see end of contract
+    
     // Election Management Functions
     
     /**
@@ -329,6 +331,8 @@ contract ImprovedStudentIdVoting is AccessControl {
     function revokeElectionManagerRole(address manager) external onlyRole(ADMIN_ROLE) {
         revokeRole(ELECTION_MANAGER_ROLE, manager);
     }
+    
+    // manageRoles function moved to avoid duplication - see end of contract
     
     /**
      * @dev Automatic election status update based on time
@@ -806,7 +810,7 @@ contract ImprovedStudentIdVoting is AccessControl {
     // Getter functions
     
     /**
-     * @dev Check if an address has voted in a specific election
+     * @dev Check if a voter has voted in an election
      */
     function checkIfVoted(uint256 electionId, address voter) 
         external 
@@ -817,7 +821,7 @@ contract ImprovedStudentIdVoting is AccessControl {
     }
     
     /**
-     * @dev Get vote count for a candidate
+     * @dev Get a candidate's vote count
      */
     function getCandidateVoteCount(uint256 candidateId) 
         external 
@@ -829,7 +833,7 @@ contract ImprovedStudentIdVoting is AccessControl {
     }
     
     /**
-     * @dev Get vote count for a ticket
+     * @dev Get a ticket's vote count
      */
     function getTicketVoteCount(uint256 ticketId) 
         external 
@@ -841,23 +845,23 @@ contract ImprovedStudentIdVoting is AccessControl {
     }
     
     /**
-     * @dev Get winner of a finalized election
+     * @dev Get the winner of an election
      */
     function getElectionWinner(uint256 electionId) 
         external 
         view 
         electionExists(electionId)
-        returns (uint256, bool) 
+        returns (uint256) 
     {
-        bool isFinalized = elections[electionId].resultsFinalized;
-        if (!isFinalized) {
-            return (0, false);
-        }
-        return (electionWinners[electionId], true);
+        require(
+            elections[electionId].resultsFinalized,
+            "Results not finalized yet"
+        );
+        return electionWinners[electionId];
     }
     
     /**
-     * @dev Get all candidates in an election
+     * @dev Get the list of candidates in an election
      */
     function getElectionCandidates(uint256 electionId) 
         external 
@@ -869,7 +873,7 @@ contract ImprovedStudentIdVoting is AccessControl {
     }
     
     /**
-     * @dev Get all tickets in an election
+     * @dev Get the list of tickets in an election
      */
     function getElectionTickets(uint256 electionId) 
         external 
@@ -881,13 +885,14 @@ contract ImprovedStudentIdVoting is AccessControl {
     }
     
     /**
-     * @dev Get detailed information about an election
+     * @dev Get details about an election
      */
     function getElectionDetails(uint256 electionId) 
         external 
         view 
         electionExists(electionId)
         returns (
+            uint256 id,
             uint8 electionType,
             uint8 status,
             uint256 startTime,
@@ -898,6 +903,7 @@ contract ImprovedStudentIdVoting is AccessControl {
     {
         Election storage election = elections[electionId];
         return (
+            election.id,
             uint8(election.electionType),
             uint8(election.status),
             election.startTime,
@@ -907,14 +913,15 @@ contract ImprovedStudentIdVoting is AccessControl {
         );
     }
     
-    // Required override from AccessControl for easier frontend integration
+    /**
+     * @dev Check if an address has a specific role
+     */
     function hasRole(bytes32 role, address account) public view override returns (bool) {
         return super.hasRole(role, account);
     }
     
     /**
-     * @dev Check all predefined roles for an address at once
-     * Useful for UI to determine which features to show
+     * @dev Check specific predefined roles for an address
      */
     function checkRoles(address account) external view returns (bool isAdmin, bool isElectionManager, bool isVoterManager) {
         isAdmin = hasRole(ADMIN_ROLE, account);
@@ -926,17 +933,15 @@ contract ImprovedStudentIdVoting is AccessControl {
      * @dev Get role constants to use in frontend
      */
     function getRoleConstants() external pure returns (bytes32 adminRole, bytes32 electionManagerRole, bytes32 voterManagerRole) {
-        adminRole = ADMIN_ROLE;
-        electionManagerRole = ELECTION_MANAGER_ROLE;
-        voterManagerRole = VOTER_MANAGER_ROLE;
+        return (ADMIN_ROLE, ELECTION_MANAGER_ROLE, VOTER_MANAGER_ROLE);
     }
     
     /**
-     * @dev Manage multiple roles at once - more efficient than individual role assignments
+     * @dev Manage multiple roles for a user at once
      * @param user The address to manage roles for
-     * @param isAdmin Whether the user should have the ADMIN_ROLE
-     * @param isElectionManager Whether the user should have the ELECTION_MANAGER_ROLE
-     * @param isVoterManager Whether the user should have the VOTER_MANAGER_ROLE
+     * @param isAdmin Whether the user should have admin role
+     * @param isElectionManager Whether the user should have election manager role
+     * @param isVoterManager Whether the user should have voter manager role
      */
     function manageRoles(
         address user, 
@@ -947,25 +952,34 @@ contract ImprovedStudentIdVoting is AccessControl {
         external 
         onlyRole(ADMIN_ROLE) 
     {
-        // Update admin role
-        if (isAdmin && !hasRole(ADMIN_ROLE, user)) {
-            grantRole(ADMIN_ROLE, user);
-        } else if (!isAdmin && hasRole(ADMIN_ROLE, user)) {
-            revokeRole(ADMIN_ROLE, user);
+        // Get current role status
+        (bool currentAdmin, bool currentElectionManager, bool currentVoterManager) = this.checkRoles(user);
+        
+        // Update admin role if needed
+        if (currentAdmin != isAdmin) {
+            if (isAdmin) {
+                grantRole(ADMIN_ROLE, user);
+            } else {
+                revokeRole(ADMIN_ROLE, user);
+            }
         }
         
-        // Update election manager role
-        if (isElectionManager && !hasRole(ELECTION_MANAGER_ROLE, user)) {
-            grantRole(ELECTION_MANAGER_ROLE, user);
-        } else if (!isElectionManager && hasRole(ELECTION_MANAGER_ROLE, user)) {
-            revokeRole(ELECTION_MANAGER_ROLE, user);
+        // Update election manager role if needed
+        if (currentElectionManager != isElectionManager) {
+            if (isElectionManager) {
+                grantRole(ELECTION_MANAGER_ROLE, user);
+            } else {
+                revokeRole(ELECTION_MANAGER_ROLE, user);
+            }
         }
         
-        // Update voter manager role
-        if (isVoterManager && !hasRole(VOTER_MANAGER_ROLE, user)) {
-            grantRole(VOTER_MANAGER_ROLE, user);
-        } else if (!isVoterManager && hasRole(VOTER_MANAGER_ROLE, user)) {
-            revokeRole(VOTER_MANAGER_ROLE, user);
+        // Update voter manager role if needed
+        if (currentVoterManager != isVoterManager) {
+            if (isVoterManager) {
+                grantRole(VOTER_MANAGER_ROLE, user);
+            } else {
+                revokeRole(VOTER_MANAGER_ROLE, user);
+            }
         }
     }
 }
