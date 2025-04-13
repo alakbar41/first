@@ -18,6 +18,7 @@ import AdminBlockchain from "@/pages/admin-blockchain";
 import { ProtectedRoute, AdminProtectedRoute } from "./lib/protected-route";
 import { AuthProvider } from "./hooks/use-auth";
 import { Web3Provider } from "./hooks/use-web3";
+import { StudentIdWeb3Provider } from "./hooks/use-student-id-web3";
 import { CSRFProvider } from "./hooks/use-csrf";
 
 function Router() {
@@ -56,8 +57,10 @@ function App() {
       <CSRFProvider>
         <AuthProvider>
           <Web3Provider>
-            <Router />
-            <Toaster />
+            <StudentIdWeb3Provider>
+              <Router />
+              <Toaster />
+            </StudentIdWeb3Provider>
           </Web3Provider>
         </AuthProvider>
       </CSRFProvider>
