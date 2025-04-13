@@ -152,8 +152,9 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                     
                     // Add more detailed logging to help troubleshoot blockchain connection issues
                     const errorString = idError?.toString?.() || '';
-                    const errorMessage = idError?.message || '';
-                    const errorReason = idError?.reason?.toString?.() || '';
+                    const errorMessage = idError && typeof idError === 'object' && 'message' in idError ? idError.message as string : '';
+                    const errorReason = idError && typeof idError === 'object' && 'reason' in idError ? 
+                      (typeof idError.reason === 'function' ? idError.reason.toString() : String(idError.reason)) : '';
                     
                     if (errorReason || errorMessage || errorString) {
                       console.log(`Error details for candidate lookup failure:`, {
@@ -542,43 +543,6 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                             onResetSuccess={handleResetSuccess}
                           />
                         </>
-                      ) : !isWalletConnected ? (
-                        <div className="space-y-4">
-                          <ConnectWalletButton className="w-full sm:w-auto" />
-                          <Button
-                            variant="outline"
-                            className="w-full sm:w-auto"
-                            onClick={async () => {
-                              try {
-                                console.log("Alternative button: Initiating wallet connection via useStudentIdWeb3...");
-                                const address = await connectWallet();
-                                console.log("Alternative button: Successfully connected to wallet with address:", address);
-                                
-                                // Force a global refresh to ensure wallet connect state is updated everywhere
-                                setTimeout(() => {
-                                  console.log("Alternative button: Forcing global refresh...");
-                                  const event = new Event('walletConnected');
-                                  window.dispatchEvent(event);
-                                }, 300);
-                                
-                                toast({
-                                  title: "Wallet Connected",
-                                  description: "Your wallet is now connected. You can vote for candidates.",
-                                  variant: "default"
-                                });
-                              } catch (error: any) {
-                                console.error("Alternative button: Connection failed:", error);
-                                toast({
-                                  title: "Connection Failed",
-                                  description: error.message || "Failed to connect wallet", 
-                                  variant: "destructive"
-                                });
-                              }
-                            }}
-                          >
-                            Connect Wallet (Alternative)
-                          </Button>
-                        </div>
                       ) : (
                         <>
                           <EnhancedSimpleVoteButton
@@ -691,29 +655,6 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                             className="text-xs sm:text-sm"
                             onResetSuccess={handleResetSuccess}
                           />
-                        </div>
-                      ) : !isWalletConnected ? (
-                        <div className="space-y-4">
-                          <ConnectWalletButton 
-                            className="w-full text-xs sm:text-sm"
-                          />
-                          <Button
-                            variant="outline"
-                            className="w-full sm:w-auto text-xs sm:text-sm"
-                            onClick={async () => {
-                              try {
-                                await connectWallet();
-                              } catch (error: any) {
-                                toast({
-                                  title: "Connection Failed",
-                                  description: error.message || "Failed to connect wallet", 
-                                  variant: "destructive"
-                                });
-                              }
-                            }}
-                          >
-                            Connect Wallet (Alternative)
-                          </Button>
                         </div>
                       ) : (
                         <>
