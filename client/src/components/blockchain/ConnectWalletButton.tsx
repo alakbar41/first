@@ -18,6 +18,18 @@ export function ConnectWalletButton({
   const { isInitialized, isWalletConnected, walletAddress, connectWallet } = useWeb3();
   const { toast } = useToast();
   
+  // Also import the student ID web3 service to allow for synchronization
+  const [studentIdService, setStudentIdService] = useState<any>(null);
+  
+  // Load the student ID service for cross-synchronization
+  useEffect(() => {
+    import('@/lib/student-id-web3-service').then(module => {
+      setStudentIdService(module.default);
+    }).catch(err => {
+      console.error("Failed to import student-id-web3-service:", err);
+    });
+  }, []);
+  
   const [isConnecting, setIsConnecting] = useState(false);
   const [displayAddress, setDisplayAddress] = useState("");
 
@@ -48,10 +60,28 @@ export function ConnectWalletButton({
       const address = await connectWallet();
       console.log("ConnectWalletButton: Wallet connected with address:", address);
       
+      // Also connect the student ID web3 service if it's loaded
+      if (studentIdService) {
+        try {
+          console.log("ConnectWalletButton: Synchronizing connection with student ID service");
+          await studentIdService.connectWallet();
+          console.log("ConnectWalletButton: Successfully synchronized student ID service");
+        } catch (syncError) {
+          console.warn("ConnectWalletButton: Failed to synchronize student ID service:", syncError);
+          // Non-critical error, we continue without throwing
+        }
+      } else {
+        console.warn("ConnectWalletButton: Student ID service not loaded, skipping synchronization");
+      }
+      
       // Force a component refresh to update UI state
       window.setTimeout(() => {
         console.log("ConnectWalletButton: Triggering state refresh...");
         setIsConnecting(false); // This re-render should pick up the new wallet connection state
+        
+        // Dispatch a global event for other components to detect the wallet connection
+        const event = new Event('walletConnected');
+        window.dispatchEvent(event);
       }, 500);
       
       toast({
