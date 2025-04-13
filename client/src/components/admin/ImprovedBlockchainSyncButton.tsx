@@ -86,7 +86,7 @@ export function ImprovedBlockchainSyncButton({ className = '' }: ImprovedBlockch
       setSyncErrors([]);
       setCandidateIdMap({});
       
-      // Step 1: Register candidates with student IDs
+      // Step 1: Register ALL candidates with student IDs FIRST
       addSyncMessage("Registering candidates with student IDs on blockchain...");
       
       const candidateMap: Record<number, number> = {};
@@ -145,12 +145,18 @@ export function ImprovedBlockchainSyncButton({ className = '' }: ImprovedBlockch
         }
       }
       
-      setCandidateIdMap(candidateMap);
+      // Verify all candidates were registered successfully
+      if (Object.keys(candidateMap).length === 0) {
+        throw new Error("No candidates were registered successfully. Cannot proceed with election creation.");
+      }
       
-      // Step 2: Create elections
+      setCandidateIdMap(candidateMap);
+      addSyncMessage(`Successfully registered ${Object.keys(candidateMap).length} candidates on blockchain`);
+      
+      // Step 2: Create each election AND immediately add its candidates
       setSyncingStep(2);
       setProgressPercent(40);
-      addSyncMessage("Creating elections on blockchain...");
+      addSyncMessage("Creating elections and adding candidates in one process...");
       
       const totalElections = elections.length;
       
@@ -158,6 +164,18 @@ export function ImprovedBlockchainSyncButton({ className = '' }: ImprovedBlockch
         const election = elections[i];
         
         try {
+          // Get all candidates for this election FIRST to ensure they exist
+          const candidatesResponse = await fetch(`/api/elections/${election.id}/candidates`);
+          if (!candidatesResponse.ok) {
+            throw new Error(`Failed to fetch candidates for election ${election.id}`);
+          }
+          const electionCandidates = await candidatesResponse.json();
+          
+          if (electionCandidates.length === 0) {
+            addSyncError(`Election "${election.name}" has no candidates assigned. Skipping creation.`);
+            continue;
+          }
+          
           // Convert position to ElectionType
           const electionType = election.position === 'Senator' ? ElectionType.Senator : ElectionType.PresidentVP;
           
@@ -168,45 +186,139 @@ export function ImprovedBlockchainSyncButton({ className = '' }: ImprovedBlockch
           // Log the timestamps for debugging
           addSyncMessage(`Election ${election.name} (ID: ${election.id}) timestamps - Start: ${startTime}, End: ${endTime}`);
           
+          // Verify we have blockchain IDs for all candidates in this election
+          const missingCandidates = electionCandidates.filter(ec => !candidateMap[ec.candidateId]);
+          if (missingCandidates.length > 0) {
+            addSyncError(`Election "${election.name}" has ${missingCandidates.length} candidates with missing blockchain IDs. Trying to register them now...`);
+            
+            // Try to register them again
+            for (const ec of missingCandidates) {
+              const candidateDetails = candidates.find(c => c.id === ec.candidateId);
+              if (!candidateDetails || !candidateDetails.studentId) {
+                addSyncError(`Cannot find details or student ID for candidate ID: ${ec.candidateId}`);
+                continue;
+              }
+              
+              try {
+                addSyncMessage(`Re-registering candidate ${candidateDetails.fullName} with Student ID: ${candidateDetails.studentId}...`);
+                const blockchainCandidateId = await studentIdWeb3Service.registerCandidate(candidateDetails.studentId);
+                candidateMap[candidateDetails.id] = blockchainCandidateId;
+                addSyncMessage(`Re-registered candidate ${candidateDetails.fullName} with blockchain ID ${blockchainCandidateId}`);
+              } catch (regError: any) {
+                if (regError.message && regError.message.toLowerCase().includes("already registered")) {
+                  try {
+                    const blockchainCandidateId = await studentIdWeb3Service.getCandidateIdByStudentId(candidateDetails.studentId);
+                    candidateMap[candidateDetails.id] = blockchainCandidateId;
+                    addSyncMessage(`Retrieved blockchain ID ${blockchainCandidateId} for existing candidate ${candidateDetails.fullName}`);
+                  } catch (idError: any) {
+                    addSyncError(`Failed to get blockchain ID for candidate ${candidateDetails.fullName}: ${idError.message || idError}`);
+                  }
+                } else {
+                  addSyncError(`Failed to re-register candidate: ${regError.message || regError}`);
+                }
+              }
+            }
+          }
+          
           // Create election on blockchain
           addSyncMessage(`Creating election "${election.name}" (ID: ${election.id}) on blockchain...`);
           
-          await studentIdWeb3Service.createElection(
-            electionType,
-            startTime,
-            endTime
-          );
-          
-          // Update the election with blockchain ID in database using the timestamp as identifier
           try {
-            const updateResponse = await fetch(`/api/elections/${election.id}/blockchain-id`, {
-              method: 'PATCH',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                blockchainId: startTime, // Use timestamp as blockchain ID
-              }),
-            });
+            await studentIdWeb3Service.createElection(
+              electionType,
+              startTime,
+              endTime
+            );
             
-            if (updateResponse.ok) {
-              addSyncMessage(`Updated election ${election.id} with blockchain timestamp identifier: ${startTime}`);
+            // Update the election with blockchain ID in database using the timestamp as identifier
+            try {
+              const updateResponse = await fetch(`/api/elections/${election.id}/blockchain-id`, {
+                method: 'PATCH',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  blockchainId: startTime, // Use timestamp as blockchain ID
+                }),
+              });
+              
+              if (updateResponse.ok) {
+                addSyncMessage(`Updated election ${election.id} with blockchain timestamp identifier: ${startTime}`);
+              }
+            } catch (updateError: any) {
+              addSyncError(`Failed to update election database with blockchain ID: ${updateError.message || updateError}`);
             }
-          } catch (updateError: any) {
-            addSyncError(`Failed to update election database with blockchain ID: ${updateError.message || updateError}`);
+            
+            addSyncMessage(`Created election "${election.name}" (ID: ${election.id}) on blockchain with ID ${startTime}`);
+            
+            // Immediately add candidates to this election
+            addSyncMessage(`Adding ${electionCandidates.length} candidates to election "${election.name}"...`);
+            
+            for (const candidate of electionCandidates) {
+              // Get the database candidate ID
+              const candidateDetails = candidates.find(c => c.id === candidate.candidateId);
+              if (!candidateDetails) {
+                addSyncError(`Could not find candidate details for ID ${candidate.candidateId}`);
+                continue;
+              }
+              
+              const blockchainCandidateId = candidateMap[candidate.candidateId];
+              
+              if (!blockchainCandidateId) {
+                addSyncError(`No blockchain mapping for candidate ${candidateDetails.fullName} (ID: ${candidate.candidateId})`);
+                continue;
+              }
+              
+              try {
+                addSyncMessage(`Adding candidate ${candidateDetails.fullName} (Student ID: ${candidateDetails.studentId}, Blockchain ID: ${blockchainCandidateId}) to election "${election.name}" (timestamp: ${startTime})...`);
+                
+                await studentIdWeb3Service.addCandidateToElection(startTime, blockchainCandidateId);
+                
+                addSyncMessage(`Successfully added candidate ${candidateDetails.fullName} to election "${election.name}"`);
+              } catch (error: any) {
+                // Check if error contains "already added"
+                if (error.message && error.message.toLowerCase().includes("already added")) {
+                  addSyncMessage(`Candidate ${candidateDetails.fullName} already added to election "${election.name}"`);
+                } else {
+                  addSyncError(`Failed to add candidate ${candidateDetails.fullName} to election "${election.name}": ${error.message || error}`);
+                }
+              }
+            }
+          } catch (electionError: any) {
+            // Check if error message contains "already exists"
+            if (electionError.message && electionError.message.toLowerCase().includes("already exists")) {
+              addSyncMessage(`Election "${election.name}" (ID: ${election.id}) already exists on blockchain with timestamp ${startTime}`);
+              
+              // Still try to add candidates to this existing election
+              addSyncMessage(`Adding candidates to existing election "${election.name}"...`);
+              
+              for (const candidate of electionCandidates) {
+                const candidateDetails = candidates.find(c => c.id === candidate.candidateId);
+                if (!candidateDetails) continue;
+                
+                const blockchainCandidateId = candidateMap[candidate.candidateId];
+                if (!blockchainCandidateId) continue;
+                
+                try {
+                  await studentIdWeb3Service.addCandidateToElection(startTime, blockchainCandidateId);
+                  addSyncMessage(`Added candidate ${candidateDetails.fullName} to existing election "${election.name}"`);
+                } catch (addError: any) {
+                  if (addError.message && addError.message.toLowerCase().includes("already added")) {
+                    addSyncMessage(`Candidate ${candidateDetails.fullName} already exists in election "${election.name}"`);
+                  } else {
+                    addSyncError(`Failed to add to existing election: ${addError.message || addError}`);
+                  }
+                }
+              }
+            } else {
+              addSyncError(`Failed to create election "${election.name}": ${electionError.message || electionError}`);
+            }
           }
-          
-          addSyncMessage(`Created election "${election.name}" (ID: ${election.id}) on blockchain`);
           
           // Update progress
-          setProgressPercent(40 + Math.floor((i / totalElections) * 30));
+          setProgressPercent(40 + Math.floor((i / totalElections) * 60));
         } catch (error: any) {
-          // Check if error message contains "already exists"
-          if (error.message && error.message.toLowerCase().includes("already exists")) {
-            addSyncMessage(`Election "${election.name}" (ID: ${election.id}) already exists on blockchain`);
-          } else {
-            addSyncError(`Failed to create election "${election.name}": ${error.message || error}`);
-          }
+          addSyncError(`Failed to process election "${election.name}": ${error.message || error}`);
         }
       }
       
