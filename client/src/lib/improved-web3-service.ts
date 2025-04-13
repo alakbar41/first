@@ -5,7 +5,7 @@ import { IMPROVED_CONTRACT_ABI } from './improved-contract-abi';
 // REMOVED DIRECT RPC URLs to avoid CSP issues - using MetaMask provider only
 // No direct RPC connections to prevent CSP violations
 console.log("Using MetaMask provider only approach - no RPC URLs");
-const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || '0xb74f07812b45DBec4eC3E577194F6a798a060e5D'; // Deployer: 0x0E6ED3EB1acc94F03006b326C939CeaF8d0953D5
+const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || '0x903389c84cDd36beC37373300cF7546dbB9d4Ee2'; // ImprovedStudentIdVoting.clean.sol deployment
 
 // Contract enums
 export enum ElectionType {

@@ -45,7 +45,7 @@ const IMPROVED_STUDENT_ID_CONTRACT_ABI = [
 
 // Constants
 // No direct RPC connections to prevent CSP violations - using MetaMask provider only
-const CONTRACT_ADDRESS = import.meta.env.VITE_NEW_CONTRACT_ADDRESS || '';
+const CONTRACT_ADDRESS = import.meta.env.VITE_NEW_CONTRACT_ADDRESS || '0x903389c84cDd36beC37373300cF7546dbB9d4Ee2';
 
 // Contract enums
 export enum ElectionType {
