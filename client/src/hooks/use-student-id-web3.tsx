@@ -11,7 +11,7 @@ interface StudentIdWeb3ContextType {
   reinitialize: () => Promise<void>;
   getCandidateVoteCount: (candidateId: number) => Promise<number>;
   getTicketVoteCount: (ticketId: number) => Promise<number>;
-  getCandidateIdByStudentId: (studentId: string) => Promise<number>;
+  getCandidateIdByStudentId: (studentId: string, forceRegister?: boolean) => Promise<number>;
   getTicketIdByStudentIds: (presidentId: string, vpId: string) => Promise<number>;
   voteForSenator: (electionId: number, candidateId: number) => Promise<boolean>;
   voteForPresidentVP: (electionId: number, ticketId: number) => Promise<boolean>;
@@ -109,11 +109,31 @@ export function StudentIdWeb3Provider({ children }: { children: ReactNode }) {
     }
   };
 
-  const handleGetCandidateIdByStudentId = async (studentId: string): Promise<number> => {
+  const handleGetCandidateIdByStudentId = async (studentId: string, forceRegister: boolean = false): Promise<number> => {
     try {
-      return await studentIdWeb3Service.getCandidateIdByStudentId(studentId);
+      // First attempt to get the candidate ID normally
+      try {
+        const id = await studentIdWeb3Service.getCandidateIdByStudentId(studentId);
+        if (id > 0) {
+          console.log(`Found existing candidate ID ${id} for student ID ${studentId}`);
+          return id;
+        }
+      } catch (lookupError) {
+        console.warn(`Candidate with student ID ${studentId} not found, ${forceRegister ? 'will register' : 'not registering'}`);
+      }
+      
+      // If we're here, either the ID wasn't found or was 0
+      if (forceRegister) {
+        console.log(`Registering candidate with student ID ${studentId}...`);
+        const newId = await studentIdWeb3Service.registerCandidate(studentId);
+        console.log(`Successfully registered candidate with ID ${newId} for student ID ${studentId}`);
+        return newId;
+      }
+      
+      // If we reach here, we couldn't find/register the candidate
+      throw new Error(`No candidate found with student ID ${studentId}`);
     } catch (error) {
-      console.error(`Failed to get candidate ID for student ID ${studentId}:`, error);
+      console.error(`Failed to get/register candidate ID for student ID ${studentId}:`, error);
       throw error;
     }
   };

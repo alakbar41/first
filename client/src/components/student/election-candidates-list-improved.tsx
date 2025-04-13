@@ -148,9 +148,22 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                     console.log(`Candidate with student ID ${candidate.studentId} not registered in blockchain yet:`, idError);
                     
                     // Add more detailed logging to help troubleshoot blockchain connection issues
-                    if (idError?.reason && typeof idError.reason === 'string') {
-                      console.log(`Reason for candidate lookup failure: ${idError.reason}`);
-                      if (idError.reason.includes("No candidate found")) {
+                    const errorString = idError?.toString?.() || '';
+                    const errorMessage = idError?.message || '';
+                    const errorReason = idError?.reason?.toString?.() || '';
+                    
+                    if (errorReason || errorMessage || errorString) {
+                      console.log(`Error details for candidate lookup failure:`, {
+                        reason: errorReason,
+                        message: errorMessage,
+                        errorString: errorString
+                      });
+                      
+                      if (
+                        errorReason.toLowerCase().includes("no candidate found") || 
+                        errorMessage.toLowerCase().includes("no candidate found") ||
+                        errorString.toLowerCase().includes("no candidate found")
+                      ) {
                         console.log(`Candidate with student ID ${candidate.studentId} needs to be registered on the blockchain first`);
                       }
                     }

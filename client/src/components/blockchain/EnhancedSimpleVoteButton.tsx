@@ -205,28 +205,29 @@ export function EnhancedSimpleVoteButton({
           if (!blockchainCandidateId || blockchainCandidateId <= 0) {
             console.warn(`Initial lookup failed for student ID: ${studentId}, trying to register it now...`);
             
-            // If not found, try to register the candidate and then get the ID again
+            // Use the enhanced getCandidateIdByStudentId which can register candidates if needed
             try {
-              // Use the hook's registerCandidate method instead
-              await getCandidateIdByStudentId(studentId, true); // Set force register flag to true
-              console.log(`Successfully registered candidate with student ID: ${studentId}, getting ID now...`);
-              
-              // Now try to get the ID again
-              blockchainCandidateId = await getCandidateIdByStudentId(studentId);
+              // Register + get ID in one step (will automatically try to register if not found)
+              blockchainCandidateId = await getCandidateIdByStudentId(studentId, true);
+              console.log(`Successfully obtained candidate ID ${blockchainCandidateId} for student ID: ${studentId}`);
               
               if (!blockchainCandidateId || blockchainCandidateId <= 0) {
-                throw new Error("Candidate registration successful but retrieval failed");
+                throw new Error("Could not obtain a valid candidate ID");
               }
             } catch (regError: any) {
-              console.error("Registration error:", regError);
+              console.error("Registration/retrieval error:", regError);
               
+              // Try one more time without registration in case the registration succeeded but 
+              // we didn't get the ID properly
               if (regError.message && regError.message.toLowerCase().includes("already registered")) {
                 // If already registered, try one more time to get the ID
+                console.log("Candidate was already registered, trying to get ID one more time...");
                 blockchainCandidateId = await getCandidateIdByStudentId(studentId);
                 
                 if (!blockchainCandidateId || blockchainCandidateId <= 0) {
                   throw new Error("Candidate exists but ID retrieval failed");
                 }
+                console.log(`Retrieved existing candidate ID: ${blockchainCandidateId}`);
               } else {
                 throw regError; // Re-throw if it's not an "already registered" error
               }
