@@ -98,14 +98,49 @@ export function BlockchainVerificationPanel() {
 
   const verifyElectionOnBlockchain = async (election: any) => {
     try {
+      // Connect to blockchain with wallet if possible
+      try {
+        console.log("Connecting wallet for full blockchain access...");
+        await studentIdWeb3Service.connectWallet();
+        console.log("Wallet connected successfully:", studentIdWeb3Service.getWalletAddress());
+      } catch (walletError) {
+        console.warn("Failed to connect wallet, verification may be limited:", walletError);
+        // Continue anyway, as we can still perform read operations
+      }
+      
       // Initialize web3 services
       console.log("Initializing web3 services for verification...");
-      const [web3Initialized, studentIdInitialized] = await Promise.all([
-        web3Service.initialize(),
-        studentIdWeb3Service.initialize()
-      ]);
+      // Try multiple times if needed for reliable connection
+      let web3Initialized = false;
+      let studentIdInitialized = false;
       
-      console.log(`Web3 service initialization results: web3Service=${web3Initialized}, studentIdWeb3Service=${studentIdInitialized}`);
+      // Try up to 3 times to initialize web3 services
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          [web3Initialized, studentIdInitialized] = await Promise.all([
+            web3Service.initialize(),
+            studentIdWeb3Service.initialize()
+          ]);
+          
+          console.log(`Web3 service initialization results (attempt ${attempt}): web3Service=${web3Initialized}, studentIdWeb3Service=${studentIdInitialized}`);
+          
+          if (web3Initialized && studentIdInitialized) {
+            break; // Success, no need for more attempts
+          } else {
+            // Wait before retrying
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            console.log("Retrying web3 service initialization...");
+          }
+        } catch (initError) {
+          console.error(`Web3 initialization error (attempt ${attempt}):`, initError);
+          // Wait before retrying
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+      
+      if (!web3Initialized || !studentIdInitialized) {
+        throw new Error("Failed to initialize blockchain services after multiple attempts");
+      }
       
       // Reset previous verification results
       setElectionVerificationResult(null);
@@ -120,15 +155,28 @@ export function BlockchainVerificationPanel() {
         }
         
         // Try to get election details from blockchain
+        console.log(`Fetching election details for blockchain ID ${election.blockchainId}...`);
         electionDetails = await web3Service.getElectionDetails(election.blockchainId);
+        console.log("Successfully retrieved election details:", electionDetails);
         electionExists = true;
       } catch (error: any) {
-        // Update the state with the verification failure
-        setElectionVerificationResult({
-          exists: false,
-          error: error.message || "Failed to find election on blockchain"
-        });
-        return;
+        console.error("Failed to get election details:", error);
+        
+        // Try one more time with studentIdWeb3Service as fallback
+        try {
+          console.log("Trying to get election details using alternative service...");
+          electionDetails = await studentIdWeb3Service.getElectionDetails(election.blockchainId);
+          console.log("Successfully retrieved election details using alternative service:", electionDetails);
+          electionExists = true;
+        } catch (fallbackError) {
+          console.error("Alternative service also failed:", fallbackError);
+          // Update the state with the verification failure
+          setElectionVerificationResult({
+            exists: false,
+            error: error.message || "Failed to find election on blockchain"
+          });
+          return;
+        }
       }
       
       // Election found on blockchain, save details
@@ -184,16 +232,25 @@ export function BlockchainVerificationPanel() {
             continue;
           }
           
-          // Get vote count for candidate if registered
+          // Get vote count for candidate if registered - try multiple times with exponential backoff
           let voteCount = 0;
           if (registeredForElection) {
-            try {
-              console.log(`Attempting to get vote count for candidate with blockchain ID ${blockchainCandidateId}`);
-              voteCount = await studentIdWeb3Service.getCandidateVoteCount(blockchainCandidateId);
-              console.log(`Successfully retrieved vote count: ${voteCount} for candidate ID ${blockchainCandidateId}`);
-            } catch (voteCountError) {
-              console.error(`Failed to get vote count for candidate ${blockchainCandidateId}:`, voteCountError);
-              // Don't fail verification for vote count errors, but log the error
+            console.log(`Attempting to get vote count for candidate with blockchain ID ${blockchainCandidateId}`);
+            // Try up to 3 times with increasing delays
+            for (let attempt = 1; attempt <= 3; attempt++) {
+              try {
+                voteCount = await studentIdWeb3Service.getCandidateVoteCount(blockchainCandidateId);
+                console.log(`Successfully retrieved vote count (attempt ${attempt}): ${voteCount} for candidate ID ${blockchainCandidateId}`);
+                break; // Exit the retry loop on success
+              } catch (voteCountError) {
+                console.error(`Failed to get vote count for candidate ${blockchainCandidateId} (attempt ${attempt}):`, voteCountError);
+                if (attempt < 3) {
+                  // Exponential backoff: wait 1s, then 2s before retrying
+                  const delay = attempt * 1000;
+                  console.log(`Retrying vote count retrieval in ${delay}ms...`);
+                  await new Promise(resolve => setTimeout(resolve, delay));
+                }
+              }
             }
           }
           
