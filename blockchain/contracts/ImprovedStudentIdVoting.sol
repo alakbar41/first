@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 
 /**
  * @title ImprovedStudentIdVoting
@@ -14,8 +14,15 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  * - Supports concurrent elections with individual tracking
  * - Implements time-bound automatic status updates
  * - Protects against replay attacks with nonces
+ * - Implements role-based access control
+ * - Uses keccak256 hashed keys for optimized storage
+ * - Enhanced event logging with granular rejection tracking
  */
-contract ImprovedStudentIdVoting is Ownable {
+contract ImprovedStudentIdVoting is AccessControl {
+    // Role definitions for fine-grained access control
+    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
+    bytes32 public constant ELECTION_MANAGER_ROLE = keccak256("ELECTION_MANAGER_ROLE");
+    bytes32 public constant VOTER_MANAGER_ROLE = keccak256("VOTER_MANAGER_ROLE");
     
     // Election types - kept simple for reference
     enum ElectionType { Senator, PresidentVP }
@@ -91,10 +98,16 @@ contract ImprovedStudentIdVoting is Ownable {
     event TieDetected(uint256 indexed electionId, uint256[] winnerIds, uint256 tiedVoteCount);
     
     /**
-     * @dev Constructor sets contract deployer as the owner
+     * @dev Constructor sets up roles and initial admin
      */
-    constructor() Ownable(msg.sender) {
-        // Register the owner as a voter by default
+    constructor() {
+        // Set up the deployer with admin role
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(ADMIN_ROLE, msg.sender);
+        _grantRole(ELECTION_MANAGER_ROLE, msg.sender);
+        _grantRole(VOTER_MANAGER_ROLE, msg.sender);
+        
+        // Register the admin as a voter by default
         registeredVoters[msg.sender] = true;
         emit VoterRegistered(msg.sender);
     }
@@ -185,9 +198,9 @@ contract ImprovedStudentIdVoting is Ownable {
     // Voter Management Functions
     
     /**
-     * @dev Register a new voter
+     * @dev Register a new voter - restricted to VOTER_MANAGER_ROLE
      */
-    function registerVoter(address voter) external onlyOwner {
+    function registerVoter(address voter) external onlyRole(VOTER_MANAGER_ROLE) {
         require(!registeredVoters[voter], "Voter already registered");
         
         registeredVoters[voter] = true;
@@ -195,9 +208,9 @@ contract ImprovedStudentIdVoting is Ownable {
     }
     
     /**
-     * @dev Register multiple voters at once
+     * @dev Register multiple voters at once - restricted to VOTER_MANAGER_ROLE
      */
-    function registerVotersBatch(address[] calldata voters) external onlyOwner {
+    function registerVotersBatch(address[] calldata voters) external onlyRole(VOTER_MANAGER_ROLE) {
         for (uint256 i = 0; i < voters.length; i++) {
             if (!registeredVoters[voters[i]]) {
                 registeredVoters[voters[i]] = true;
@@ -207,12 +220,26 @@ contract ImprovedStudentIdVoting is Ownable {
     }
     
     /**
-     * @dev Deregister a voter
+     * @dev Deregister a voter - restricted to VOTER_MANAGER_ROLE
      */
-    function deregisterVoter(address voter) external onlyOwner {
+    function deregisterVoter(address voter) external onlyRole(VOTER_MANAGER_ROLE) {
         require(registeredVoters[voter], "Voter not registered");
         registeredVoters[voter] = false;
         emit VoterDeregistered(voter);
+    }
+    
+    /**
+     * @dev Assign voter manager role to an address - restricted to admins
+     */
+    function assignVoterManagerRole(address manager) external onlyRole(ADMIN_ROLE) {
+        grantRole(VOTER_MANAGER_ROLE, manager);
+    }
+    
+    /**
+     * @dev Revoke voter manager role from an address - restricted to admins
+     */
+    function revokeVoterManagerRole(address manager) external onlyRole(ADMIN_ROLE) {
+        revokeRole(VOTER_MANAGER_ROLE, manager);
     }
     
     /**
@@ -240,7 +267,7 @@ contract ImprovedStudentIdVoting is Ownable {
         uint256 endTime
     ) 
         external 
-        onlyOwner 
+        onlyRole(ELECTION_MANAGER_ROLE)
         returns (uint256) 
     {
         require(startTime > block.timestamp, "Start time must be in the future");
@@ -269,7 +296,7 @@ contract ImprovedStudentIdVoting is Ownable {
      */
     function updateElectionStatus(uint256 electionId, uint8 status) 
         external 
-        onlyOwner 
+        onlyRole(ELECTION_MANAGER_ROLE)
         electionExists(electionId) 
     {
         if (status == uint8(ElectionStatus.Active)) {
@@ -286,6 +313,20 @@ contract ImprovedStudentIdVoting is Ownable {
         
         elections[electionId].status = ElectionStatus(status);
         emit ElectionStatusChanged(electionId, status);
+    }
+    
+    /**
+     * @dev Assign election manager role to an address - restricted to admins
+     */
+    function assignElectionManagerRole(address manager) external onlyRole(ADMIN_ROLE) {
+        grantRole(ELECTION_MANAGER_ROLE, manager);
+    }
+    
+    /**
+     * @dev Revoke election manager role from an address - restricted to admins
+     */
+    function revokeElectionManagerRole(address manager) external onlyRole(ADMIN_ROLE) {
+        revokeRole(ELECTION_MANAGER_ROLE, manager);
     }
     
     /**
@@ -325,7 +366,7 @@ contract ImprovedStudentIdVoting is Ownable {
      */
     function finalizeResults(uint256 electionId) 
         external 
-        onlyOwner 
+        onlyRole(ELECTION_MANAGER_ROLE)
         electionExists(electionId)
         resultsNotFinalized(electionId)
     {
@@ -426,7 +467,7 @@ contract ImprovedStudentIdVoting is Ownable {
      */
     function registerCandidate(string calldata studentId) 
         external 
-        onlyOwner 
+        onlyRole(ELECTION_MANAGER_ROLE)
         returns (uint256) 
     {
         // Validate the student ID
@@ -595,28 +636,70 @@ contract ImprovedStudentIdVoting is Ownable {
     
     /**
      * @dev Vote for a senator candidate with nonce for replay protection
+     * Enhanced with detailed rejection events
      */
     function voteForSenator(uint256 electionId, uint256 candidateId, uint256 nonce) 
         external 
-        electionExists(electionId)
-        electionActive(electionId)
-        candidateExists(candidateId)
-        hasNotVoted(electionId)
-        onlyRegisteredVoter()
-        validNonce(nonce)
         returns (bool)
     {
+        // Check election exists
+        if (elections[electionId].id != electionId) {
+            emit VoteRejected(electionId, msg.sender, "Election does not exist");
+            return false;
+        }
+        
+        // Check election is active
+        Election storage election = elections[electionId];
+        if (election.status != ElectionStatus.Active) {
+            emit VoteRejected(electionId, msg.sender, "Election is not active");
+            return false;
+        }
+        
+        // Check time constraints
+        if (block.timestamp < election.startTime) {
+            emit VoteRejected(electionId, msg.sender, "Election has not started yet");
+            return false;
+        }
+        if (block.timestamp > election.endTime) {
+            emit VoteRejected(electionId, msg.sender, "Election has ended");
+            return false;
+        }
+        
+        // Check candidate exists
+        if (candidates[candidateId].id != candidateId) {
+            emit VoteRejected(electionId, msg.sender, "Candidate does not exist");
+            return false;
+        }
+        
+        // Check voter hasn't voted
+        if (hasVoted[electionId][msg.sender]) {
+            emit VoteRejected(electionId, msg.sender, "Already voted in this election");
+            return false;
+        }
+        
+        // Check voter is registered
+        if (!registeredVoters[msg.sender]) {
+            emit VoteRejected(electionId, msg.sender, "Not a registered voter");
+            return false;
+        }
+        
+        // Check nonce
+        if (nonce <= voterNonces[msg.sender]) {
+            emit VoteRejected(electionId, msg.sender, "Invalid nonce - potential replay attack");
+            return false;
+        }
+        
         // Ensure election is of type Senator
-        require(
-            elections[electionId].electionType == ElectionType.Senator,
-            "Election must be of type Senator"
-        );
+        if (elections[electionId].electionType != ElectionType.Senator) {
+            emit VoteRejected(electionId, msg.sender, "Election must be of type Senator");
+            return false;
+        }
         
         // Ensure candidate is part of this election - O(1) lookup
-        require(
-            electionCandidateMap[electionId][candidateId],
-            "Candidate is not part of this election"
-        );
+        if (!electionCandidateMap[electionId][candidateId]) {
+            emit VoteRejected(electionId, msg.sender, "Candidate is not part of this election");
+            return false;
+        }
         
         // Update nonce
         voterNonces[msg.sender] = nonce;
@@ -637,28 +720,70 @@ contract ImprovedStudentIdVoting is Ownable {
     
     /**
      * @dev Vote for a President/VP ticket with nonce for replay protection
+     * Enhanced with detailed rejection events
      */
     function voteForPresidentVP(uint256 electionId, uint256 ticketId, uint256 nonce) 
         external 
-        electionExists(electionId)
-        electionActive(electionId)
-        ticketExists(ticketId)
-        hasNotVoted(electionId)
-        onlyRegisteredVoter()
-        validNonce(nonce)
         returns (bool)
     {
+        // Check election exists
+        if (elections[electionId].id != electionId) {
+            emit VoteRejected(electionId, msg.sender, "Election does not exist");
+            return false;
+        }
+        
+        // Check election is active
+        Election storage election = elections[electionId];
+        if (election.status != ElectionStatus.Active) {
+            emit VoteRejected(electionId, msg.sender, "Election is not active");
+            return false;
+        }
+        
+        // Check time constraints
+        if (block.timestamp < election.startTime) {
+            emit VoteRejected(electionId, msg.sender, "Election has not started yet");
+            return false;
+        }
+        if (block.timestamp > election.endTime) {
+            emit VoteRejected(electionId, msg.sender, "Election has ended");
+            return false;
+        }
+        
+        // Check ticket exists
+        if (tickets[ticketId].id != ticketId) {
+            emit VoteRejected(electionId, msg.sender, "Ticket does not exist");
+            return false;
+        }
+        
+        // Check voter hasn't voted
+        if (hasVoted[electionId][msg.sender]) {
+            emit VoteRejected(electionId, msg.sender, "Already voted in this election");
+            return false;
+        }
+        
+        // Check voter is registered
+        if (!registeredVoters[msg.sender]) {
+            emit VoteRejected(electionId, msg.sender, "Not a registered voter");
+            return false;
+        }
+        
+        // Check nonce
+        if (nonce <= voterNonces[msg.sender]) {
+            emit VoteRejected(electionId, msg.sender, "Invalid nonce - potential replay attack");
+            return false;
+        }
+        
         // Ensure election is of type PresidentVP
-        require(
-            elections[electionId].electionType == ElectionType.PresidentVP,
-            "Election must be of type PresidentVP"
-        );
+        if (elections[electionId].electionType != ElectionType.PresidentVP) {
+            emit VoteRejected(electionId, msg.sender, "Election must be of type PresidentVP");
+            return false;
+        }
         
         // Ensure ticket is part of this election - O(1) lookup
-        require(
-            electionTicketMap[electionId][ticketId],
-            "Ticket is not part of this election"
-        );
+        if (!electionTicketMap[electionId][ticketId]) {
+            emit VoteRejected(electionId, msg.sender, "Ticket is not part of this election");
+            return false;
+        }
         
         // Update nonce
         voterNonces[msg.sender] = nonce;
