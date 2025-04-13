@@ -417,6 +417,23 @@ class StudentIdWeb3Service {
       throw error;
     }
   }
+  
+  // Register a candidate for an election (wraps addCandidateToElection)
+  async registerCandidateForElection(electionId: number, candidateId: number): Promise<void> {
+    try {
+      await this.initializeIfNeeded();
+      
+      console.log(`Registering candidate ID ${candidateId} for election ID ${electionId}`);
+      
+      // This method is just an alias for addCandidateToElection for better API naming
+      await this.addCandidateToElection(electionId, candidateId);
+      
+      console.log(`Successfully registered candidate ${candidateId} for election ${electionId}`);
+    } catch (error) {
+      console.error(`Failed to register candidate ${candidateId} for election ${electionId}:`, error);
+      throw error;
+    }
+  }
 
   // Get election tickets
   async getElectionTickets(electionId: number): Promise<number[]> {

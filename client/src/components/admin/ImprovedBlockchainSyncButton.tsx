@@ -206,8 +206,8 @@ export function ImprovedBlockchainSyncButton({
   const registerCandidateForElection = async (candidateId: number, electionId: number): Promise<void> => {
     try {
       // Find candidate in our list
-      const candidate = candidates?.find(c => c.id === candidateId);
-      const election = elections?.find(e => e.id === electionId);
+      const candidate = candidates?.find((c: any) => c.id === candidateId);
+      const election = elections?.find((e: any) => e.id === electionId);
       
       if (!candidate || !election) {
         throw new Error(`Candidate ${candidateId} or election ${electionId} not found`);
