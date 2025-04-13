@@ -1455,17 +1455,60 @@ Technical error: ${gasError.message}`);
         };
       }
 
-      const details = await this.contract.getElectionDetails(electionId);
-      
-      return {
-        id: Number(details[0]),
-        electionType: Number(details[1]),
-        status: Number(details[2]),
-        startTime: Number(details[3]),
-        endTime: Number(details[4]),
-        totalVotesCast: Number(details[5]),
-        resultsFinalized: details[6]
-      };
+      try {
+        // First, try to check if the election exists by accessing the elections mapping directly
+        // This is more reliable than getElectionDetails which might have encoding issues
+        console.log(`Checking if election ${electionId} exists by accessing elections mapping`);
+        const electionStruct = await this.contract.elections(electionId);
+        
+        // If we get here without error, the election exists, so we can safely call getElectionDetails
+        console.log(`Election ${electionId} exists in contract, fetching details`);
+        const details = await this.contract.getElectionDetails(electionId);
+        
+        return {
+          id: Number(details[0]),
+          electionType: Number(details[1]),
+          status: Number(details[2]),
+          startTime: Number(details[3]),
+          endTime: Number(details[4]),
+          totalVotesCast: Number(details[5]),
+          resultsFinalized: details[6]
+        };
+      } catch (contractError) {
+        console.warn(`Error accessing election ${electionId} data:`, contractError);
+        console.log(`Falling back to direct elections mapping`);
+        
+        try {
+          // Try to access the raw election struct directly
+          const electionData = await this.contract.elections(electionId);
+          console.log(`Raw election data from elections mapping:`, electionData);
+          
+          // Parse the struct fields based on the ABI
+          return {
+            id: Number(electionData.id),
+            electionType: Number(electionData.electionType),
+            status: Number(electionData.status),
+            startTime: Number(electionData.startTime),
+            endTime: Number(electionData.endTime),
+            totalVotesCast: Number(electionData.totalVotesCast),
+            resultsFinalized: Boolean(electionData.resultsFinalized)
+          };
+        } catch (fallbackError) {
+          console.error(`Fallback also failed for election ${electionId}:`, fallbackError);
+          console.warn(`Election ${electionId} likely doesn't exist on the blockchain`);
+          
+          // Return a default election with error indicators
+          return {
+            id: electionId,
+            electionType: ElectionType.Senator, 
+            status: ElectionStatus.Pending,
+            startTime: 0,
+            endTime: 0,
+            totalVotesCast: 0,
+            resultsFinalized: false
+          };
+        }
+      }
     } catch (error) {
       console.error(`Failed to get election details for ID ${electionId}:`, error);
       // Return a default election object instead of throwing an error
