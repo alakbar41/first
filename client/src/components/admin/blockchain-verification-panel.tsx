@@ -215,13 +215,51 @@ export function BlockchainVerificationPanel() {
           
           // Candidate exists on blockchain, now check if registered for this election
           let registeredForElection = false;
+          let electionCandidateIds: number[] = [];
           try {
-            // Get all candidates for the election from blockchain
-            const electionCandidateIds = await studentIdWeb3Service.getElectionCandidates(election.blockchainId);
+            // Get all candidates for the election from blockchain - try multiple times
+            console.log(`Getting candidates for election with blockchain ID ${election.blockchainId}...`);
+            
+            // Try up to 3 times with increasing delays
+            for (let attempt = 1; attempt <= 3; attempt++) {
+              try {
+                electionCandidateIds = await studentIdWeb3Service.getElectionCandidates(election.blockchainId);
+                console.log(`Found ${electionCandidateIds.length} candidates for election ${election.blockchainId} (attempt ${attempt}):`, electionCandidateIds);
+                break; // Exit retry loop on success
+              } catch (candidateListError) {
+                console.error(`Failed to get candidate list for election ${election.blockchainId} (attempt ${attempt}):`, candidateListError);
+                if (attempt < 3) {
+                  // Exponential backoff: wait 1s, then 2s before retrying
+                  const delay = attempt * 1000;
+                  console.log(`Retrying candidate list retrieval in ${delay}ms...`);
+                  await new Promise(resolve => setTimeout(resolve, delay));
+                }
+              }
+            }
             
             // Check if our candidate is in the list
             registeredForElection = electionCandidateIds.includes(blockchainCandidateId);
+            console.log(`Candidate ${candidate.studentId} (blockchain ID ${blockchainCandidateId}) registration status: ${registeredForElection ? 'Registered' : 'Not Registered'}`);
+            
+            // If not registered but should be, try an alternative check
+            if (!registeredForElection) {
+              console.log(`Trying alternative verification for candidate ${candidate.studentId}...`);
+              try {
+                // Try to verify using direct contract call - this is a more direct but more expensive method
+                const isRegisteredAlternative = await web3Service.checkCandidateInElection(election.blockchainId, blockchainCandidateId);
+                if (isRegisteredAlternative) {
+                  console.log(`Alternative verification SUCCESSFUL - candidate ${candidate.studentId} IS registered for election ${election.blockchainId}`);
+                  registeredForElection = true;
+                } else {
+                  console.log(`Alternative verification confirms candidate ${candidate.studentId} is NOT registered for election ${election.blockchainId}`);
+                }
+              } catch (alternativeCheckError) {
+                console.error(`Alternative verification failed:`, alternativeCheckError);
+                // Continue with original result since alternative check failed
+              }
+            }
           } catch (registrationError: any) {
+            console.error(`Error checking registration status for candidate ${candidate.studentId}:`, registrationError);
             newCandidateResults[candidate.id] = {
               exists: true,
               blockchainId: blockchainCandidateId,

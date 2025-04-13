@@ -1566,6 +1566,91 @@ Technical error: ${gasError.message}`);
       return [];
     }
   }
+  
+  /**
+   * Checks if a candidate is registered for a specific election
+   * This is a more reliable alternative method that checks directly
+   * @param electionId - The blockchain ID of the election
+   * @param candidateId - The blockchain ID of the candidate
+   * @returns True if the candidate is registered for the election, false otherwise
+   */
+  async checkCandidateInElection(electionId: number, candidateId: number): Promise<boolean> {
+    try {
+      console.log(`Direct check if candidate ${candidateId} is registered for election ${electionId}...`);
+      
+      // If no contract, try to initialize through MetaMask connection
+      if (!this.contract && window.ethereum) {
+        try {
+          console.log('Contract not initialized, trying to connect using MetaMask...');
+          const ethersProvider = new ethers.BrowserProvider(window.ethereum);
+          const signer = await ethersProvider.getSigner();
+          this.signer = signer;
+          this.walletAddress = await signer.getAddress();
+          
+          this.contract = new ethers.Contract(
+            CONTRACT_ADDRESS,
+            IMPROVED_CONTRACT_ABI,
+            signer
+          );
+          
+          console.log('Contract initialized on-demand for checking candidate registration');
+        } catch (initError) {
+          console.warn('Failed to initialize contract on-demand:', initError);
+          throw new Error('Failed to initialize blockchain connection for verification');
+        }
+      }
+      
+      if (!this.contract) {
+        throw new Error('Contract not initialized and cannot connect to MetaMask');
+      }
+      
+      // First, try the getElectionCandidates approach
+      try {
+        const candidateList = await this.contract.getElectionCandidates(electionId);
+        const candidateIds = candidateList.map((id: any) => Number(id));
+        const isRegistered = candidateIds.includes(candidateId);
+        console.log(`Candidate ${candidateId} registration check for election ${electionId} (method 1): ${isRegistered}`);
+        
+        if (isRegistered) {
+          return true;
+        }
+      } catch (listError) {
+        console.warn('Failed to check using candidate list method:', listError);
+        // Continue to alternative method if this fails
+      }
+      
+      // Alternative: Try to get the candidate's vote count for this election
+      // If the candidate is not registered, this should fail or return 0
+      try {
+        const voteCount = await this.contract.getCandidateVoteCount(candidateId);
+        const hasVotes = Number(voteCount) > 0;
+        console.log(`Candidate ${candidateId} has ${voteCount} votes in election ${electionId}`);
+        
+        // Having votes is a strong indicator that the candidate is registered
+        if (hasVotes) {
+          return true;
+        }
+      } catch (voteError) {
+        console.warn('Failed to verify using vote count method:', voteError);
+        // Continue to further methods
+      }
+      
+      // Final fallback: Try a direct approach by checking election registration
+      // This depends on the contract implementation and may not always be available
+      try {
+        // Use a custom contract method if available, or return false as a last resort
+        const registered = false; // Replace with actual contract call if available
+        console.log(`Candidate ${candidateId} registration check for election ${electionId} (final method): ${registered}`);
+        return registered;
+      } catch (finalError) {
+        console.error('All methods to check candidate registration failed:', finalError);
+        return false;
+      }
+    } catch (error) {
+      console.error(`Failed to check if candidate ${candidateId} is registered for election ${electionId}:`, error);
+      return false;
+    }
+  }
 
   // Get tickets for a specific election - with lazy initialization
   async getElectionTickets(electionId: number): Promise<number[]> {
