@@ -390,6 +390,33 @@ class StudentIdWeb3Service {
       return [];
     }
   }
+  
+  // Add candidate to election
+  async addCandidateToElection(electionId: number, candidateId: number): Promise<void> {
+    try {
+      await this.initializeIfNeeded();
+      
+      console.log(`Adding candidate ID ${candidateId} to election ID ${electionId}`);
+      
+      const options = {
+        gasLimit: 500000,
+        maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"),
+        maxFeePerGas: ethers.parseUnits("35.0", "gwei"),
+        type: 2,
+      };
+      
+      const tx = await this.contract.addCandidateToElection(
+        electionId,
+        candidateId,
+        options
+      );
+      
+      await tx.wait();
+    } catch (error) {
+      console.error(`Failed to add candidate ${candidateId} to election ${electionId}:`, error);
+      throw error;
+    }
+  }
 
   // Get election tickets
   async getElectionTickets(electionId: number): Promise<number[]> {
@@ -517,6 +544,143 @@ class StudentIdWeb3Service {
   async connectWallet(): Promise<string> {
     await this.initializeIfNeeded();
     return this.walletAddress;
+  }
+  
+  // Role management functions
+  
+  // Get role constants from the contract
+  async getRoleConstants(): Promise<{
+    ADMIN_ROLE: string;
+    ELECTION_MANAGER_ROLE: string;
+    VOTER_MANAGER_ROLE: string;
+  }> {
+    try {
+      await this.initializeIfNeeded();
+      
+      const roles = await this.contract.getRoleConstants();
+      return {
+        ADMIN_ROLE: roles[0],
+        ELECTION_MANAGER_ROLE: roles[1],
+        VOTER_MANAGER_ROLE: roles[2]
+      };
+    } catch (error) {
+      console.error('Failed to get role constants:', error);
+      // Return default values based on keccak256 hash of role strings
+      return {
+        ADMIN_ROLE: '0x0000000000000000000000000000000000000000000000000000000000000000',
+        ELECTION_MANAGER_ROLE: '0xf2ca9939c76f6989c48f1ccccd30f49c979ef693b972eff8806aa482ca1c7f3c',
+        VOTER_MANAGER_ROLE: '0x0110d9c18ac8bcdec6c87ea39e115f229d32c87aebd28fbecbc9a082f9e99ac3'
+      };
+    }
+  }
+  
+  // Check if the current wallet has a specific role
+  async hasRole(role: string): Promise<boolean> {
+    try {
+      await this.initializeIfNeeded();
+      
+      if (!this.walletAddress) {
+        return false;
+      }
+      
+      return await this.contract.hasRole(role, this.walletAddress);
+    } catch (error) {
+      console.error(`Failed to check role:`, error);
+      return false;
+    }
+  }
+  
+  // Check if the current wallet has admin role
+  async isAdmin(): Promise<boolean> {
+    try {
+      const roles = await this.getRoleConstants();
+      return await this.hasRole(roles.ADMIN_ROLE);
+    } catch (error) {
+      console.error('Failed to check admin role:', error);
+      return false;
+    }
+  }
+  
+  // Check if the current wallet has election manager role
+  async isElectionManager(): Promise<boolean> {
+    try {
+      const roles = await this.getRoleConstants();
+      return await this.hasRole(roles.ELECTION_MANAGER_ROLE);
+    } catch (error) {
+      console.error('Failed to check election manager role:', error);
+      return false;
+    }
+  }
+  
+  // Check if the current wallet has voter manager role
+  async isVoterManager(): Promise<boolean> {
+    try {
+      const roles = await this.getRoleConstants();
+      return await this.hasRole(roles.VOTER_MANAGER_ROLE);
+    } catch (error) {
+      console.error('Failed to check voter manager role:', error);
+      return false;
+    }
+  }
+  
+  // Grant a role to an address
+  async grantRole(role: string, address: string): Promise<void> {
+    try {
+      await this.initializeIfNeeded();
+      
+      const options = {
+        gasLimit: 300000,
+        maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"),
+        maxFeePerGas: ethers.parseUnits("35.0", "gwei"),
+        type: 2,
+      };
+      
+      const tx = await this.contract.grantRole(role, address, options);
+      await tx.wait();
+    } catch (error) {
+      console.error(`Failed to grant role:`, error);
+      throw error;
+    }
+  }
+  
+  // Revoke a role from an address
+  async revokeRole(role: string, address: string): Promise<void> {
+    try {
+      await this.initializeIfNeeded();
+      
+      const options = {
+        gasLimit: 300000,
+        maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"),
+        maxFeePerGas: ethers.parseUnits("35.0", "gwei"),
+        type: 2,
+      };
+      
+      const tx = await this.contract.revokeRole(role, address, options);
+      await tx.wait();
+    } catch (error) {
+      console.error(`Failed to revoke role:`, error);
+      throw error;
+    }
+  }
+  
+  // Manage multiple roles at once
+  async manageRoles(address: string, roles: string[], grantValues: boolean[]): Promise<void> {
+    try {
+      await this.initializeIfNeeded();
+      
+      const options = {
+        gasLimit: 500000,
+        maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"),
+        maxFeePerGas: ethers.parseUnits("35.0", "gwei"),
+        type: 2,
+      };
+      
+      const tx = await this.contract.manageRoles(address, roles, grantValues, options);
+      await tx.wait();
+    } catch (error) {
+      console.error(`Failed to manage roles:`, error);
+      throw error;
+    }
   }
 }
 
