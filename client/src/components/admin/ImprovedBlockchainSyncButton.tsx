@@ -187,7 +187,7 @@ export function ImprovedBlockchainSyncButton({ className = '' }: ImprovedBlockch
           addSyncMessage(`Election ${election.name} (ID: ${election.id}) timestamps - Start: ${startTime}, End: ${endTime}`);
           
           // Verify we have blockchain IDs for all candidates in this election
-          const missingCandidates = electionCandidates.filter(ec => !candidateMap[ec.candidateId]);
+          const missingCandidates = electionCandidates.filter((ec: any) => !candidateMap[ec.candidateId]);
           if (missingCandidates.length > 0) {
             addSyncError(`Election "${election.name}" has ${missingCandidates.length} candidates with missing blockchain IDs. Trying to register them now...`);
             
@@ -322,63 +322,10 @@ export function ImprovedBlockchainSyncButton({ className = '' }: ImprovedBlockch
         }
       }
       
-      // Step 3: Link candidates to elections
+      // Skip Step 3 as we already linked candidates to elections in Step 2
       setSyncingStep(3);
-      setProgressPercent(70);
-      addSyncMessage("Linking candidates to elections...");
-      
-      for (let i = 0; i < totalElections; i++) {
-        const election = elections[i];
-        
-        try {
-          // Fetch candidates for this election
-          const response = await fetch(`/api/elections/${election.id}/candidates`);
-          
-          if (!response.ok) {
-            throw new Error(`Failed to fetch candidates for election ${election.id}`);
-          }
-          
-          const electionCandidates = await response.json();
-          
-          for (const candidate of electionCandidates) {
-            // Get the database candidate ID
-            const candidateDetails = candidates.find(c => c.id === candidate.candidateId);
-            if (!candidateDetails) {
-              addSyncError(`Could not find candidate details for ID ${candidate.candidateId}`);
-              continue;
-            }
-            
-            const blockchainCandidateId = candidateMap[candidate.candidateId];
-            
-            if (!blockchainCandidateId) {
-              addSyncError(`No blockchain mapping for candidate ${candidateDetails.fullName} (ID: ${candidate.candidateId})`);
-              continue;
-            }
-            
-            try {
-              addSyncMessage(`Adding candidate ${candidateDetails.fullName} (ID: ${candidate.candidateId}) to election "${election.name}" (ID: ${election.id})...`);
-              
-              // Use the election start timestamp as the election identifier
-              const startTime = Math.floor(new Date(election.startDate).getTime() / 1000);
-              await studentIdWeb3Service.addCandidateToElection(startTime, blockchainCandidateId);
-              
-              addSyncMessage(`Added candidate ${candidateDetails.fullName} to election "${election.name}"`);
-            } catch (error: any) {
-              // Check if error contains "already added"
-              if (error.message && error.message.toLowerCase().includes("already added")) {
-                addSyncMessage(`Candidate ${candidateDetails.fullName} already added to election "${election.name}"`);
-              } else {
-                addSyncError(`Failed to add candidate ${candidateDetails.fullName} to election "${election.name}": ${error.message || error}`);
-              }
-            }
-          }
-          
-          // Update progress
-          setProgressPercent(70 + Math.floor((i / totalElections) * 30));
-        } catch (error: any) {
-          addSyncError(`Failed to link candidates for election "${election.name}": ${error.message || error}`);
-        }
-      }
+      setProgressPercent(100);
+      addSyncMessage("All candidates already linked to elections in previous step!");
       
       setSyncingStep(4);
       setProgressPercent(100);

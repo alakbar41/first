@@ -5,6 +5,8 @@ import { Loader2, VoteIcon, ShieldCheck } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import * as ethers from "ethers";
 import { useStudentIdWeb3 } from '@/hooks/use-student-id-web3';
+// Get the imported service directly from the hook
+// We don't need a separate import as we'll use the service from the hook
 
 interface EnhancedSimpleVoteButtonProps {
   electionId: number;
@@ -197,35 +199,67 @@ export function EnhancedSimpleVoteButton({
         console.log(`Looking up blockchain candidate ID for student ID: ${studentId}`);
         let blockchainCandidateId;
         try {
+          // First attempt to get candidate ID directly
           blockchainCandidateId = await getCandidateIdByStudentId(studentId);
           
-          if (blockchainCandidateId <= 0) {
-            toast({
-              title: "Candidate not registered",
-              description: "This candidate has not been registered on the blockchain yet.",
-              variant: "destructive",
-              duration: 5000,
-            });
-            throw new Error("Candidate does not exist in the blockchain yet");
+          if (!blockchainCandidateId || blockchainCandidateId <= 0) {
+            console.warn(`Initial lookup failed for student ID: ${studentId}, trying to register it now...`);
+            
+            // If not found, try to register the candidate and then get the ID again
+            try {
+              // Use the hook's registerCandidate method instead
+              await getCandidateIdByStudentId(studentId, true); // Set force register flag to true
+              console.log(`Successfully registered candidate with student ID: ${studentId}, getting ID now...`);
+              
+              // Now try to get the ID again
+              blockchainCandidateId = await getCandidateIdByStudentId(studentId);
+              
+              if (!blockchainCandidateId || blockchainCandidateId <= 0) {
+                throw new Error("Candidate registration successful but retrieval failed");
+              }
+            } catch (regError: any) {
+              console.error("Registration error:", regError);
+              
+              if (regError.message && regError.message.toLowerCase().includes("already registered")) {
+                // If already registered, try one more time to get the ID
+                blockchainCandidateId = await getCandidateIdByStudentId(studentId);
+                
+                if (!blockchainCandidateId || blockchainCandidateId <= 0) {
+                  throw new Error("Candidate exists but ID retrieval failed");
+                }
+              } else {
+                throw regError; // Re-throw if it's not an "already registered" error
+              }
+            }
           }
           
           console.log(`Found blockchain candidate ID: ${blockchainCandidateId} for student ID: ${studentId}`);
         } catch (err: any) {
-          console.error("Error getting candidate by student ID:", err);
+          console.error("Error getting or registering candidate by student ID:", err);
           
-          // Extract more specific error for "No candidate found with this student ID"
+          // Detailed error handling for different scenarios
           let errorMsg = "Failed to find this candidate on the blockchain.";
-          if (err?.reason && typeof err.reason === 'string' && err.reason.includes("No candidate found")) {
-            errorMsg = "This candidate needs to be registered on the blockchain first.";
+          let errorTitle = "Candidate not registered on blockchain";
+          
+          // Check for specific error messages
+          const errorString = err.toString().toLowerCase();
+          const errorReason = err?.reason?.toString().toLowerCase() || "";
+          
+          if (errorReason.includes("no candidate found") || errorString.includes("no candidate found")) {
+            errorMsg = "This candidate needs to be registered on the blockchain by an admin. Please contact the election administrator.";
+            errorTitle = "Candidate registration required";
+          } else if (errorString.includes("already registered")) {
+            errorMsg = "This candidate is already registered but we couldn't retrieve their ID. Please try again later.";
+            errorTitle = "Retrieval error";
           }
           
           toast({
-            title: "Candidate not registered on blockchain",
+            title: errorTitle,
             description: errorMsg,
             variant: "destructive",
             duration: 5000,
           });
-          throw new Error("Failed to get blockchain candidate ID");
+          throw new Error("Failed to get blockchain candidate ID: " + (err.message || err));
         }
         
         // Step 5: Submit vote transaction using the student ID web3 service
