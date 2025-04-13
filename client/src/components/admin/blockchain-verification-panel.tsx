@@ -241,16 +241,32 @@ export function BlockchainVerificationPanel() {
     setIsVerifying(true);
     
     try {
+      // Ensure the wallet is connected first - this might be needed for vote count retrieval
+      try {
+        console.log("Connecting wallet before verification...");
+        await studentIdWeb3Service.connectWallet();
+      } catch (walletError) {
+        console.warn("Failed to connect wallet, but continuing with verification:", walletError);
+        // Continue with verification even if wallet fails to connect
+      }
+      
       const election = elections.find((e: any) => e.id === selectedElectionId);
       if (!election) {
         throw new Error(`Election ${selectedElectionId} not found`);
       }
       
+      // Reinitialize both web3 services to ensure fresh connection
+      console.log("Reinitializing Web3 services for verification...");
+      await Promise.all([
+        studentIdWeb3Service.initialize(), 
+        web3Service.initialize()
+      ]);
+      
       await verifyElectionOnBlockchain(election);
       
       toast({
         title: "Verification Complete",
-        description: "Blockchain verification has been completed",
+        description: "Blockchain verification has been completed with updated vote counts",
         variant: "default",
       });
     } catch (error: any) {

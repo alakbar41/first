@@ -333,12 +333,39 @@ class StudentIdWeb3Service {
   // Get candidate vote count
   async getCandidateVoteCount(candidateId: number): Promise<number> {
     try {
-      await this.initializeIfNeeded();
+      // Make sure we're initialized and properly connected
+      if (!this.isInitialized || !this.contract) {
+        console.log(`[Vote Count] Service not initialized. Initializing first...`);
+        await this.initialize();
+        
+        if (!this.isInitialized || !this.contract) {
+          console.error('[Vote Count] Failed to initialize service after attempt');
+          return 0;
+        }
+      }
       
+      console.log(`[Vote Count] Getting vote count for candidate ${candidateId}...`);
+      
+      // Check if wallet is connected
+      if (!this.walletAddress) {
+        console.log(`[Vote Count] No wallet connected. Attempting to connect...`);
+        try {
+          await this.connectWallet();
+        } catch (walletError) {
+          console.warn(`[Vote Count] Failed to connect wallet: ${walletError}`);
+          // Continue anyway as read operations may not require a connected wallet
+        }
+      }
+      
+      // Fetch the vote count
+      console.log(`[Vote Count] Calling contract.getCandidateVoteCount(${candidateId})...`);
       const voteCount = await this.contract.getCandidateVoteCount(candidateId);
-      return Number(voteCount);
+      const numericVoteCount = Number(voteCount);
+      
+      console.log(`[Vote Count] Retrieved vote count for candidate ${candidateId}: ${numericVoteCount}`);
+      return numericVoteCount;
     } catch (error) {
-      console.error(`Failed to get vote count for candidate ${candidateId}:`, error);
+      console.error(`[Vote Count] Failed to get vote count for candidate ${candidateId}:`, error);
       return 0;
     }
   }
@@ -346,12 +373,39 @@ class StudentIdWeb3Service {
   // Get ticket vote count
   async getTicketVoteCount(ticketId: number): Promise<number> {
     try {
-      await this.initializeIfNeeded();
+      // Make sure we're initialized and properly connected
+      if (!this.isInitialized || !this.contract) {
+        console.log(`[Ticket Vote Count] Service not initialized. Initializing first...`);
+        await this.initialize();
+        
+        if (!this.isInitialized || !this.contract) {
+          console.error('[Ticket Vote Count] Failed to initialize service after attempt');
+          return 0;
+        }
+      }
       
+      console.log(`[Ticket Vote Count] Getting vote count for ticket ${ticketId}...`);
+      
+      // Check if wallet is connected
+      if (!this.walletAddress) {
+        console.log(`[Ticket Vote Count] No wallet connected. Attempting to connect...`);
+        try {
+          await this.connectWallet();
+        } catch (walletError) {
+          console.warn(`[Ticket Vote Count] Failed to connect wallet: ${walletError}`);
+          // Continue anyway as read operations may not require a connected wallet
+        }
+      }
+      
+      // Fetch the vote count
+      console.log(`[Ticket Vote Count] Calling contract.getTicketVoteCount(${ticketId})...`);
       const voteCount = await this.contract.getTicketVoteCount(ticketId);
-      return Number(voteCount);
+      const numericVoteCount = Number(voteCount);
+      
+      console.log(`[Ticket Vote Count] Retrieved vote count for ticket ${ticketId}: ${numericVoteCount}`);
+      return numericVoteCount;
     } catch (error) {
-      console.error(`Failed to get vote count for ticket ${ticketId}:`, error);
+      console.error(`[Ticket Vote Count] Failed to get vote count for ticket ${ticketId}:`, error);
       return 0;
     }
   }
