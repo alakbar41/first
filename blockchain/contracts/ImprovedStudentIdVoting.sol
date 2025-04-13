@@ -96,6 +96,7 @@ contract ImprovedStudentIdVoting is AccessControl {
     event VoteRejected(uint256 indexed electionId, address indexed voter, string reason);
     event ResultsFinalized(uint256 indexed electionId, uint256 winnerId, uint256 winnerVotes);
     event TieDetected(uint256 indexed electionId, uint256[] winnerIds, uint256 tiedVoteCount);
+    event RoleAccessViolation(address indexed account, bytes32 indexed role, string functionName);
     
     /**
      * @dev Constructor sets up roles and initial admin
@@ -256,6 +257,33 @@ contract ImprovedStudentIdVoting is AccessControl {
         return voterNonces[msg.sender] + 1;
     }
     
+    /**
+     * @dev Check all predefined roles for an address at once
+     * Useful for UI to determine which features to show
+     */
+    function checkRoles(address account) external view returns (
+        bool isAdmin, 
+        bool isElectionManager, 
+        bool isVoterManager
+    ) {
+        isAdmin = hasRole(ADMIN_ROLE, account);
+        isElectionManager = hasRole(ELECTION_MANAGER_ROLE, account);
+        isVoterManager = hasRole(VOTER_MANAGER_ROLE, account);
+    }
+    
+    /**
+     * @dev Get role constants to use in frontend
+     */
+    function getRoleConstants() external pure returns (
+        bytes32 adminRole,
+        bytes32 electionManagerRole,
+        bytes32 voterManagerRole
+    ) {
+        adminRole = ADMIN_ROLE;
+        electionManagerRole = ELECTION_MANAGER_ROLE;
+        voterManagerRole = VOTER_MANAGER_ROLE;
+    }
+    
     // Election Management Functions
     
     /**
@@ -327,6 +355,44 @@ contract ImprovedStudentIdVoting is AccessControl {
      */
     function revokeElectionManagerRole(address manager) external onlyRole(ADMIN_ROLE) {
         revokeRole(ELECTION_MANAGER_ROLE, manager);
+    }
+    
+    /**
+     * @dev Manage multiple roles at once - more efficient than individual role assignments
+     * @param user The address to manage roles for
+     * @param isAdmin Whether the user should have the ADMIN_ROLE
+     * @param isElectionManager Whether the user should have the ELECTION_MANAGER_ROLE
+     * @param isVoterManager Whether the user should have the VOTER_MANAGER_ROLE
+     */
+    function manageRoles(
+        address user, 
+        bool isAdmin, 
+        bool isElectionManager, 
+        bool isVoterManager
+    ) 
+        external 
+        onlyRole(ADMIN_ROLE) 
+    {
+        // Update admin role
+        if (isAdmin && !hasRole(ADMIN_ROLE, user)) {
+            grantRole(ADMIN_ROLE, user);
+        } else if (!isAdmin && hasRole(ADMIN_ROLE, user)) {
+            revokeRole(ADMIN_ROLE, user);
+        }
+        
+        // Update election manager role
+        if (isElectionManager && !hasRole(ELECTION_MANAGER_ROLE, user)) {
+            grantRole(ELECTION_MANAGER_ROLE, user);
+        } else if (!isElectionManager && hasRole(ELECTION_MANAGER_ROLE, user)) {
+            revokeRole(ELECTION_MANAGER_ROLE, user);
+        }
+        
+        // Update voter manager role
+        if (isVoterManager && !hasRole(VOTER_MANAGER_ROLE, user)) {
+            grantRole(VOTER_MANAGER_ROLE, user);
+        } else if (!isVoterManager && hasRole(VOTER_MANAGER_ROLE, user)) {
+            revokeRole(VOTER_MANAGER_ROLE, user);
+        }
     }
     
     /**
