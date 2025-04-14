@@ -729,12 +729,12 @@ class StudentIdWeb3Service {
           console.log(`[Vote] Submitting vote in election ID ${electionId} for candidate ${candidateId} with nonce ${nonce}`);
           console.log(`[Vote] Using gas settings: gasLimit=${500000 + (attemptCount * 50000)}, priorityFee=${priorityFeeGwei}gwei, maxFee=${maxFeeGwei}gwei`);
           
-          // Now create the options object with BigInt values for the actual transaction
+          // Create gas options with more conservative values to avoid MetaMask RPC errors
           const options = {
-            gasLimit: 500000 + (attemptCount * 50000), // Increase gas with each retry
-            maxPriorityFeePerGas: ethers.parseUnits(priorityFeeGwei.toString(), "gwei"), // Increase priority fee with each retry
-            maxFeePerGas: ethers.parseUnits(maxFeeGwei.toString(), "gwei"), // Increase max fee with each retry
-            type: 2,
+            gasLimit: 300000, // Use a more conservative gas limit
+            // Don't specify maxPriorityFeePerGas and maxFeePerGas - let MetaMask determine them
+            // This helps avoid "Internal JSON-RPC error" issues
+            type: 2, // EIP-1559 transaction
           };
           
           const tx = await this.contract.voteForSenator(
@@ -986,12 +986,12 @@ class StudentIdWeb3Service {
       console.log(`[President/VP Vote] Submitting vote in election ID ${electionId} (timestamp) for ticket ${ticketId} with nonce ${nonce}`);
       console.log(`[President/VP Vote] Using gas settings: gasLimit=500000, priorityFee=${priorityFeeGwei}gwei, maxFee=${maxFeeGwei}gwei`);
       
-      // Now create the options object with BigInt values
+      // Create gas options with more conservative values to avoid MetaMask RPC errors
       const options = {
-        gasLimit: 500000,
-        maxPriorityFeePerGas: ethers.parseUnits(priorityFeeGwei.toString(), "gwei"),
-        maxFeePerGas: ethers.parseUnits(maxFeeGwei.toString(), "gwei"),
-        type: 2,
+        gasLimit: 300000, // Use a more conservative gas limit
+        // Don't specify maxPriorityFeePerGas and maxFeePerGas - let MetaMask determine them
+        // This helps avoid "Internal JSON-RPC error" issues
+        type: 2, // EIP-1559 transaction
       };
       
       const tx = await this.contract.voteForPresidentVP(
@@ -1049,18 +1049,14 @@ class StudentIdWeb3Service {
     try {
       await this.initializeIfNeeded();
       
-      // Use human-readable values first
-      const priorityFeeGwei = 15.0;
-      const maxFeeGwei = 35.0;
+      console.log(`[AutoUpdate] Updating election ${electionId} status with simplified gas settings`);
       
-      console.log(`[AutoUpdate] Updating election ${electionId} status with gas: gasLimit=300000, priorityFee=${priorityFeeGwei}gwei, maxFee=${maxFeeGwei}gwei`);
-      
-      // Create options with BigInt values
+      // Create gas options with more conservative values to avoid MetaMask RPC errors
       const options = {
-        gasLimit: 300000,
-        maxPriorityFeePerGas: ethers.parseUnits(priorityFeeGwei.toString(), "gwei"),
-        maxFeePerGas: ethers.parseUnits(maxFeeGwei.toString(), "gwei"),
-        type: 2,
+        gasLimit: 300000, // Use a conservative gas limit
+        // Don't specify maxPriorityFeePerGas and maxFeePerGas - let MetaMask determine them
+        // This helps avoid "Internal JSON-RPC error" issues
+        type: 2, // EIP-1559 transaction
       };
       
       const tx = await this.contract.autoUpdateElectionStatus(electionId, options);
@@ -1203,18 +1199,14 @@ class StudentIdWeb3Service {
     try {
       await this.initializeIfNeeded();
       
-      // Use human-readable values
-      const priorityFeeGwei = 15.0;
-      const maxFeeGwei = 35.0;
+      console.log(`[Role] Granting role ${role} to ${address} with simplified gas settings`);
       
-      console.log(`[Role] Granting role ${role} to ${address} with gas settings: gasLimit=300000, priorityFee=${priorityFeeGwei}gwei, maxFee=${maxFeeGwei}gwei`);
-      
-      // Create options with BigInt values
+      // Create gas options with more conservative values to avoid MetaMask RPC errors
       const options = {
-        gasLimit: 300000,
-        maxPriorityFeePerGas: ethers.parseUnits(priorityFeeGwei.toString(), "gwei"),
-        maxFeePerGas: ethers.parseUnits(maxFeeGwei.toString(), "gwei"),
-        type: 2,
+        gasLimit: 300000, // Use a conservative gas limit
+        // Don't specify maxPriorityFeePerGas and maxFeePerGas - let MetaMask determine them
+        // This helps avoid "Internal JSON-RPC error" issues
+        type: 2, // EIP-1559 transaction
       };
       
       const tx = await this.contract.grantRole(role, address, options);
@@ -1230,18 +1222,14 @@ class StudentIdWeb3Service {
     try {
       await this.initializeIfNeeded();
       
-      // Use human-readable values
-      const priorityFeeGwei = 15.0;
-      const maxFeeGwei = 35.0;
+      console.log(`[Role] Revoking role ${role} from ${address} with simplified gas settings`);
       
-      console.log(`[Role] Revoking role ${role} from ${address} with gas settings: gasLimit=300000, priorityFee=${priorityFeeGwei}gwei, maxFee=${maxFeeGwei}gwei`);
-      
-      // Create options with BigInt values
+      // Create gas options with more conservative values to avoid MetaMask RPC errors
       const options = {
-        gasLimit: 300000,
-        maxPriorityFeePerGas: ethers.parseUnits(priorityFeeGwei.toString(), "gwei"),
-        maxFeePerGas: ethers.parseUnits(maxFeeGwei.toString(), "gwei"),
-        type: 2,
+        gasLimit: 300000, // Use a conservative gas limit
+        // Don't specify maxPriorityFeePerGas and maxFeePerGas - let MetaMask determine them
+        // This helps avoid "Internal JSON-RPC error" issues
+        type: 2, // EIP-1559 transaction
       };
       
       const tx = await this.contract.revokeRole(role, address, options);
@@ -1257,19 +1245,15 @@ class StudentIdWeb3Service {
     try {
       await this.initializeIfNeeded();
       
-      // Use human-readable values
-      const priorityFeeGwei = 15.0;
-      const maxFeeGwei = 35.0;
-      
-      console.log(`[Role] Managing roles for ${address} with gas settings: gasLimit=500000, priorityFee=${priorityFeeGwei}gwei, maxFee=${maxFeeGwei}gwei`);
+      console.log(`[Role] Managing roles for ${address} with simplified gas settings`);
       console.log(`[Role] Role changes: ${roles.map((role, i) => `${role}: ${grantValues[i] ? 'grant' : 'revoke'}`).join(', ')}`);
       
-      // Create options with BigInt values
+      // Create gas options with more conservative values to avoid MetaMask RPC errors
       const options = {
-        gasLimit: 500000,
-        maxPriorityFeePerGas: ethers.parseUnits(priorityFeeGwei.toString(), "gwei"),
-        maxFeePerGas: ethers.parseUnits(maxFeeGwei.toString(), "gwei"),
-        type: 2,
+        gasLimit: 400000, // Use a higher but still conservative gas limit for multiple operations
+        // Don't specify maxPriorityFeePerGas and maxFeePerGas - let MetaMask determine them
+        // This helps avoid "Internal JSON-RPC error" issues
+        type: 2, // EIP-1559 transaction
       };
       
       const tx = await this.contract.manageRoles(address, roles, grantValues, options);
