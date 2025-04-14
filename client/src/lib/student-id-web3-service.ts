@@ -92,14 +92,30 @@ class StudentIdWeb3Service {
   private walletAddress = '';
 
   // Initialize the Web3 service
-  async initialize(): Promise<boolean> {
+  async initialize(forceReinitialize: boolean = false): Promise<boolean> {
     try {
+      // Skip initialization if already initialized and not forcing reinitialization
+      if (this.isInitialized && this.contract && this.signer && !forceReinitialize) {
+        console.log('Service already initialized, skipping initialization.');
+        return true;
+      }
+      
       if (!CONTRACT_ADDRESS) {
         console.error('Contract address is not set');
         return false;
       }
 
       console.log('Using MetaMask provider only approach - no RPC URLs');
+      
+      // For full initialization, connectWallet must be called
+      if (!this.walletAddress || forceReinitialize) {
+        try {
+          await this.connectWallet();
+        } catch (walletError) {
+          console.warn('Failed to connect wallet during initialization:', walletError);
+          // We'll still mark as initialized but with limited functionality
+        }
+      }
       
       this.isInitialized = true;
       return true;
@@ -110,14 +126,14 @@ class StudentIdWeb3Service {
   }
   
   // Helper to ensure the service is initialized
-  async initializeIfNeeded(): Promise<boolean> {
-    // If already initialized, return success
-    if (this.isInitialized && this.contract && this.signer) {
+  async initializeIfNeeded(forceReinitialize: boolean = false): Promise<boolean> {
+    // If already initialized and not forcing reinitialization, return success
+    if (this.isInitialized && this.contract && this.signer && !forceReinitialize) {
       return true;
     }
     
-    // If not initialized, try to initialize
-    console.log('Service not fully initialized, initializing on demand...');
+    // If not initialized or forcing reinitialization, try to initialize
+    console.log(`Service not fully initialized, initializing on demand... ${forceReinitialize ? '(forced)' : ''}`);
     
     try {
       // Connect to MetaMask
@@ -333,45 +349,63 @@ class StudentIdWeb3Service {
   // Get candidate vote count
   async getCandidateVoteCount(candidateId: number, retryCount = 0): Promise<number> {
     try {
-      // Maximum number of retry attempts
-      const MAX_RETRIES = 3;
+      // Increased number of retry attempts for better reliability
+      const MAX_RETRIES = 5;
       
       // Make sure we're initialized and properly connected
       if (!this.isInitialized || !this.contract) {
         console.log(`[Vote Count] Service not initialized. Initializing first...`);
-        await this.initialize();
+        
+        try {
+          await this.initialize();
+        } catch (initError) {
+          console.error('[Vote Count] Error during initialization:', initError);
+          
+          // If we failed to initialize on retry, attempt a forced reconnection
+          if (retryCount > 0) {
+            console.log('[Vote Count] Attempting alternative initialization approach...');
+            try {
+              // Force a connection refresh
+              await this.connectWallet();
+              this.isInitialized = true;
+            } catch (walletError) {
+              console.error('[Vote Count] Failed alternative initialization:', walletError);
+            }
+          }
+        }
         
         if (!this.isInitialized || !this.contract) {
           console.error('[Vote Count] Failed to initialize service after attempt');
           
           // Retry with exponential backoff if we've not exceeded max retries
           if (retryCount < MAX_RETRIES) {
-            const backoffTime = Math.pow(2, retryCount) * 500; // Exponential backoff: 500ms, 1s, 2s
+            const backoffTime = Math.pow(2, retryCount) * 750; // Exponential backoff: 750ms, 1.5s, 3s, 6s, 12s
             console.log(`[Vote Count] Retrying initialization in ${backoffTime}ms (attempt ${retryCount + 1}/${MAX_RETRIES})...`);
             await new Promise(resolve => setTimeout(resolve, backoffTime));
             return this.getCandidateVoteCount(candidateId, retryCount + 1);
           }
           
+          console.warn(`[Vote Count] Max retries reached. Returning default vote count 0.`);
           return 0;
         }
       }
       
       console.log(`[Vote Count] Getting vote count for candidate ${candidateId}...`);
       
-      // Check if wallet is connected
-      if (!this.walletAddress) {
+      // Check if wallet is connected - for read operations, we can proceed without a wallet 
+      // but having one connected provides more consistent behavior
+      if (!this.walletAddress && retryCount < 2) {
         console.log(`[Vote Count] No wallet connected. Attempting to connect...`);
         try {
           await this.connectWallet();
         } catch (walletError) {
           console.warn(`[Vote Count] Failed to connect wallet: ${walletError}`);
-          // For read operations, we can attempt to continue without a wallet
-          // but it's better to have one connected for consistent behavior
+          // Continue without wallet for read operations
         }
       }
       
       // Validate candidate ID is positive and reasonable 
-      if (candidateId <= 0) {
+      if (!candidateId || candidateId <= 0) {
         console.error(`[Vote Count] Invalid candidate ID: ${candidateId}`);
         return 0;
       }
@@ -380,7 +414,30 @@ class StudentIdWeb3Service {
       try {
         // Fetch the vote count
         console.log(`[Vote Count] Calling contract.getCandidateVoteCount(${candidateId})...`);
-        const voteCount = await this.contract.getCandidateVoteCount(candidateId);
+        
+        // Verify contract is properly initialized
+        if (!this.contract.getCandidateVoteCount) {
+          throw new Error('Contract method getCandidateVoteCount is not available');
+        }
+        
+        // Try different approaches on different retry attempts
+        let voteCount;
+        if (retryCount % 2 === 1 && this.contract.candidates) {
+          // On odd retry attempts, try to get the candidate directly
+          console.log(`[Vote Count] Alternative approach: Accessing candidate data directly...`);
+          try {
+            const candidate = await this.contract.candidates(candidateId);
+            voteCount = candidate.voteCount;
+          } catch (candidateError) {
+            console.warn(`[Vote Count] Failed to get candidate directly:`, candidateError);
+            // Fall back to standard method
+            voteCount = await this.contract.getCandidateVoteCount(candidateId);
+          }
+        } else {
+          // Standard approach - direct call to getCandidateVoteCount
+          voteCount = await this.contract.getCandidateVoteCount(candidateId);
+        }
+        
         const numericVoteCount = Number(voteCount);
         
         console.log(`[Vote Count] Retrieved vote count for candidate ${candidateId}: ${numericVoteCount}`);
@@ -396,13 +453,25 @@ class StudentIdWeb3Service {
         
         // Retry with exponential backoff if we've not exceeded max retries
         if (retryCount < MAX_RETRIES) {
-          const backoffTime = Math.pow(2, retryCount) * 500; // Exponential backoff: 500ms, 1s, 2s
+          const backoffTime = Math.pow(2, retryCount) * 1000; // Exponential backoff: 1s, 2s, 4s, 8s, 16s
           console.log(`[Vote Count] Retrying contract call in ${backoffTime}ms (attempt ${retryCount + 1}/${MAX_RETRIES})...`);
+          
+          // On later retries, try to reinitialize the contract
+          if (retryCount >= 2) {
+            console.log(`[Vote Count] Reinitializing contract before retry...`);
+            try {
+              await this.initialize(true); // Force reinitialization
+            } catch (reinitError) {
+              console.warn(`[Vote Count] Reinitialization failed:`, reinitError);
+            }
+          }
+          
           await new Promise(resolve => setTimeout(resolve, backoffTime));
           return this.getCandidateVoteCount(candidateId, retryCount + 1);
         }
         
-        throw contractError;
+        console.warn(`[Vote Count] Max retries reached. Returning default vote count 0.`);
+        return 0;
       }
     } catch (error) {
       console.error(`[Vote Count] Failed to get vote count for candidate ${candidateId}:`, error);
