@@ -636,17 +636,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // If we don't have a stored blockchain ID, we need to make a contract call
-      // In a real implementation, we would call the contract directly
-      // For now, return a 404 with a detailed message
+      // If we don't have a stored blockchain ID, we need to check the blockchain directly
       
-      console.log(`No blockchain ID stored for candidate with student ID ${studentId}`);
-      return res.status(404).json({ 
-        message: "Blockchain ID not available", 
-        detail: `Candidate exists in database but has no blockchain ID. Use the Candidate Registration API to register this candidate first.`,
-        databaseId: candidate.id,
-        studentId: candidate.studentId
-      });
+      try {
+        // Import web3 utilities
+        const { ethers } = require('ethers');
+        
+        // Get contract address and ABI from environment variables
+        const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || process.env.VITE_NEW_CONTRACT_ADDRESS;
+        if (!CONTRACT_ADDRESS) {
+          throw new Error('Contract address not configured in environment variables');
+        }
+        
+        // Create a read-only RPC provider - get RPC URL from environment
+        const RPC_URL = process.env.VITE_POLYGON_RPC_URL || 'https://rpc-amoy.polygon.technology';
+        const provider = new ethers.JsonRpcProvider(RPC_URL);
+        
+        console.log(`Using RPC URL ${RPC_URL} to connect to blockchain`);
+        
+        // ABI for just the getCandidateIdByStudentId function
+        const MINIMAL_ABI = [
+          "function getCandidateIdByStudentId(string) view returns (uint256)"
+        ];
+        
+        // Create a contract instance
+        const contract = new ethers.Contract(CONTRACT_ADDRESS, MINIMAL_ABI, provider);
+        
+        console.log(`Querying blockchain directly for student ID ${studentId}...`);
+        
+        // Call the contract
+        const blockchainCandidateId = await contract.getCandidateIdByStudentId(studentId);
+        const numericId = Number(blockchainCandidateId);
+        
+        console.log(`Found candidate ID ${numericId} for student ID ${studentId} on blockchain`);
+        
+        // If we got a valid ID from blockchain, update our database for future queries
+        if (numericId > 0) {
+          try {
+            // Update the candidate record with the blockchain ID
+            await storage.updateCandidate(candidate.id, {
+              blockchainId: numericId
+            });
+            console.log(`Updated database with blockchain ID ${numericId} for candidate ${candidate.id}`);
+          } catch (updateError) {
+            console.warn(`Could not update candidate with blockchain ID:`, updateError);
+            // Non-critical error, continue returning the ID we found
+          }
+          
+          return res.json({
+            candidateId: numericId,
+            databaseId: candidate.id,
+            studentId: candidate.studentId,
+            source: "blockchain"
+          });
+        } else {
+          throw new Error(`Contract returned invalid ID: ${blockchainCandidateId}`);
+        }
+      } catch (contractError) {
+        console.error(`Failed to query blockchain for student ID ${studentId}:`, contractError);
+        
+        // Return a 404 with a detailed message
+        console.log(`No blockchain ID stored for candidate with student ID ${studentId}`);
+        return res.status(404).json({ 
+          message: "Blockchain ID not available", 
+          detail: `Candidate exists in database but could not retrieve blockchain ID. Error: ${contractError.message}`,
+          databaseId: candidate.id,
+          studentId: candidate.studentId,
+          error: contractError.message
+        });
+      }
     } catch (error: any) {
       console.error("Error getting candidate by student ID:", error);
       res.status(500).json({ 
