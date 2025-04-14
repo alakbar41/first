@@ -601,13 +601,14 @@ class StudentIdWeb3Service {
     try {
       await this.initializeIfNeeded();
       
-      console.log(`Adding candidate ID ${candidateId} to election ID ${electionId}`);
+      console.log(`Adding candidate ID ${candidateId} to election ID ${electionId} with simplified gas settings`);
       
+      // Create gas options with more conservative values to avoid MetaMask RPC errors
       const options = {
-        gasLimit: 500000,
-        maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"),
-        maxFeePerGas: ethers.parseUnits("35.0", "gwei"),
-        type: 2,
+        gasLimit: 300000, // Use a conservative gas limit
+        // Don't specify maxPriorityFeePerGas and maxFeePerGas - let MetaMask determine them
+        // This helps avoid "Internal JSON-RPC error" issues
+        type: 2, // EIP-1559 transaction
       };
       
       const tx = await this.contract.addCandidateToElection(
@@ -721,13 +722,9 @@ class StudentIdWeb3Service {
           // Get fresh nonce for each attempt to avoid nonce errors
           const nonce = await this.getNextNonce();
           
-          // Create gas options - but avoid using BigInt values in JSON.stringify
-          const priorityFeeGwei = 15.0 + attemptCount;
-          const maxFeeGwei = 35.0 + (attemptCount * 2);
-          
-          // Log human-readable values first before creating BigInt values
+          // Log what we're going to do
           console.log(`[Vote] Submitting vote in election ID ${electionId} for candidate ${candidateId} with nonce ${nonce}`);
-          console.log(`[Vote] Using gas settings: gasLimit=${500000 + (attemptCount * 50000)}, priorityFee=${priorityFeeGwei}gwei, maxFee=${maxFeeGwei}gwei`);
+          console.log(`[Vote] Using simplified gas settings with gasLimit=300000, letting MetaMask determine fees`);
           
           // Create gas options with more conservative values to avoid MetaMask RPC errors
           const options = {
@@ -979,12 +976,9 @@ class StudentIdWeb3Service {
       // Get next nonce
       const nonce = await this.getNextNonce();
       
-      // Create gas options with human-readable logging first (avoid BigInt JSON serialization issues)
-      const priorityFeeGwei = 15.0;
-      const maxFeeGwei = 35.0;
-      
+      // Log what we're going to do
       console.log(`[President/VP Vote] Submitting vote in election ID ${electionId} (timestamp) for ticket ${ticketId} with nonce ${nonce}`);
-      console.log(`[President/VP Vote] Using gas settings: gasLimit=500000, priorityFee=${priorityFeeGwei}gwei, maxFee=${maxFeeGwei}gwei`);
+      console.log(`[President/VP Vote] Using simplified gas settings with gasLimit=300000, letting MetaMask determine fees`);
       
       // Create gas options with more conservative values to avoid MetaMask RPC errors
       const options = {
