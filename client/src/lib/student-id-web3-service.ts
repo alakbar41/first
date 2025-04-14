@@ -1257,10 +1257,18 @@ class StudentIdWeb3Service {
     try {
       await this.initializeIfNeeded();
       
+      // Use human-readable values
+      const priorityFeeGwei = 15.0;
+      const maxFeeGwei = 35.0;
+      
+      console.log(`[Role] Managing roles for ${address} with gas settings: gasLimit=500000, priorityFee=${priorityFeeGwei}gwei, maxFee=${maxFeeGwei}gwei`);
+      console.log(`[Role] Role changes: ${roles.map((role, i) => `${role}: ${grantValues[i] ? 'grant' : 'revoke'}`).join(', ')}`);
+      
+      // Create options with BigInt values
       const options = {
         gasLimit: 500000,
-        maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"),
-        maxFeePerGas: ethers.parseUnits("35.0", "gwei"),
+        maxPriorityFeePerGas: ethers.parseUnits(priorityFeeGwei.toString(), "gwei"),
+        maxFeePerGas: ethers.parseUnits(maxFeeGwei.toString(), "gwei"),
         type: 2,
       };
       
