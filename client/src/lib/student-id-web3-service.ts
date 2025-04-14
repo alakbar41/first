@@ -721,15 +721,21 @@ class StudentIdWeb3Service {
           // Get fresh nonce for each attempt to avoid nonce errors
           const nonce = await this.getNextNonce();
           
+          // Create gas options - but avoid using BigInt values in JSON.stringify
+          const priorityFeeGwei = 15.0 + attemptCount;
+          const maxFeeGwei = 35.0 + (attemptCount * 2);
+          
+          // Log human-readable values first before creating BigInt values
+          console.log(`[Vote] Submitting vote in election ID ${electionId} for candidate ${candidateId} with nonce ${nonce}`);
+          console.log(`[Vote] Using gas settings: gasLimit=${500000 + (attemptCount * 50000)}, priorityFee=${priorityFeeGwei}gwei, maxFee=${maxFeeGwei}gwei`);
+          
+          // Now create the options object with BigInt values for the actual transaction
           const options = {
             gasLimit: 500000 + (attemptCount * 50000), // Increase gas with each retry
-            maxPriorityFeePerGas: ethers.parseUnits((15.0 + attemptCount).toString(), "gwei"), // Increase priority fee with each retry
-            maxFeePerGas: ethers.parseUnits((35.0 + attemptCount * 2).toString(), "gwei"), // Increase max fee with each retry
+            maxPriorityFeePerGas: ethers.parseUnits(priorityFeeGwei.toString(), "gwei"), // Increase priority fee with each retry
+            maxFeePerGas: ethers.parseUnits(maxFeeGwei.toString(), "gwei"), // Increase max fee with each retry
             type: 2,
           };
-          
-          console.log(`[Vote] Submitting vote in election ID ${electionId} for candidate ${candidateId} with nonce ${nonce}`);
-          console.log(`[Vote] Using gas settings: ${JSON.stringify(options)}`);
           
           const tx = await this.contract.voteForSenator(
             electionId,
@@ -973,14 +979,20 @@ class StudentIdWeb3Service {
       // Get next nonce
       const nonce = await this.getNextNonce();
       
-      const options = {
-        gasLimit: 500000,
-        maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"),
-        maxFeePerGas: ethers.parseUnits("35.0", "gwei"),
-        type: 2,
-      };
+      // Create gas options with human-readable logging first (avoid BigInt JSON serialization issues)
+      const priorityFeeGwei = 15.0;
+      const maxFeeGwei = 35.0;
       
       console.log(`[President/VP Vote] Submitting vote in election ID ${electionId} (timestamp) for ticket ${ticketId} with nonce ${nonce}`);
+      console.log(`[President/VP Vote] Using gas settings: gasLimit=500000, priorityFee=${priorityFeeGwei}gwei, maxFee=${maxFeeGwei}gwei`);
+      
+      // Now create the options object with BigInt values
+      const options = {
+        gasLimit: 500000,
+        maxPriorityFeePerGas: ethers.parseUnits(priorityFeeGwei.toString(), "gwei"),
+        maxFeePerGas: ethers.parseUnits(maxFeeGwei.toString(), "gwei"),
+        type: 2,
+      };
       
       const tx = await this.contract.voteForPresidentVP(
         electionId,
@@ -1037,10 +1049,17 @@ class StudentIdWeb3Service {
     try {
       await this.initializeIfNeeded();
       
+      // Use human-readable values first
+      const priorityFeeGwei = 15.0;
+      const maxFeeGwei = 35.0;
+      
+      console.log(`[AutoUpdate] Updating election ${electionId} status with gas: gasLimit=300000, priorityFee=${priorityFeeGwei}gwei, maxFee=${maxFeeGwei}gwei`);
+      
+      // Create options with BigInt values
       const options = {
         gasLimit: 300000,
-        maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"),
-        maxFeePerGas: ethers.parseUnits("35.0", "gwei"),
+        maxPriorityFeePerGas: ethers.parseUnits(priorityFeeGwei.toString(), "gwei"),
+        maxFeePerGas: ethers.parseUnits(maxFeeGwei.toString(), "gwei"),
         type: 2,
       };
       
@@ -1184,10 +1203,17 @@ class StudentIdWeb3Service {
     try {
       await this.initializeIfNeeded();
       
+      // Use human-readable values
+      const priorityFeeGwei = 15.0;
+      const maxFeeGwei = 35.0;
+      
+      console.log(`[Role] Granting role ${role} to ${address} with gas settings: gasLimit=300000, priorityFee=${priorityFeeGwei}gwei, maxFee=${maxFeeGwei}gwei`);
+      
+      // Create options with BigInt values
       const options = {
         gasLimit: 300000,
-        maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"),
-        maxFeePerGas: ethers.parseUnits("35.0", "gwei"),
+        maxPriorityFeePerGas: ethers.parseUnits(priorityFeeGwei.toString(), "gwei"),
+        maxFeePerGas: ethers.parseUnits(maxFeeGwei.toString(), "gwei"),
         type: 2,
       };
       
@@ -1204,10 +1230,17 @@ class StudentIdWeb3Service {
     try {
       await this.initializeIfNeeded();
       
+      // Use human-readable values
+      const priorityFeeGwei = 15.0;
+      const maxFeeGwei = 35.0;
+      
+      console.log(`[Role] Revoking role ${role} from ${address} with gas settings: gasLimit=300000, priorityFee=${priorityFeeGwei}gwei, maxFee=${maxFeeGwei}gwei`);
+      
+      // Create options with BigInt values
       const options = {
         gasLimit: 300000,
-        maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"),
-        maxFeePerGas: ethers.parseUnits("35.0", "gwei"),
+        maxPriorityFeePerGas: ethers.parseUnits(priorityFeeGwei.toString(), "gwei"),
+        maxFeePerGas: ethers.parseUnits(maxFeeGwei.toString(), "gwei"),
         type: 2,
       };
       
