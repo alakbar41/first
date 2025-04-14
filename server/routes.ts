@@ -605,6 +605,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Blockchain API endpoints
+  
+  // Get candidate blockchain ID by student ID
+  app.get("/api/blockchain/candidate-by-student-id/:studentId", async (req, res) => {
+    try {
+      const { studentId } = req.params;
+      
+      if (!studentId) {
+        return res.status(400).json({ message: "Student ID is required" });
+      }
+      
+      // First check if we have this student ID in our database
+      const candidate = await storage.getCandidateByStudentId(studentId);
+      
+      if (!candidate) {
+        return res.status(404).json({ 
+          message: "Candidate not found", 
+          detail: `No candidate found with student ID ${studentId}` 
+        });
+      }
+      
+      // If we have a stored blockchain ID in the database, use that
+      if (candidate.blockchainId) {
+        return res.json({ 
+          candidateId: candidate.blockchainId,
+          databaseId: candidate.id,
+          studentId: candidate.studentId,
+          source: "database"
+        });
+      }
+      
+      // If we don't have a stored blockchain ID, we need to make a contract call
+      // In a real implementation, we would call the contract directly
+      // For now, return a 404 with a detailed message
+      
+      console.log(`No blockchain ID stored for candidate with student ID ${studentId}`);
+      return res.status(404).json({ 
+        message: "Blockchain ID not available", 
+        detail: `Candidate exists in database but has no blockchain ID. Use the Candidate Registration API to register this candidate first.`,
+        databaseId: candidate.id,
+        studentId: candidate.studentId
+      });
+    } catch (error: any) {
+      console.error("Error getting candidate by student ID:", error);
+      res.status(500).json({ 
+        message: error.message || "Failed to get candidate by student ID",
+        error: error.toString()
+      });
+    }
+  });
+  
   // Check if a candidate is in any election (either as main candidate or running mate)
   app.get("/api/candidates/:id/in-elections", isAdmin, async (req, res) => {
     try {

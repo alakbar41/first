@@ -70,12 +70,12 @@ export function CandidateVoteCount({
           setBlockchainId(blockchainCandidateId);
           console.log(`Mapped candidate ID ${candidateId} in election ${electionId} to blockchain ID ${blockchainCandidateId} for vote count`);
         } catch (mappingError) {
-          console.warn('Error mapping candidate ID, falling back to simple mapping:', mappingError);
-          // Fallback to the simple mapping
-          const safeId = candidateId % 2;
-          blockchainCandidateId = safeId === 0 ? 2 : 1;
-          setBlockchainId(blockchainCandidateId);
-          setError("Using fallback mapping");
+          console.error('Error mapping candidate ID to blockchain:', mappingError);
+          setBlockchainId(null);
+          setError("Failed to map candidate ID");
+          setVoteCount(null);
+          setIsLoading(false);
+          return;
         }
         
         // Use the mapped ID to get the vote count

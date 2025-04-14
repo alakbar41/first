@@ -104,6 +104,7 @@ export async function getBlockchainCandidateId(
   
   // Check candidate position cache first (most direct mapping)
   if (cache.candidatePositions.has(cacheKey)) {
+    console.log(`Found cached blockchain ID for candidate ${databaseCandidateId} in election ${databaseElectionId}: ${cache.candidatePositions.get(cacheKey)}`);
     return cache.candidatePositions.get(cacheKey)!;
   }
   
@@ -121,10 +122,33 @@ export async function getBlockchainCandidateId(
       throw new Error(`Election ${databaseElectionId} not found`);
     }
     
-    // Get the election's start time which is a stable identifier
-    const electionStartTimestamp = new Date(election.startDate).getTime();
+    // If this election isn't deployed to blockchain, we can't get valid IDs
+    if (!election.blockchainId) {
+      throw new Error(`Election ${databaseElectionId} is not deployed to blockchain yet`);
+    }
     
-    // Now get all candidates for this election
+    // Get the election's start time which is used as blockchain ID
+    const electionBlockchainId = election.blockchainId;
+    console.log(`Using blockchain ID ${electionBlockchainId} for election ${databaseElectionId}`);
+    
+    // Get the candidate details to find the student ID
+    const candidateResponse = await apiRequest('GET', `/api/candidates/${databaseCandidateId}`);
+    
+    if (!candidateResponse.ok) {
+      throw new Error(`Failed to fetch candidate ${databaseCandidateId} details`);
+    }
+    
+    const candidate = await candidateResponse.json();
+    
+    if (!candidate || !candidate.studentId) {
+      throw new Error(`Candidate ${databaseCandidateId} not found or missing student ID`);
+    }
+    
+    // This is critically important: Get the student ID which is the stable identifier across systems
+    const studentId = candidate.studentId;
+    console.log(`Found student ID ${studentId} for candidate ${databaseCandidateId}`);
+    
+    // Now fetch all candidates for this election so we can verify our candidate is included
     const electionCandidatesResponse = await apiRequest(
       'GET', 
       `/api/elections/${databaseElectionId}/candidates`
@@ -140,32 +164,55 @@ export async function getBlockchainCandidateId(
       throw new Error(`No candidates found for election ${databaseElectionId}`);
     }
     
-    // Sort candidates by ID to ensure a stable order regardless of when they were added
-    const sortedCandidates = [...electionCandidates].sort((a, b) => a.candidateId - b.candidateId);
+    // Verify our candidate is in this election
+    const candidateInElection = electionCandidates.some(ec => ec.candidateId === databaseCandidateId);
     
-    // Find the candidate's position in the SORTED array
+    if (!candidateInElection) {
+      throw new Error(`Candidate ${databaseCandidateId} is not registered for election ${databaseElectionId}`);
+    }
+    
+    // Try to get all candidates for this election from the blockchain
+    // This requires making direct calls to the API
+    
+    // First get the blockchain candidate ID directly from the blockchain using the student ID
+    // We'll request this information by actually looking up the candidate ID using the StudentId
+    const blockchainCandidateResponse = await apiRequest('GET', `/api/blockchain/candidate-by-student-id/${studentId}`);
+    
+    if (blockchainCandidateResponse.ok) {
+      const blockchainData = await blockchainCandidateResponse.json();
+      
+      if (blockchainData && blockchainData.candidateId > 0) {
+        // Store mapping in cache using the composite key
+        const blockchainCandidateId = blockchainData.candidateId;
+        cache.candidatePositions.set(cacheKey, blockchainCandidateId);
+        
+        console.log(`✅ Direct Blockchain Mapping: Candidate ${databaseCandidateId} (Student ID: ${studentId}) → Blockchain ID ${blockchainCandidateId}`);
+        
+        return blockchainCandidateId;
+      }
+    }
+    
+    // If the direct lookup failed, fall back to asking the web3 service for candidate ID
+    // This requires the studentIdWeb3Service, which we can't directly access here
+    // We'll use the API to get the mapping instead
+    
+    // As a fallback, we'll use the position-based approach
+    // Sort candidates by ID to ensure a stable order
+    console.log(`⚠️ Direct blockchain lookup failed. Using position-based fallback.`);
+    const sortedCandidates = [...electionCandidates].sort((a, b) => a.candidateId - b.candidateId);
     const position = sortedCandidates.findIndex(ec => ec.candidateId === databaseCandidateId);
     
     if (position === -1) {
-      throw new Error(`Candidate ${databaseCandidateId} not found in election ${databaseElectionId}`);
+      throw new Error(`Could not determine position for candidate ${databaseCandidateId}`);
     }
     
-    // Use a stable blockchain ID calculation:
-    // 1. Blockchain IDs are 1-based, so add 1 to the position
-    // 2. This ensures a consistent mapping based on stable candidate ordering
+    // Remember blockchain IDs are 1-based, so add 1 to position
     const blockchainCandidateId = position + 1;
     
-    // Store mapping in cache using the composite key
+    // Store mapping in cache
     cache.candidatePositions.set(cacheKey, blockchainCandidateId);
     
-    // Log for debugging
-    console.log(`ℹ️ Stable Mapping: Election ${databaseElectionId} (Start: ${new Date(electionStartTimestamp).toISOString()})`);
-    console.log(`➡️ Candidate ${databaseCandidateId} → Blockchain position ${blockchainCandidateId}`);
-    
-    // If the election is deployed to blockchain, we log additional details
-    if (election.blockchainId) {
-      console.log(`🔗 Election is deployed to blockchain with ID ${election.blockchainId}`);
-    }
+    console.log(`⚠️ Fallback Mapping: Election ${databaseElectionId} → Candidate ${databaseCandidateId} → Position ${position + 1}`);
     
     return blockchainCandidateId;
   } catch (error: unknown) {

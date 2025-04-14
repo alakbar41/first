@@ -699,12 +699,26 @@ class StudentIdWeb3Service {
       let afterVoteCount = 0;
       
       // Try multiple times to verify the vote count increased, as there might be blockchain latency
-      for (let i = 0; i < 3; i++) {
+      // Increase to 5 attempts with longer delays
+      const maxVerificationAttempts = 5;
+      for (let i = 0; i < maxVerificationAttempts; i++) {
         try {
-          // Wait a bit longer between each attempt with increasing delays
-          const verifyDelay = 1000 * (i + 1);
-          console.log(`[Vote] Waiting ${verifyDelay/1000} seconds for blockchain to update before verification attempt ${i+1}...`);
+          // Use exponential backoff for verification delays
+          // First attempt: 2s, Second: 4s, Third: 6s, Fourth: 8s, Fifth: 10s
+          const verifyDelay = 2000 * (i + 1);
+          console.log(`[Vote] Waiting ${verifyDelay/1000} seconds for blockchain to update before verification attempt ${i+1}/${maxVerificationAttempts}...`);
           await new Promise(resolve => setTimeout(resolve, verifyDelay));
+          
+          // Force a fresh provider connection to ensure we don't get cached data
+          if (i > 1) {
+            console.log(`[Vote] Refreshing blockchain connection for verification attempt ${i+1}...`);
+            try {
+              await this.initializeIfNeeded(true); // Force reinitialize
+            } catch (refreshError) {
+              console.warn(`[Vote] Could not refresh connection: ${refreshError}`);
+              // Continue anyway with existing connection
+            }
+          }
           
           afterVoteCount = await this.getCandidateVoteCount(candidateId);
           console.log(`[Vote] Vote count for candidate ${candidateId} after voting: ${afterVoteCount} (was ${beforeVoteCount})`);
@@ -715,6 +729,18 @@ class StudentIdWeb3Service {
             break;
           } else {
             console.log(`[Vote] ⚠️ Vote count has not increased yet. Will retry verification.`);
+            
+            // After a few attempts, try to get updated contract state
+            if (i >= 2) {
+              console.log(`[Vote] Attempting to clear cache and refresh contract state...`);
+              try {
+                // Re-fetch the latest state from the blockchain
+                const provider = new ethers.BrowserProvider(window.ethereum);
+                await provider.send("eth_syncing", []);
+              } catch (clearError) {
+                console.warn(`[Vote] Error refreshing blockchain state: ${clearError}`);
+              }
+            }
           }
         } catch (countError) {
           console.warn(`[Vote] Failed to verify vote count on attempt ${i+1}: ${countError}`);
