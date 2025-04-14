@@ -159,6 +159,10 @@ export default function AdminBlockchain() {
               </Card>
               
               <BlockchainVerificationPanel />
+              
+              <div className="mt-4">
+                <BlockchainIdScanner />
+              </div>
             </TabsContent>
           </Tabs>
         </div>

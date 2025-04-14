@@ -20,6 +20,7 @@ interface StudentIdWeb3ContextType {
   }>;
   voteForPresidentVP: (electionId: number, ticketId: number) => Promise<boolean>;
   checkIfVoted: (electionId: number, address?: string) => Promise<boolean>;
+  studentIdWeb3Service: typeof studentIdWeb3Service;
 }
 
 const StudentIdWeb3Context = createContext<StudentIdWeb3ContextType | null>(null);
@@ -222,7 +223,8 @@ export function StudentIdWeb3Provider({ children }: { children: ReactNode }) {
       getTicketIdByStudentIds: handleGetTicketIdByStudentIds,
       voteForSenator: handleVoteForSenator,
       voteForPresidentVP: handleVoteForPresidentVP,
-      checkIfVoted: handleCheckIfVoted
+      checkIfVoted: handleCheckIfVoted,
+      studentIdWeb3Service
     }}>
       {children}
     </StudentIdWeb3Context.Provider>
