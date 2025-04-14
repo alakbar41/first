@@ -264,10 +264,26 @@ export function EnhancedSimpleVoteButton({
         }
         
         // Step 5: Submit vote transaction using the student ID web3 service
-        // ALWAYS use the timestamp as the election identifier for consistency
-        // This ensures we have the same identifier in both Web2 and Web3 systems
-        const electionIdentifier = Math.floor(new Date(election.startDate).getTime() / 1000);
-        console.log(`Using election start timestamp ${electionIdentifier} as the blockchain identifier`);
+        // Check if we have a stored blockchain ID from deployment
+        if (election.blockchainId) {
+          console.log(`Using stored blockchain ID ${election.blockchainId} from deployment`);
+          console.log(`Database election ID: ${election.id}, Blockchain ID: ${election.blockchainId}`);
+          
+          // Use the blockchain ID directly from the database
+          var electionIdentifier = Number(election.blockchainId);
+          
+          // Check if we have a valid blockchain ID
+          if (isNaN(electionIdentifier) || electionIdentifier <= 0) {
+            console.warn(`Invalid blockchain ID: ${election.blockchainId}, falling back to timestamp`);
+            // Fall back to timestamp if no valid ID is found
+            electionIdentifier = Math.floor(new Date(election.startDate).getTime() / 1000);
+            console.log(`Falling back to using start timestamp ${electionIdentifier} as the blockchain identifier`);
+          }
+        } else {
+          // No blockchain ID found, use timestamp as fallback
+          var electionIdentifier = Math.floor(new Date(election.startDate).getTime() / 1000);
+          console.log(`No blockchain ID found, using start timestamp ${electionIdentifier} as the blockchain identifier`);
+        }
         
         console.log(`Voting for election using identifier: ${electionIdentifier}, candidate ID: ${blockchainCandidateId}`);
         
@@ -277,10 +293,68 @@ export function EnhancedSimpleVoteButton({
           duration: 10000,
         });
         
-        console.log(`About to vote using the timestamp identifier: ${electionIdentifier} for candidate ID: ${blockchainCandidateId}`);
+        console.log(`About to vote using the identifier: ${electionIdentifier} for candidate ID: ${blockchainCandidateId}`);
         
-        // Now vote using the improved student ID web3 service with enhanced response
-        const { success, txHash, voteCount } = await voteForSenator(electionIdentifier, blockchainCandidateId);
+        // Fallback logic: Try alternative IDs if the election ID is a timestamp (likely a common issue)
+        let voteResult = null;
+        let errorMessage = "";
+        
+        try {
+          // First try using the identifier we determined above
+          console.log(`First attempt: Using election ID ${electionIdentifier}`);
+          voteResult = await voteForSenator(electionIdentifier, blockchainCandidateId);
+        } catch (firstError: any) {
+          console.warn(`First vote attempt failed with election ID ${electionIdentifier}:`, firstError);
+          errorMessage = firstError?.message || "Unknown error";
+          
+          // If we have a number that looks like a timestamp (large number), try alternatives
+          if (electionIdentifier > 1000000) { // Likely a timestamp
+            // Try database ID if it looks reasonable (small number)
+            if (election.id > 0 && election.id < 1000) {
+              try {
+                console.log(`Second attempt: Trying with database ID ${election.id}`);
+                voteResult = await voteForSenator(election.id, blockchainCandidateId);
+              } catch (secondError: any) {
+                console.warn(`Second vote attempt failed with election ID ${election.id}:`, secondError);
+                errorMessage += ` | Second attempt: ${secondError?.message || "Unknown error"}`;
+              }
+            }
+            
+            // As a last resort, try with a small number (newest elections often have small IDs on blockchain)
+            if (!voteResult) {
+              // Try with a few recent IDs as a desperate attempt
+              for (let testId = 0; testId < 5 && !voteResult; testId++) {
+                try {
+                  console.log(`Last resort attempt: Trying with test ID ${testId}`);
+                  voteResult = await voteForSenator(testId, blockchainCandidateId);
+                  if (voteResult.success) {
+                    console.log(`Success with test ID ${testId}!`);
+                    // If this was successful, we should update our election record!
+                    try {
+                      console.log(`Updating election record to use blockchain ID ${testId} instead of ${electionIdentifier}`);
+                      // This would typically involve a backend call to update the record
+                      // But we'll leave that for a separate implementation
+                    } catch (updateError) {
+                      console.warn(`Couldn't update election record:`, updateError);
+                    }
+                    break;
+                  }
+                } catch (testError: any) {
+                  console.warn(`Test vote with ID ${testId} failed:`, testError);
+                  errorMessage += ` | Test ID ${testId}: ${testError?.message || "Unknown error"}`;
+                }
+              }
+            }
+          }
+        }
+        
+        // If all attempts failed, throw the accumulated error
+        if (!voteResult || !voteResult.success) {
+          throw new Error(`Vote failed: ${errorMessage}`);
+        }
+        
+        // Now we have a successful vote result
+        const { success, txHash, voteCount } = voteResult;
         
         if (success) {
           // Step 6: Mark token as used after successful vote

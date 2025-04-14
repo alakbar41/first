@@ -7,6 +7,7 @@ import { ImprovedBlockchainSyncButton } from "@/components/admin/ImprovedBlockch
 import { useStudentIdWeb3 } from '@/hooks/use-student-id-web3';
 import { BlockchainRoleManager } from '@/components/admin/blockchain-role-manager';
 import { BlockchainVerificationPanel } from '@/components/admin/blockchain-verification-panel';
+import { BlockchainIdScanner } from '@/components/admin/blockchain-id-scanner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EnhancedBlockchainDeploymentStatus } from "@/components/admin/enhanced-blockchain-deployment-status";
