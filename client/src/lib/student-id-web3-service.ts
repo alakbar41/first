@@ -734,16 +734,6 @@ class StudentIdWeb3Service {
             type: 2, // EIP-1559 transaction
           };
           
-          // Additional election existence check
-          try {
-            console.log(`[Vote] Verifying election ${electionId} exists before voting...`);
-            const electionDetails = await this.contract.getElectionDetails(electionId);
-            console.log(`[Vote] Election ${electionId} exists, status: ${electionDetails?.status || 'unknown'}`);
-          } catch (electionError) {
-            console.warn(`[Vote] Election verification failed: ${electionError}`);
-            console.log(`[Vote] Will attempt vote anyway, but expect possible failure`);
-          }
-          
           const tx = await this.contract.voteForSenator(
             electionId,
             candidateId,
@@ -1067,77 +1057,6 @@ class StudentIdWeb3Service {
       await tx.wait();
     } catch (error) {
       console.error(`Failed to auto-update status for election ${electionId}:`, error);
-      throw error;
-    }
-  }
-  
-  /**
-   * Debug tool: Attempt to scan all possible election IDs to find valid ones
-   * This is a diagnostic function to help troubleshoot election ID mismatches
-   */
-  async scanForValidElectionIds(maxId: number = 20): Promise<Map<number, any>> {
-    try {
-      if (!this.contract) {
-        await this.initializeIfNeeded();
-      }
-      
-      if (!this.contract) {
-        throw new Error("Contract still not initialized after attempt");
-      }
-      
-      console.log(`[Debug] Scanning for valid election IDs from 0 to ${maxId}...`);
-      const validElections = new Map<number, any>();
-      
-      for (let i = 0; i <= maxId; i++) {
-        try {
-          console.log(`[Debug] Checking election ID ${i}...`);
-          const electionData = await this.contract.getElectionDetails(i);
-          
-          if (electionData) {
-            console.log(`[Debug] ✅ Found valid election with ID ${i}:`, electionData);
-            
-            // Try to parse the data into a more readable format
-            const electionInfo = {
-              id: i,
-              electionType: Number(electionData.electionType),
-              status: Number(electionData.status),
-              startTime: Number(electionData.startTime),
-              endTime: Number(electionData.endTime),
-              totalVotesCast: Number(electionData.totalVotesCast),
-              resultsFinalized: electionData.resultsFinalized,
-              startDate: new Date(Number(electionData.startTime) * 1000).toISOString(),
-              endDate: new Date(Number(electionData.endTime) * 1000).toISOString()
-            };
-            
-            validElections.set(i, electionInfo);
-            
-            // Try to get candidates for this election
-            try {
-              const candidates = await this.getElectionCandidates(i);
-              console.log(`[Debug] Election ${i} has ${candidates.length} candidates:`, candidates);
-            } catch (candidateError) {
-              console.warn(`[Debug] Could not get candidates for election ${i}:`, candidateError);
-            }
-          }
-        } catch (error: any) {
-          const errorMessage = error?.message || String(error);
-          
-          // Only log detailed errors for specific types of failures
-          // "Election does not exist" is expected for most IDs
-          if (!errorMessage.includes("Election does not exist")) {
-            console.warn(`[Debug] Error accessing election ${i} data:`, error);
-          } else {
-            console.log(`[Debug] ❌ No election with ID ${i} (expected)`);
-          }
-        }
-      }
-      
-      console.log(`[Debug] Scan complete. Found ${validElections.size} valid elections.`);
-      console.log(`[Debug] Valid IDs:`, Array.from(validElections.keys()));
-      
-      return validElections;
-    } catch (error) {
-      console.error("[Debug] Error in blockchain election ID scan:", error);
       throw error;
     }
   }
