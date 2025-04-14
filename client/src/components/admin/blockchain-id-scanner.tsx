@@ -29,7 +29,11 @@ export function BlockchainIdScanner() {
   const { studentIdWeb3Service } = useStudentIdWeb3();
   const [isScanning, setIsScanning] = useState(false);
   const [electionData, setElectionData] = useState<ElectionSummary[]>([]);
-  const [scanRange, setScanRange] = useState({ start: 1, end: 15 });
+  // Use timestamp values for scanning - typical Unix timestamps for current time
+  const [scanRange, setScanRange] = useState({ 
+    start: Math.floor(Date.now() / 1000) - (7 * 24 * 60 * 60), // One week ago
+    end: Math.floor(Date.now() / 1000) + (24 * 60 * 60) // One day ahead
+  });
   const [error, setError] = useState<string | null>(null);
 
   const scanForElections = async () => {
@@ -40,8 +44,11 @@ export function BlockchainIdScanner() {
       
       const foundElections: ElectionSummary[] = [];
       
-      // Scan through the range of election IDs
-      for (let id = scanRange.start; id <= scanRange.end; id++) {
+      // Scan for elections - using specific timestamps strategy instead of sequential scanning
+      // For timestamp-based IDs, sample at 1-day intervals through the range
+      const samplingInterval = 24 * 60 * 60; // One day in seconds
+      for (let timestamp = scanRange.start; timestamp <= scanRange.end; timestamp += samplingInterval) {
+        const id = timestamp;
         try {
           console.log(`Scanning for election ${id}...`);
           const details = await studentIdWeb3Service.getElectionDetails(id);
@@ -101,24 +108,36 @@ export function BlockchainIdScanner() {
         <div className="flex items-center space-x-4">
           <div className="grid grid-cols-2 gap-2 flex-1">
             <div>
-              <label className="text-sm text-muted-foreground">Start ID</label>
+              <label className="text-sm text-muted-foreground">Start Timestamp</label>
               <input
-                type="number"
-                value={scanRange.start}
-                onChange={(e) => setScanRange({ ...scanRange, start: parseInt(e.target.value) || 1 })}
+                type="datetime-local"
+                value={new Date(scanRange.start * 1000).toISOString().slice(0, 16)}
+                onChange={(e) => {
+                  const date = new Date(e.target.value);
+                  const timestamp = Math.floor(date.getTime() / 1000);
+                  setScanRange({ ...scanRange, start: timestamp });
+                }}
                 className="w-full p-2 border rounded-md"
-                min="1"
               />
+              <div className="text-xs text-muted-foreground mt-1">
+                Unix: {scanRange.start}
+              </div>
             </div>
             <div>
-              <label className="text-sm text-muted-foreground">End ID</label>
+              <label className="text-sm text-muted-foreground">End Timestamp</label>
               <input
-                type="number"
-                value={scanRange.end}
-                onChange={(e) => setScanRange({ ...scanRange, end: parseInt(e.target.value) || scanRange.start })}
+                type="datetime-local"
+                value={new Date(scanRange.end * 1000).toISOString().slice(0, 16)}
+                onChange={(e) => {
+                  const date = new Date(e.target.value);
+                  const timestamp = Math.floor(date.getTime() / 1000);
+                  setScanRange({ ...scanRange, end: timestamp });
+                }}
                 className="w-full p-2 border rounded-md"
-                min={scanRange.start}
               />
+              <div className="text-xs text-muted-foreground mt-1">
+                Unix: {scanRange.end}
+              </div>
             </div>
           </div>
           <Button 
@@ -161,7 +180,7 @@ export function BlockchainIdScanner() {
                 <div key={election.id} className="p-3 flex items-center justify-between">
                   <div>
                     <div className="flex items-center">
-                      <span className="font-mono font-semibold text-lg mr-2">#{election.id}</span>
+                      <span className="font-mono font-semibold text-lg mr-2" title="Unix Timestamp ID">{election.id}</span>
                       <Badge variant={election.isActive ? "default" : "outline"}>
                         {election.isActive ? "Active" : "Inactive"}
                       </Badge>

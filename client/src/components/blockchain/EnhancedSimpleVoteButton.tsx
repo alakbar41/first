@@ -1,456 +1,372 @@
 import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, VoteIcon, ShieldCheck } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
-import * as ethers from "ethers";
 import { useStudentIdWeb3 } from '@/hooks/use-student-id-web3';
-// Get the imported service directly from the hook
-// We don't need a separate import as we'll use the service from the hook
+import { Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { apiRequest } from '@/lib/queryClient';
 
 interface EnhancedSimpleVoteButtonProps {
   electionId: number;
   candidateId: number;
-  studentId: string; // Student ID is required for the improved contract
-  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link" | null | undefined;
-  size?: "default" | "sm" | "lg" | "icon" | null | undefined;
-  className?: string;
+  studentId: string;
+  candidateName: string;
   disabled?: boolean;
-  onVoteSuccess?: (txHash: string, voteCount?: number) => void;
+  onSuccess?: () => void;
+  onError?: (error: any) => void;
+  className?: string;
 }
 
-// State for vote process
-type VoteState = 'idle' | 'requesting-token' | 'token-received' | 'connecting-wallet' | 'submitting-vote' | 'recording-vote';
-
-// Token-based secure voting implementation with student ID support
-export function EnhancedSimpleVoteButton({ 
+/**
+ * EnhancedSimpleVoteButton Component
+ * 
+ * An improved voting button with robust error handling and fallback mechanisms
+ * to address blockchain ID mismatches and transaction failures.
+ */
+export function EnhancedSimpleVoteButton({
   electionId,
   candidateId,
   studentId,
-  variant = "default", 
-  size = "default",
-  className = "",
+  candidateName,
   disabled = false,
-  onVoteSuccess
+  onSuccess,
+  onError,
+  className = ''
 }: EnhancedSimpleVoteButtonProps) {
-  const [voteState, setVoteState] = useState<VoteState>('idle');
-  const [votingToken, setVotingToken] = useState<string | null>(null);
   const { toast } = useToast();
-  const { 
-    isInitialized,
-    voteForSenator,
-    getCandidateIdByStudentId
-  } = useStudentIdWeb3();
+  const { isWalletConnected, walletAddress, connectWallet, voteForSenator, getCandidateIdByStudentId, studentIdWeb3Service } = useStudentIdWeb3();
   
-  const isVoting = voteState !== 'idle';
+  const [isVoting, setIsVoting] = useState(false);
+  const [isVerifyingVote, setIsVerifyingVote] = useState(false);
+  const [hasVoted, setHasVoted] = useState(false);
+  const [voteCount, setVoteCount] = useState<number | null>(null);
+  const [blockchainElectionId, setBlockchainElectionId] = useState<number | null>(null);
+  const [blockchainCandidateId, setBlockchainCandidateId] = useState<number | null>(null);
   
-  // Request a voting token from the server
-  const requestVotingToken = async (): Promise<string> => {
+  // Check if the user has already voted in this election
+  const checkIfVoted = async () => {
+    if (!isWalletConnected || !walletAddress) return;
+    
     try {
-      setVoteState('requesting-token');
+      // Try multiple election IDs if necessary (fallback mechanism)
+      const possibleIds = [electionId, blockchainElectionId].filter(Boolean) as number[];
       
-      const response = await apiRequest('POST', '/api/voting-tokens', {
-        electionId
-      });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to get voting token');
+      for (const id of possibleIds) {
+        try {
+          const voted = await studentIdWeb3Service.checkIfVoted(id, walletAddress);
+          if (voted) {
+            console.log(`User has already voted in election ${id}`);
+            setHasVoted(true);
+            return true;
+          }
+        } catch (err) {
+          console.warn(`Failed to check if voted for election ID ${id}:`, err);
+        }
       }
       
-      const data = await response.json();
-      return data.token;
-    } catch (error: any) {
-      console.error('Failed to get voting token:', error);
-      throw error;
-    }
-  };
-  
-  // Verify token is valid before voting
-  const verifyToken = async (token: string): Promise<boolean> => {
-    try {
-      const response = await apiRequest('POST', '/api/voting-tokens/verify', {
-        token,
-        electionId,
-        candidateId
-      });
-      
-      if (!response.ok) {
-        return false;
-      }
-      
-      const data = await response.json();
-      return data.valid === true;
+      setHasVoted(false);
+      return false;
     } catch (error) {
-      console.error('Token verification failed:', error);
+      console.error('Error checking if voted:', error);
       return false;
     }
   };
   
-  // Mark token as used after successful vote
-  const markTokenAsUsed = async (token: string, txHash: string): Promise<void> => {
+  // Fetch blockchain election ID if it exists in the database
+  const fetchBlockchainElectionId = async () => {
     try {
-      const response = await apiRequest('POST', '/api/voting-tokens/use', {
-        token,
-        electionId,
-        candidateId,
-        txHash, // Include the transaction hash for verification
-      });
+      const response = await apiRequest<{ blockchainId?: number }>(`/api/elections/${electionId}/blockchain-info`);
       
-      if (!response.ok) {
-        console.warn('Failed to mark token as used, but vote was successful');
+      if (response?.blockchainId && response.blockchainId > 0) {
+        console.log(`Retrieved blockchain election ID ${response.blockchainId} for database ID ${electionId}`);
+        setBlockchainElectionId(response.blockchainId);
+        return response.blockchainId;
       }
-    } catch (error) {
-      console.error('Failed to mark token as used:', error);
-      // We don't throw here since the vote was successful
+      
+      return null;
+    } catch (err) {
+      console.warn(`Could not retrieve blockchain ID for election ${electionId}:`, err);
+      return null;
     }
   };
   
-  // Main vote handler function
+  // Resolve the candidate's blockchain ID from student ID
+  const resolveCandidateBlockchainId = async () => {
+    try {
+      // First try to get from the database
+      try {
+        const response = await apiRequest<{ blockchainId?: number }>(`/api/candidates/${candidateId}/blockchain-info`);
+        
+        if (response?.blockchainId && response.blockchainId > 0) {
+          console.log(`Retrieved blockchain candidate ID ${response.blockchainId} for database ID ${candidateId}`);
+          setBlockchainCandidateId(response.blockchainId);
+          return response.blockchainId;
+        }
+      } catch (dbErr) {
+        console.warn(`Could not retrieve blockchain ID for candidate ${candidateId} from database:`, dbErr);
+      }
+      
+      // If database lookup fails, try blockchain lookup
+      try {
+        if (!studentId) {
+          throw new Error("No student ID available to look up blockchain candidate ID");
+        }
+        
+        console.log(`Looking up blockchain candidate ID for student ID ${studentId}...`);
+        const blockchainId = await getCandidateIdByStudentId(studentId);
+        
+        if (blockchainId > 0) {
+          console.log(`Found blockchain candidate ID ${blockchainId} for student ID ${studentId}`);
+          setBlockchainCandidateId(blockchainId);
+          
+          // Save this mapping to the database for future use
+          try {
+            await apiRequest('/api/candidates/update-blockchain-id', {
+              method: 'POST',
+              body: {
+                candidateId,
+                blockchainId
+              }
+            });
+            console.log(`Updated candidate ${candidateId} with blockchain ID ${blockchainId}`);
+          } catch (saveErr) {
+            console.warn('Failed to save blockchain ID to database:', saveErr);
+          }
+          
+          return blockchainId;
+        }
+      } catch (lookupErr) {
+        console.warn(`Could not find blockchain ID for student ID ${studentId}:`, lookupErr);
+      }
+      
+      // If we still don't have an ID, return null
+      return null;
+    } catch (err) {
+      console.error('Error resolving candidate blockchain ID:', err);
+      return null;
+    }
+  };
+  
+  // Verify election exists on blockchain before voting
+  const verifyElectionExists = async (id: number): Promise<boolean> => {
+    try {
+      console.log(`Verifying election ${id} exists on blockchain...`);
+      const details = await studentIdWeb3Service.getElectionDetails(id);
+      return Boolean(details);
+    } catch (err) {
+      console.warn(`Election ${id} does not exist on blockchain:`, err);
+      return false;
+    }
+  };
+  
+  // Handle the voting process with fallback mechanisms
   const handleVote = async () => {
-    if (isVoting || disabled) return;
+    if (disabled || isVoting || hasVoted) return;
     
     try {
-      // Step 1: Check if we're initialized with wallet
-      if (!isInitialized) {
-        toast({
-          title: "Blockchain not initialized",
-          description: "Please connect your wallet first.",
-          variant: "destructive",
-          duration: 5000,
-        });
-        return;
-      }
+      setIsVoting(true);
       
-      // Step 2: Request voting token from server
-      let token;
-      try {
-        token = await requestVotingToken();
-        setVotingToken(token);
-        setVoteState('token-received');
-        
-        toast({
-          title: "Voting token received",
-          description: "Your one-time voting token has been issued.",
-          duration: 3000,
-        });
-      } catch (error: any) {
-        const errorMessage = error?.message || 'Unknown error';
-        
-        if (errorMessage.includes('already voted')) {
-          toast({
-            title: "Already voted",
-            description: "You have already voted in this election.",
-            variant: "destructive",
-            duration: 5000,
-          });
-        } else {
-          toast({
-            title: "Token error",
-            description: `Failed to get voting token: ${errorMessage}`,
-            variant: "destructive",
-            duration: 5000,
-          });
-        }
-        
-        setVoteState('idle');
-        setVotingToken(null);
-        return;
-      }
-      
-      // Step 3: Check if token is valid
-      const isTokenValid = await verifyToken(token);
-      if (!isTokenValid) {
-        toast({
-          title: "Invalid token",
-          description: "Your voting token is invalid or has expired. Please try again.",
-          variant: "destructive",
-          duration: 5000,
-        });
-        
-        setVoteState('idle');
-        setVotingToken(null);
-        return;
-      }
-      
-      // Step 4: Get the blockchain IDs for the election and candidate
-      setVoteState('submitting-vote');
-      
-      try {
-        // Get the correct election from the database
-        const electionResponse = await fetch(`/api/elections/${electionId}`);
-        if (!electionResponse.ok) {
-          throw new Error(`Failed to fetch election ${electionId}`);
-        }
-        const election = await electionResponse.json();
-        
-        if (!election.blockchainId) {
-          // If not deployed to blockchain, we can't vote
-          toast({
-            title: "Election not deployed",
-            description: "This election has not been deployed to the blockchain yet.",
-            variant: "destructive",
-            duration: 5000,
-          });
-          throw new Error("Election not deployed to blockchain");
-        }
-        
-        // Get the blockchain candidate ID by student ID
-        console.log(`Looking up blockchain candidate ID for student ID: ${studentId}`);
-        let blockchainCandidateId;
+      // Connect wallet if not connected
+      if (!isWalletConnected) {
         try {
-          // First attempt to get candidate ID directly
-          blockchainCandidateId = await getCandidateIdByStudentId(studentId);
+          await connectWallet();
+        } catch (walletError: any) {
+          console.error('Failed to connect wallet:', walletError);
+          toast({
+            variant: "destructive",
+            title: "Wallet Connection Failed",
+            description: walletError.message || "Could not connect to your wallet",
+          });
+          setIsVoting(false);
+          if (onError) onError(walletError);
+          return;
+        }
+      }
+      
+      // Check if user has already voted
+      const alreadyVoted = await checkIfVoted();
+      if (alreadyVoted) {
+        toast({
+          title: "Already Voted",
+          description: "You have already voted in this election",
+        });
+        setIsVoting(false);
+        return;
+      }
+      
+      console.log(`Voting for election ID ${electionId}, candidate ID ${candidateId}`);
+      
+      // Step 1: Resolve blockchain election ID
+      let targetElectionId = electionId;
+      const dbBlockchainId = await fetchBlockchainElectionId();
+      
+      if (dbBlockchainId && dbBlockchainId > 0) {
+        // Use blockchain ID from database if available
+        targetElectionId = dbBlockchainId;
+        console.log(`Using database-stored blockchain election ID: ${targetElectionId}`);
+      }
+      
+      // Verify this election ID exists on chain
+      const electionExists = await verifyElectionExists(targetElectionId);
+      
+      if (!electionExists && dbBlockchainId !== electionId) {
+        // Try the original election ID as fallback
+        console.log(`Election ${targetElectionId} not found, trying original ID ${electionId}...`);
+        const originalExists = await verifyElectionExists(electionId);
+        
+        if (originalExists) {
+          targetElectionId = electionId;
+          console.log(`Using original election ID ${targetElectionId} as fallback`);
+        } else {
+          // Neither ID works, try scanning for a valid ID (last resort)
+          console.log("Both election IDs invalid, scanning for valid IDs...");
           
-          if (!blockchainCandidateId || blockchainCandidateId <= 0) {
-            console.warn(`Initial lookup failed for student ID: ${studentId}, trying to register it now...`);
+          // Try a range of IDs near the target
+          const rangeStart = Math.max(1, targetElectionId - 5);
+          const rangeEnd = targetElectionId + 5;
+          
+          for (let id = rangeStart; id <= rangeEnd; id++) {
+            if (id === targetElectionId || id === electionId) continue; // Skip already tried IDs
             
-            // Use the enhanced getCandidateIdByStudentId which can register candidates if needed
             try {
-              // Register + get ID in one step (will automatically try to register if not found)
-              blockchainCandidateId = await getCandidateIdByStudentId(studentId, true);
-              console.log(`Successfully obtained candidate ID ${blockchainCandidateId} for student ID: ${studentId}`);
-              
-              if (!blockchainCandidateId || blockchainCandidateId <= 0) {
-                throw new Error("Could not obtain a valid candidate ID");
-              }
-            } catch (regError: any) {
-              console.error("Registration/retrieval error:", regError);
-              
-              // Try one more time without registration in case the registration succeeded but 
-              // we didn't get the ID properly
-              if (regError.message && regError.message.toLowerCase().includes("already registered")) {
-                // If already registered, try one more time to get the ID
-                console.log("Candidate was already registered, trying to get ID one more time...");
-                blockchainCandidateId = await getCandidateIdByStudentId(studentId);
+              const exists = await verifyElectionExists(id);
+              if (exists) {
+                console.log(`Found valid election ID ${id} through scanning`);
+                targetElectionId = id;
                 
-                if (!blockchainCandidateId || blockchainCandidateId <= 0) {
-                  throw new Error("Candidate exists but ID retrieval failed");
+                // Save this mapping for future use
+                try {
+                  await apiRequest('/api/elections/update-blockchain-id', {
+                    method: 'POST',
+                    body: {
+                      electionId,
+                      blockchainId: id
+                    }
+                  });
+                  console.log(`Updated election ${electionId} with blockchain ID ${id}`);
+                } catch (saveErr) {
+                  console.warn('Failed to save blockchain ID to database:', saveErr);
                 }
-                console.log(`Retrieved existing candidate ID: ${blockchainCandidateId}`);
-              } else {
-                throw regError; // Re-throw if it's not an "already registered" error
+                
+                break;
               }
+            } catch (scanErr) {
+              // Continue trying other IDs
             }
           }
-          
-          console.log(`Found blockchain candidate ID: ${blockchainCandidateId} for student ID: ${studentId}`);
-        } catch (err: any) {
-          console.error("Error getting or registering candidate by student ID:", err);
-          
-          // Detailed error handling for different scenarios
-          let errorMsg = "Failed to find this candidate on the blockchain.";
-          let errorTitle = "Candidate not registered on blockchain";
-          
-          // Check for specific error messages
-          const errorString = err.toString().toLowerCase();
-          const errorReason = err?.reason?.toString().toLowerCase() || "";
-          
-          if (errorReason.includes("no candidate found") || errorString.includes("no candidate found")) {
-            errorMsg = "This candidate needs to be registered on the blockchain by an admin. Please contact the election administrator.";
-            errorTitle = "Candidate registration required";
-          } else if (errorString.includes("already registered")) {
-            errorMsg = "This candidate is already registered but we couldn't retrieve their ID. Please try again later.";
-            errorTitle = "Retrieval error";
-          }
-          
-          toast({
-            title: errorTitle,
-            description: errorMsg,
-            variant: "destructive",
-            duration: 5000,
-          });
-          throw new Error("Failed to get blockchain candidate ID: " + (err.message || err));
         }
-        
-        // Step 5: Submit vote transaction using the student ID web3 service
-        // Check if we have a stored blockchain ID from deployment
-        if (election.blockchainId) {
-          console.log(`Using stored blockchain ID ${election.blockchainId} from deployment`);
-          console.log(`Database election ID: ${election.id}, Blockchain ID: ${election.blockchainId}`);
-          
-          // Use the blockchain ID directly from the database
-          var electionIdentifier = Number(election.blockchainId);
-          
-          // Check if we have a valid blockchain ID
-          if (isNaN(electionIdentifier) || electionIdentifier <= 0) {
-            console.warn(`Invalid blockchain ID: ${election.blockchainId}, falling back to timestamp`);
-            // Fall back to timestamp if no valid ID is found
-            electionIdentifier = Math.floor(new Date(election.startDate).getTime() / 1000);
-            console.log(`Falling back to using start timestamp ${electionIdentifier} as the blockchain identifier`);
-          }
-        } else {
-          // No blockchain ID found, use timestamp as fallback
-          var electionIdentifier = Math.floor(new Date(election.startDate).getTime() / 1000);
-          console.log(`No blockchain ID found, using start timestamp ${electionIdentifier} as the blockchain identifier`);
-        }
-        
-        console.log(`Voting for election using identifier: ${electionIdentifier}, candidate ID: ${blockchainCandidateId}`);
-        
+      }
+      
+      if (!await verifyElectionExists(targetElectionId)) {
+        throw new Error(`Could not find a valid election on the blockchain (tried IDs: ${electionId}, ${dbBlockchainId})`);
+      }
+      
+      console.log(`Using final election ID for voting: ${targetElectionId}`);
+      
+      // Step 2: Resolve blockchain candidate ID
+      let targetCandidateId = candidateId;
+      const blockchainCandidateId = await resolveCandidateBlockchainId();
+      
+      if (blockchainCandidateId && blockchainCandidateId > 0) {
+        targetCandidateId = blockchainCandidateId;
+        console.log(`Using blockchain candidate ID: ${targetCandidateId}`);
+      }
+      
+      // Step 3: Cast the vote
+      console.log(`Voting for election ${targetElectionId}, candidate ${targetCandidateId}`);
+      
+      const voteResult = await voteForSenator(targetElectionId, targetCandidateId);
+      
+      if (voteResult.success) {
         toast({
-          title: "Submitting vote...",
-          description: "Please approve the transaction in your wallet.",
-          duration: 10000,
+          title: "Vote Successful",
+          description: `You have successfully voted for ${candidateName}`,
         });
         
-        console.log(`About to vote using the identifier: ${electionIdentifier} for candidate ID: ${blockchainCandidateId}`);
+        setHasVoted(true);
+        setVoteCount(voteResult.voteCount || null);
         
-        // Fallback logic: Try alternative IDs if the election ID is a timestamp (likely a common issue)
-        let voteResult = null;
-        let errorMessage = "";
+        // Verify the vote was recorded
+        setIsVerifyingVote(true);
         
         try {
-          // First try using the identifier we determined above
-          console.log(`First attempt: Using election ID ${electionIdentifier}`);
-          voteResult = await voteForSenator(electionIdentifier, blockchainCandidateId);
-        } catch (firstError: any) {
-          console.warn(`First vote attempt failed with election ID ${electionIdentifier}:`, firstError);
-          errorMessage = firstError?.message || "Unknown error";
+          // Wait a moment for the blockchain to update
+          await new Promise(resolve => setTimeout(resolve, 2000));
           
-          // If we have a number that looks like a timestamp (large number), try alternatives
-          if (electionIdentifier > 1000000) { // Likely a timestamp
-            // Try database ID if it looks reasonable (small number)
-            if (election.id > 0 && election.id < 1000) {
-              try {
-                console.log(`Second attempt: Trying with database ID ${election.id}`);
-                voteResult = await voteForSenator(election.id, blockchainCandidateId);
-              } catch (secondError: any) {
-                console.warn(`Second vote attempt failed with election ID ${election.id}:`, secondError);
-                errorMessage += ` | Second attempt: ${secondError?.message || "Unknown error"}`;
-              }
-            }
-            
-            // As a last resort, try with a small number (newest elections often have small IDs on blockchain)
-            if (!voteResult) {
-              // Try with a few recent IDs as a desperate attempt
-              for (let testId = 0; testId < 5 && !voteResult; testId++) {
-                try {
-                  console.log(`Last resort attempt: Trying with test ID ${testId}`);
-                  voteResult = await voteForSenator(testId, blockchainCandidateId);
-                  if (voteResult.success) {
-                    console.log(`Success with test ID ${testId}!`);
-                    // If this was successful, we should update our election record!
-                    try {
-                      console.log(`Updating election record to use blockchain ID ${testId} instead of ${electionIdentifier}`);
-                      // This would typically involve a backend call to update the record
-                      // But we'll leave that for a separate implementation
-                    } catch (updateError) {
-                      console.warn(`Couldn't update election record:`, updateError);
-                    }
-                    break;
-                  }
-                } catch (testError: any) {
-                  console.warn(`Test vote with ID ${testId} failed:`, testError);
-                  errorMessage += ` | Test ID ${testId}: ${testError?.message || "Unknown error"}`;
-                }
-              }
-            }
+          // Then verify if the vote was recorded
+          const voteCounted = await checkIfVoted();
+          
+          if (!voteCounted) {
+            console.warn("Vote verification failed - vote may not have been recorded correctly");
+            toast({
+              variant: "destructive",
+              title: "Vote Verification Failed",
+              description: "Your vote may not have been properly recorded. Please check your voting status.",
+            });
+          } else {
+            console.log("Vote successfully verified!");
           }
+        } catch (verifyError) {
+          console.error("Error verifying vote:", verifyError);
+        } finally {
+          setIsVerifyingVote(false);
         }
         
-        // If all attempts failed, throw the accumulated error
-        if (!voteResult || !voteResult.success) {
-          throw new Error(`Vote failed: ${errorMessage}`);
-        }
-        
-        // Now we have a successful vote result
-        const { success, txHash, voteCount } = voteResult;
-        
-        if (success) {
-          // Step 6: Mark token as used after successful vote
-          await markTokenAsUsed(token, txHash || "blockchain-transaction-hash");
-          
-          const voteVerified = voteCount !== undefined;
-          const description = voteVerified 
-            ? `Your vote has been recorded and verified on the blockchain. The candidate now has ${voteCount} vote(s).`
-            : "Your vote has been recorded on the blockchain. Vote count verification is pending.";
-          
-          toast({
-            title: "Vote recorded successfully!",
-            description: description,
-            duration: 5000,
-          });
-          
-          // Log detailed success information
-          console.log(`Vote success details: Transaction hash: ${txHash || 'unknown'}, Vote count: ${voteCount || 'pending verification'}`);
-          
-          // Notify parent component with transaction hash and vote count if available
-          if (onVoteSuccess) {
-            onVoteSuccess(txHash || "blockchain-transaction-success", voteCount);
-          }
-        } else {
-          throw new Error("Vote transaction failed");
-        }
-      } catch (error: any) {
-        console.error("Error during voting process:", error);
-        
-        // Display detailed error to user
-        toast({
-          title: "Vote failed",
-          description: `Error: ${error?.message || 'Unknown error'}`,
-          variant: "destructive",
-          duration: 5000,
-        });
+        if (onSuccess) onSuccess();
+      } else {
+        throw new Error("Vote failed: Transaction was not successful");
       }
+      
     } catch (error: any) {
-      console.error("Unexpected error in vote process:", error);
+      console.error('Vote failed:', error);
       
-      // Display error to user
       toast({
-        title: "Vote failed",
-        description: `An unexpected error occurred: ${error?.message || 'Unknown error'}`,
         variant: "destructive",
-        duration: 5000,
+        title: "Vote Failed",
+        description: error.message || "Failed to submit your vote",
       });
-    } finally {
-      // Reset state
-      setVoteState('idle');
-      setVotingToken(null);
-    }
-  };
-  
-  // Button display state
-  const getButtonText = () => {
-    switch (voteState) {
-      case 'requesting-token':
-        return "Preparing...";
-      case 'token-received':
-        return "Validating...";
-      case 'connecting-wallet':
-        return "Connecting...";
-      case 'submitting-vote':
-        return "Voting...";
-      case 'recording-vote':
-        return "Recording...";
-      default:
-        return "Vote";
-    }
-  };
-  
-  // Enhanced button rendering logic with debug info
-  return (
-    <>
-      <Button
-        variant={variant}
-        size={size}
-        className={className}
-        onClick={handleVote}
-        disabled={isVoting || disabled}
-      >
-        {isVoting ? (
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-        ) : (
-          <VoteIcon className="mr-2 h-4 w-4" />
-        )}
-        {getButtonText()}
-      </Button>
       
-      {/* Add hidden debug info - remove in production */}
-      <div className="hidden">
-        <p>isInitialized: {isInitialized ? 'Yes' : 'No'}</p>
-        <p>isVoting: {isVoting ? 'Yes' : 'No'}</p>
-        <p>voteState: {voteState}</p>
-      </div>
-    </>
+      if (onError) onError(error);
+    } finally {
+      setIsVoting(false);
+    }
+  };
+  
+  // Check if user has already voted when the component mounts
+  useEffect(() => {
+    if (isWalletConnected) {
+      checkIfVoted();
+    }
+    
+    // Try to resolve blockchain IDs when component mounts
+    fetchBlockchainElectionId();
+    resolveCandidateBlockchainId();
+  }, [isWalletConnected, walletAddress, electionId, candidateId]);
+  
+  return (
+    <Button
+      onClick={handleVote}
+      disabled={disabled || isVoting || isVerifyingVote || hasVoted}
+      className={className}
+      variant={hasVoted ? "outline" : "default"}
+    >
+      {isVoting ? (
+        <>
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          Voting...
+        </>
+      ) : isVerifyingVote ? (
+        <>
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          Verifying...
+        </>
+      ) : hasVoted ? (
+        <>
+          <CheckCircle className="mr-2 h-4 w-4" />
+          Voted
+        </>
+      ) : (
+        "Vote"
+      )}
+    </Button>
   );
 }
