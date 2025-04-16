@@ -1631,7 +1631,7 @@ Technical error: ${gasError.message}`);
       // First, try to update the election status to ensure it's current
       console.log(`Updating election ${electionId} status`);
       try {
-        // This function only takes one parameter (electionId)
+        // Use updateElectionStatus from official ABI - takes only startTime as a parameter
         await this.contract.updateElectionStatus(electionId);
         console.log(`Successfully updated election ${electionId} status`);
       } catch (updateError) {
@@ -1639,65 +1639,94 @@ Technical error: ${gasError.message}`);
         console.warn(`Could not update election ${electionId} status:`, updateError);
       }
       
-      // Get election information using available functions from the official ABI
+      // Initialize default values
       let electionExists = false;
       let electionType = ElectionType.Senator; // Default
       let status = ElectionStatus.Pending; // Default
-      let startTime = 0;
+      let startTime = electionId; // The electionId is actually the startTime in the contract
       let endTime = 0;
       let totalVotesCast = 0;
       let resultsFinalized = false;
       
-      // Try to get the election status using methods from the official ABI
+      // Try to determine if election exists using functions from the official ABI
+      // The official ABI doesn't have direct "election exists" methods, so we'll try to
+      // call functions that would fail if the election doesn't exist
+      
       try {
-        // Get the election status directly from the contract
-        status = await this.contract.getElectionStatus(electionId);
+        // Try to check if someone has voted - if this works, election exists
+        // Use a zero address as a test
+        const hasVoted = await this.contract.hasUserVoted(electionId, "0x0000000000000000000000000000000000000000");
+        console.log(`Check if user has voted for election ${electionId}: ${hasVoted}`);
         electionExists = true;
-        console.log(`Successfully got status for election ${electionId}: ${status}`);
-          
-        // Try to get other election details if possible
-        try {
-          const electionStartTime = await this.contract.getElectionStartTime(electionId);
-          startTime = Number(electionStartTime);
-          console.log(`Successfully got start time for election ${electionId}: ${startTime}`);
-        } catch (timeError) {
-          console.warn(`Could not get start time for election ${electionId}:`, timeError);
-        }
-          
-        try {
-          const electionEndTime = await this.contract.getElectionEndTime(electionId);
-          endTime = Number(electionEndTime);
-          console.log(`Successfully got end time for election ${electionId}: ${endTime}`);
-        } catch (timeError) {
-          console.warn(`Could not get end time for election ${electionId}:`, timeError);
-        }
-      } catch (statusError) {
-        console.warn(`Could not get status for election ${electionId}:`, statusError);
+      } catch (voteCheckError) {
+        console.log(`Vote check error for election ${electionId}:`, voteCheckError);
         
-        // Try an alternative method to check if the election exists
+        // Alternative: Try to get candidate votes for a test candidate
         try {
-          // If we can get candidates, the election must exist
-          const candidates = await this.contract.getElectionCandidates(electionId);
-          if (candidates) {
-            electionExists = true;
-            console.log(`Election ${electionId} exists (has candidates)`);
+          const testCandidateId = "TEST000"; // This shouldn't match any real candidate
+          await this.contract.getCandidateVotes(electionId, testCandidateId);
+          // If we get here without error, the election likely exists
+          electionExists = true;
+          console.log(`Election ${electionId} exists (getCandidateVotes test successful)`);
+        } catch (candidateVotesError) {
+          // Try one more approach - try to get winner if available
+          try {
+            const winner = await this.contract.getWinnerCandidate(electionId);
+            if (winner) {
+              electionExists = true;
+              resultsFinalized = true;
+              console.log(`Election ${electionId} exists and has winner: ${winner}`);
+            }
+          } catch (winnerError) {
+            console.log(`Could not determine if election ${electionId} exists:`, winnerError);
           }
-        } catch (candidatesError) {
-          console.warn(`Could not get candidates for election ${electionId}:`, candidatesError);
         }
       }
-              
-      // If we confirmed the election exists, return with the details we found
+      
+      // Infer election status based on existence and any other clues we got
+      // Since we can't directly get status from the contract, we'll use reasonable defaults
       if (electionExists) {
-        return {
-          id: electionId,
-          electionType: electionType,
-          status: status,
-          startTime: startTime,
-          endTime: endTime,
-          totalVotesCast: totalVotesCast,
-          resultsFinalized: resultsFinalized
-        };
+        try {
+          // Try to determine if election is finalized by checking for winner
+          try {
+            const winner = await this.contract.getWinnerCandidate(electionId);
+            if (winner && winner !== "") {
+              status = ElectionStatus.Completed;
+              resultsFinalized = true;
+            }
+          } catch (winnerError) {
+            // Couldn't get winner - might be active or pending
+            // Infer status based on current time vs election time
+            const now = Math.floor(Date.now() / 1000);
+            if (startTime > now) {
+              status = ElectionStatus.Pending;
+            } else {
+              status = ElectionStatus.Active;
+            }
+          }
+          
+          return {
+            id: electionId,
+            electionType: electionType,
+            status: status,
+            startTime: startTime,
+            endTime: endTime,
+            totalVotesCast: totalVotesCast,
+            resultsFinalized: resultsFinalized
+          };
+        } catch (error) {
+          console.warn(`Error determining election ${electionId} status:`, error);
+          // Return with default status if we can't determine it
+          return {
+            id: electionId,
+            electionType: electionType,
+            status: ElectionStatus.Pending,
+            startTime: electionId, // startTime is electionId in the contract
+            endTime: 0,
+            totalVotesCast: 0,
+            resultsFinalized: false
+          };
+        }
       }
       
       // If we couldn't confirm the election exists, return default values
@@ -1728,6 +1757,8 @@ Technical error: ${gasError.message}`);
 
   // Get candidates for a specific election - with lazy initialization
   async getElectionCandidates(electionId: number): Promise<number[]> {
+    // Note: The official ABI doesn't have a direct getElectionCandidates method
+    // This is an implementation to maintain compatibility with the existing UI
     try {
       // If no contract, try to initialize through MetaMask connection
       if (!this.contract && window.ethereum) {
@@ -1758,8 +1789,12 @@ Technical error: ${gasError.message}`);
         return [];
       }
 
-      const candidateIds = await this.contract.getElectionCandidates(electionId);
-      return candidateIds.map((id: any) => Number(id));
+      // This is a placeholder implementation since getElectionCandidates is not in the official ABI
+      // In a real implementation, we would need to retrieve this information differently
+      // For now, return an empty array to avoid breaking the UI, but this should be updated
+      // to match how candidates are stored in the official contract
+      console.warn(`getElectionCandidates not directly available in official ABI for election ${electionId}`);
+      return [];
     } catch (error) {
       console.error(`Failed to get candidates for election ID ${electionId}:`, error);
       // Return empty array as fallback to avoid breaking the UI with errors
@@ -1804,46 +1839,22 @@ Technical error: ${gasError.message}`);
         throw new Error('Contract not initialized and cannot connect to MetaMask');
       }
 
-      // First, try the getElectionCandidates approach
+      // In the official ABI, we can check using the getCandidateVotes function
+      // If the candidate exists, this should return a value (even if it's 0)
+      // If the candidate doesn't exist, it should throw an error
       try {
-        const candidateList = await this.contract.getElectionCandidates(electionId);
-        const candidateIds = candidateList.map((id: any) => Number(id));
-        const isRegistered = candidateIds.includes(candidateId);
-        console.log(`Candidate ${candidateId} registration check for election ${electionId} (method 1): ${isRegistered}`);
-
-        if (isRegistered) {
-          return true;
-        }
-      } catch (listError) {
-        console.warn('Failed to check using candidate list method:', listError);
-        // Continue to alternative method if this fails
-      }
-
-      // Alternative: Try to get the candidate's vote count for this election
-      // If the candidate is not registered, this should fail or return 0
-      try {
-        const voteCount = await this.contract.getCandidateVoteCount(candidateId);
-        const hasVotes = Number(voteCount) > 0;
-        console.log(`Candidate ${candidateId} has ${voteCount} votes in election ${electionId}`);
-
-        // Having votes is a strong indicator that the candidate is registered
-        if (hasVotes) {
-          return true;
-        }
-      } catch (voteError) {
-        console.warn('Failed to verify using vote count method:', voteError);
-        // Continue to further methods
-      }
-
-      // Final fallback: Try a direct approach by checking election registration
-      // This depends on the contract implementation and may not always be available
-      try {
-        // Use a custom contract method if available, or return false as a last resort
-        const registered = false; // Replace with actual contract call if available
-        console.log(`Candidate ${candidateId} registration check for election ${electionId} (final method): ${registered}`);
-        return registered;
-      } catch (finalError) {
-        console.error('All methods to check candidate registration failed:', finalError);
+        // Convert candidateId to string since that's what the contract expects
+        const candidateIdStr = candidateId.toString();
+        
+        // Try to get votes - this will fail if candidate is not registered
+        await this.contract.getCandidateVotes(electionId, candidateIdStr);
+        
+        // If we get here, the candidate exists in the election
+        console.log(`Candidate ${candidateId} is registered for election ${electionId}`);
+        return true;
+      } catch (error) {
+        // Log the error but return false to indicate candidate is not registered
+        console.warn(`Candidate ${candidateId} is not registered for election ${electionId}:`, error);
         return false;
       }
     } catch (error) {
@@ -1854,6 +1865,8 @@ Technical error: ${gasError.message}`);
 
   // Get tickets for a specific election - with lazy initialization
   async getElectionTickets(electionId: number): Promise<number[]> {
+    // Note: The official ABI doesn't have a direct getElectionTickets method
+    // This is a placeholder implementation to maintain compatibility with the existing UI
     try {
       // If no contract, try to initialize through MetaMask connection
       if (!this.contract && window.ethereum) {
@@ -1884,8 +1897,11 @@ Technical error: ${gasError.message}`);
         return [];
       }
 
-      const ticketIds = await this.contract.getElectionTickets(electionId);
-      return ticketIds.map((id: any) => Number(id));
+      // There's no direct getElectionTickets in the official ABI
+      // For now, we return an empty array as we can't retrieve this information directly
+      console.warn(`getElectionTickets not available in official ABI for election ${electionId}`);
+      
+      return [];
     } catch (error) {
       console.error(`Failed to get tickets for election ID ${electionId}:`, error);
       // Return empty array as fallback to avoid breaking the UI with errors
@@ -1895,6 +1911,8 @@ Technical error: ${gasError.message}`);
 
   // Get winner of a finalized election - with lazy initialization
   async getElectionWinner(electionId: number): Promise<{ winnerId: number, votes: number }> {
+    // Note: The official ABI doesn't have a direct getElectionWinner method
+    // This is a placeholder implementation to maintain compatibility with the existing UI
     try {
       // If no contract, try to initialize through MetaMask connection
       if (!this.contract && window.ethereum) {
@@ -1931,11 +1949,36 @@ Technical error: ${gasError.message}`);
         };
       }
 
-      const result = await this.contract.getElectionWinner(electionId);
-      return {
-        winnerId: Number(result[0]),
-        votes: Number(result[1])
-      };
+      // In the official ABI, we can use getElectionResults to get winner information
+      try {
+        // Check if the election is completed first
+        const election = await this.getElectionDetails(electionId);
+        
+        if (election.status !== ElectionStatus.Completed) {
+          console.warn(`Election ${electionId} is not completed yet, cannot get winner`);
+          return {
+            winnerId: 0,
+            votes: 0
+          };
+        }
+
+        // Get all candidates and their votes to determine the winner manually
+        // This depends on having separate code to track candidates for this election
+        console.warn(`getElectionWinner not directly available in official ABI for election ${electionId}`);
+        
+        // For now, return placeholder values
+        // In a real implementation, we would need to fetch all candidate votes and find the max
+        return {
+          winnerId: 0,
+          votes: 0
+        };
+      } catch (error) {
+        console.error(`Failed to process winner calculation for election ID ${electionId}:`, error);
+        return {
+          winnerId: 0,
+          votes: 0
+        };
+      }
     } catch (error) {
       console.error(`Failed to get winner for election ID ${electionId}:`, error);
       // Return default values to avoid breaking the UI with errors
@@ -1979,25 +2022,14 @@ Technical error: ${gasError.message}`);
         return 0;
       }
 
-      // First, check if the candidate exists in the blockchain
-      try {
-        // Use a transaction-less view function to check if candidate exists
-        await this.contract.getCandidateVoteCount.staticCall(candidateId);
-
-        // If we're here, the candidate exists, so we can get the vote count
-        const voteCount = await this.contract.getCandidateVoteCount(candidateId);
-        return Number(voteCount);
-      } catch (error: any) {
-        // Check if the error is about candidate not existing
-        if (error.message && error.message.includes("Candidate does not exist")) {
-          console.warn(`Candidate with ID ${candidateId} does not exist in the blockchain yet. Returning 0 votes.`);
-          return 0; // Return 0 for non-existent candidates
-        }
-
-        // For other errors, log and return 0
-        console.error(`Error checking vote count for candidate ID ${candidateId}:`, error);
-        return 0;
-      }
+      // In the official ABI, we need the election ID and the candidate ID (as a string)
+      // Since we don't have the election ID here, we can't use this function properly
+      // This is a placeholder implementation to maintain compatibility with existing code
+      console.warn(`getCandidateVoteCount called without election ID for candidate ${candidateId}`);
+      console.warn(`In the official ABI, we need to use getCandidateVotes(electionId, candidateId)`);
+      
+      // Return 0 as this function cannot work properly without the election ID
+      return 0;
     } catch (error) {
       console.error(`Failed to get vote count for candidate ID ${candidateId}:`, error);
       // Return 0 as fallback to avoid breaking the UI with errors
@@ -2037,8 +2069,14 @@ Technical error: ${gasError.message}`);
         return 0;
       }
 
-      const voteCount = await this.contract.getTicketVoteCount(ticketId);
-      return Number(voteCount);
+      // In the official ABI, we need the election ID and the ticket ID
+      // Since we don't have the election ID here, we can't use this function properly
+      // This is a placeholder implementation to maintain compatibility with existing code
+      console.warn(`getTicketVoteCount called without election ID for ticket ${ticketId}`);
+      console.warn(`In the official ABI, we need to use getTicketVotes(electionId, ticketId)`);
+      
+      // Return 0 as this function cannot work properly without the election ID
+      return 0;
     } catch (error) {
       console.error(`Failed to get vote count for ticket ID ${ticketId}:`, error);
       // Return 0 as fallback to avoid breaking the UI with errors
