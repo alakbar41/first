@@ -1043,6 +1043,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateElection(id: number, election: Partial<InsertElection>): Promise<Election> {
+    // First, get the existing election to check for changes
+    const existingElection = await this.getElection(id);
+    
+    if (!existingElection) {
+      throw new Error(`Election with id ${id} not found`);
+    }
+    
     // Handle the blockchain ID update separately to avoid date issues
     if (election.blockchainId !== undefined && Object.keys(election).length === 1) {
       // This is just a blockchain ID update, use a simplified update
@@ -1052,10 +1059,6 @@ export class DatabaseStorage implements IStorage {
         .where(eq(elections.id, id))
         .returning();
 
-      if (!updated.length) {
-        throw new Error(`Election with id ${id} not found`);
-      }
-
       return updated[0];
     }
 
@@ -1064,17 +1067,21 @@ export class DatabaseStorage implements IStorage {
 
     // Handle field name conversion between frontend and database schema
     // The frontend uses startDate/endDate but the database schema uses startTime/endTime
+    let oldStartTime = existingElection.startTime;
+    let newStartTime = oldStartTime;
 
     // Convert startDate to startTime if present
     if (election.startDate) {
-      updateData.startTime = election.startDate instanceof Date ? 
+      newStartTime = election.startDate instanceof Date ? 
         election.startDate : new Date(election.startDate as string);
+      updateData.startTime = newStartTime;
       // Remove the startDate field since it doesn't exist in the database schema
       delete updateData.startDate;
     } 
     else if (election.startTime) {
-      updateData.startTime = election.startTime instanceof Date ? 
+      newStartTime = election.startTime instanceof Date ? 
         election.startTime : new Date(election.startTime as string);
+      updateData.startTime = newStartTime;
     }
 
     // Convert endDate to endTime if present
@@ -1089,15 +1096,48 @@ export class DatabaseStorage implements IStorage {
         election.endTime : new Date(election.endTime as string);
     }
 
+    // Check if the start time has changed - if so, we need to update all related election candidates
+    const startTimeChanged = newStartTime.getTime() !== oldStartTime.getTime();
+    
+    if (startTimeChanged) {
+      console.log(`Election ${id} start date changed from ${oldStartTime} to ${newStartTime}`);
+    }
+
     console.log("Updated election data:", updateData);
 
+    // Update the election
     const updated = await db.update(elections)
       .set(updateData)
       .where(eq(elections.id, id))
       .returning();
 
-    if (!updated.length) {
-      throw new Error(`Election with id ${id} not found`);
+    // If start time has changed, update all associated candidate records
+    if (startTimeChanged) {
+      try {
+        // Get all candidates associated with the old start time
+        const electionCandidateRecords = await db.select()
+          .from(electionCandidates)
+          .where(eq(electionCandidates.electionStartTime, oldStartTime));
+          
+        if (electionCandidateRecords.length > 0) {
+          console.log(`Found ${electionCandidateRecords.length} candidate records to update with new start time`);
+          
+          // Update each candidate record to use the new start time
+          for (const record of electionCandidateRecords) {
+            await db.update(electionCandidates)
+              .set({ 
+                electionStartTime: newStartTime 
+              })
+              .where(eq(electionCandidates.id, record.id));
+              
+            console.log(`Updated candidate ${record.candidateStudentId} to reference election ${id} with new start time`);
+          }
+        } else {
+          console.log(`No candidate records found for election with start time ${oldStartTime}`);
+        }
+      } catch (error) {
+        console.error("Error updating candidate records after election start time change:", error);
+      }
     }
 
     return updated[0];
@@ -1286,22 +1326,22 @@ export class DatabaseStorage implements IStorage {
       if (allRecords.length > 0) {
         // Get the most recent election start time before our current election
         const mostRecentStartTime = allRecords[0].electionStartTime;
+        const candidatesToUpdate = allRecords.filter(record => 
+          record.electionStartTime.getTime() === mostRecentStartTime.getTime()
+        );
         
-        // Use that to add candidates to the current election
-        console.log(`Auto-associating candidates from last election (${mostRecentStartTime}) with current election (${election.startTime})`);
+        // Use that to update candidates to reference the current election
+        console.log(`Updating ${candidatesToUpdate.length} candidates from election ${mostRecentStartTime} to reference election ${election.startTime}`);
         
-        for (const record of allRecords) {
-          if (record.electionStartTime.getTime() === mostRecentStartTime.getTime()) {
-            // Insert this candidate into the current election too
-            await db.insert(electionCandidates).values({
-              electionStartTime: election.startTime,
-              candidateStudentId: record.candidateStudentId,
-              runningMateStudentId: record.runningMateStudentId,
-              compositeId: record.compositeId,
-              createdAt: new Date()
-            });
-            console.log(`Added candidate ${record.candidateStudentId} to election ${electionId}`);
-          }
+        for (const record of candidatesToUpdate) {
+          // Update the existing record's election_start_time instead of creating a new record
+          await db.update(electionCandidates)
+            .set({ 
+              electionStartTime: election.startTime 
+            })
+            .where(eq(electionCandidates.id, record.id));
+            
+          console.log(`Updated candidate ${record.candidateStudentId} to reference election ${electionId} (start time: ${election.startTime})`);
         }
         
         // Now try again to get candidates for this election
