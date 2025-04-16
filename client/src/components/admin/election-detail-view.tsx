@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Election, getFacultyName } from "@shared/schema";
 import { User, CalendarIcon, Clock, Users, ServerIcon } from "lucide-react";
 import { format } from "date-fns";
-import { DeployToBlockchainButton } from "./deploy-to-blockchain-button";
+import { DeployToBlockchainButton, DeployToBlockchainButtonWithWeb3 } from "./deploy-to-blockchain-button";
 import { queryClient } from "@/lib/queryClient";
 
 interface ElectionDetailViewProps {
@@ -190,7 +190,7 @@ export function AdminElectionDetailView({ election, className = "" }: ElectionDe
                 Deploy this election to the blockchain to enable secure, immutable voting. Elections must be deployed before students can vote.
               </p>
               
-              <DeployToBlockchainButton 
+              <DeployToBlockchainButtonWithWeb3 
                 election={election}
                 onSuccess={handleDeploySuccess}
                 className="w-full sm:w-auto"
