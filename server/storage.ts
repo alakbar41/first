@@ -21,19 +21,19 @@ const MemoryStore = createMemoryStore(session);
 // you might need
 export interface IStorage {
   sessionStore: session.Store;
-  
+
   // User methods
   getUser(id: number): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUserPassword(email: string, newPassword: string): Promise<void>;
-  
+
   // Pending user methods
   getPendingUserByEmail(email: string): Promise<PendingUser | undefined>;
   createPendingUser(user: InsertPendingUser): Promise<PendingUser>;
   updatePendingUserOtp(email: string, otp: string): Promise<void>;
   deletePendingUser(email: string): Promise<void>;
-  
+
   // Election methods
   getElections(): Promise<Election[]>;
   getElection(id: number): Promise<Election | undefined>;
@@ -42,7 +42,7 @@ export interface IStorage {
   updateElectionStatus(id: number, status: string): Promise<void>;
   updateElectionStatusBasedOnTime(election: Election): Promise<void>;
   deleteElection(id: number): Promise<void>;
-  
+
   // Candidate methods
   getCandidates(): Promise<Candidate[]>;
   getCandidate(id: number): Promise<Candidate | undefined>;
@@ -54,25 +54,25 @@ export interface IStorage {
   updateCandidateActiveStatus(candidateId: number): Promise<void>;
   deleteCandidate(id: number): Promise<void>;
   resetCandidateIds(): Promise<void>;
-  
+
   // Election-Candidate methods
   getElectionCandidates(electionId: number): Promise<ElectionCandidate[]>;
   getCandidateElections(candidateId: number): Promise<ElectionCandidate[]>;
   getAllElectionCandidates(): Promise<ElectionCandidate[]>;
   addCandidateToElection(electionCandidate: InsertElectionCandidate): Promise<ElectionCandidate>;
   removeCandidateFromElection(electionId: number, candidateId: number): Promise<void>;
-  
+
   // Vote history tracking (optional, blockchain is the main source of truth)
   recordVote?(userId: number, electionId: number): Promise<void>;
   hasUserVoted?(userId: number, electionId: number): Promise<boolean>;
   resetVote?(userId: number, electionId: number): Promise<void>;
-  
+
   // Voting token methods (for secure blockchain voting)
   createVotingToken(userId: number, electionId: number): Promise<VotingToken>;
   getVotingToken(userId: number, electionId: number): Promise<VotingToken | undefined>;
   validateVotingToken(token: string, electionId: number): Promise<boolean>;
   markTokenAsUsed(token: string): Promise<void>;
-  
+
   // Ticket methods
   getTickets(): Promise<Ticket[]>;
   getUserTickets(userId: number): Promise<Ticket[]>;
@@ -87,7 +87,7 @@ export class MemStorage implements IStorage {
   private elections: Map<number, Election>;
   private candidates: Map<number, Candidate>;
   private electionCandidates: Map<number, ElectionCandidate>;
-  
+
   sessionStore: session.Store;
   currentId: number;
   currentElectionId: number;
@@ -100,16 +100,16 @@ export class MemStorage implements IStorage {
     this.elections = new Map();
     this.candidates = new Map();
     this.electionCandidates = new Map();
-    
+
     this.currentId = 1;
     this.currentElectionId = 1;
     this.currentCandidateId = 1;
     this.currentElectionCandidateId = 1;
-    
+
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000, // prune expired entries every 24h
     });
-    
+
     // Pre-populate admin user
     this.createUser({
       email: 'admin@ada.edu.az',
@@ -117,7 +117,7 @@ export class MemStorage implements IStorage {
       faculty: 'ADMIN',
       isAdmin: true
     });
-    
+
     // Add permanent student account
     this.createUser({
       email: 'balakbarli14184@ada.edu.az',
@@ -205,7 +205,7 @@ export class MemStorage implements IStorage {
       createdAt: new Date(),
       blockchainId: null,
     };
-    
+
     this.elections.set(id, newElection);
     return newElection;
   }
@@ -215,28 +215,28 @@ export class MemStorage implements IStorage {
     if (election) {
       election.status = status;
       this.elections.set(id, election);
-      
+
       // If the election is marked as completed, update candidate statuses
       if (status === 'completed') {
         await this.updateCandidateStatusesForElection(id);
       }
     }
   }
-  
+
   // Implementation of status check/update based on current date
   async updateElectionStatusBasedOnTime(election: Election): Promise<void> {
     // Only update blockchain-deployed elections
     if (election.blockchainId === null || election.blockchainId === undefined) {
       return;
     }
-    
+
     const now = new Date();
     const startDate = new Date(election.startDate);
     const endDate = new Date(election.endDate);
-    
+
     let newStatus = election.status;
     let statusChanged = false;
-    
+
     // Check if election should be active
     if (now >= startDate && now < endDate && election.status === 'upcoming') {
       newStatus = 'active';
@@ -249,64 +249,64 @@ export class MemStorage implements IStorage {
       statusChanged = true;
       console.log(`Automatically updating election ${election.id} to completed status`);
     }
-    
+
     // Update if status changed
     if (statusChanged) {
       await this.updateElectionStatus(election.id, newStatus);
       election.status = newStatus; // Update the passed object as well
-      
+
       // Update candidate statuses when election status changes
       // Get all candidates in this election
       const electionCandidatesList = await this.getElectionCandidates(election.id);
       for (const ec of electionCandidatesList) {
         await this.updateCandidateActiveStatus(ec.candidateId);
-        
+
         if (ec.runningMateId && ec.runningMateId > 0) {
           await this.updateCandidateActiveStatus(ec.runningMateId);
         }
       }
     }
   }
-  
+
   async deleteElection(id: number): Promise<void> {
     // First, identify all affected candidates in this election
     const electionCandidates = await this.getElectionCandidates(id);
-    
+
     // Track candidates and running mates affected by this deletion
     const affectedCandidateIds: number[] = [];
     for (const ec of electionCandidates) {
       if (!affectedCandidateIds.includes(ec.candidateId)) {
         affectedCandidateIds.push(ec.candidateId);
       }
-      
+
       if (ec.runningMateId && !affectedCandidateIds.includes(ec.runningMateId)) {
         affectedCandidateIds.push(ec.runningMateId);
       }
     }
-    
+
     console.log(`Deleting election ${id}, affecting candidates:`, affectedCandidateIds);
-    
+
     // Delete each election-candidate relationship
     for (const ec of electionCandidates) {
       this.electionCandidates.delete(ec.id);
     }
-    
+
     // Then delete the election itself
     this.elections.delete(id);
-    
+
     // Now update each affected candidate's status
     for (const candidateId of affectedCandidateIds) {
       await this.updateCandidateActiveStatus(candidateId);
     }
   }
-  
+
   async updateElection(id: number, election: Partial<InsertElection>): Promise<Election> {
     const existingElection = this.elections.get(id);
-    
+
     if (!existingElection) {
       throw new Error(`Election with id ${id} not found`);
     }
-    
+
     const updatedElection: Election = {
       ...existingElection,
       ...election,
@@ -318,11 +318,11 @@ export class MemStorage implements IStorage {
         : existingElection.endDate,
       eligibleFaculties: election.eligibleFaculties || existingElection.eligibleFaculties,
     };
-    
+
     this.elections.set(id, updatedElection);
     return updatedElection;
   }
-  
+
   async updateUserPassword(email: string, newPassword: string): Promise<void> {
     const user = await this.getUserByEmail(email);
     if (user) {
@@ -334,26 +334,26 @@ export class MemStorage implements IStorage {
       throw new Error(`User with email ${email} not found`);
     }
   }
-  
+
   // Candidate methods
   async getCandidates(): Promise<Candidate[]> {
     return Array.from(this.candidates.values());
   }
-  
+
   async getCandidate(id: number): Promise<Candidate | undefined> {
     return this.candidates.get(id);
   }
-  
+
   async getCandidateByStudentId(studentId: string): Promise<Candidate | undefined> {
     return Array.from(this.candidates.values()).find(
       (candidate) => candidate.studentId === studentId
     );
   }
-  
+
   async createCandidate(candidate: InsertCandidate): Promise<Candidate> {
     const id = this.currentCandidateId++;
     const now = new Date();
-    
+
     const newCandidate: Candidate = {
       id,
       fullName: candidate.fullName,
@@ -365,23 +365,23 @@ export class MemStorage implements IStorage {
       createdAt: now,
       updatedAt: now
     };
-    
+
     this.candidates.set(id, newCandidate);
     return newCandidate;
   }
-  
+
   async updateCandidate(id: number, candidate: Partial<InsertCandidate>): Promise<Candidate> {
     const existingCandidate = this.candidates.get(id);
-    
+
     if (!existingCandidate) {
       throw new Error(`Candidate with id ${id} not found`);
     }
-    
+
     // Ensure optional fields have default values
     if (candidate.pictureUrl === undefined) {
       candidate.pictureUrl = existingCandidate.pictureUrl;
     }
-    
+
     const updatedCandidate: Candidate = {
       ...existingCandidate,
       ...candidate,
@@ -389,11 +389,11 @@ export class MemStorage implements IStorage {
       status: existingCandidate.status, // Preserve status - it's managed by election associations
       updatedAt: new Date()
     };
-    
+
     this.candidates.set(id, updatedCandidate);
     return updatedCandidate;
   }
-  
+
   async updateCandidateStatus(id: number, status: string): Promise<void> {
     const candidate = this.candidates.get(id);
     if (candidate) {
@@ -404,36 +404,36 @@ export class MemStorage implements IStorage {
       throw new Error(`Candidate with id ${id} not found`);
     }
   }
-  
+
   // Helper method to update candidate statuses when an election completes
   async updateCandidateStatusesForElection(electionId: number): Promise<void> {
     // Get all candidates in this election
     const electionCandidates = await this.getElectionCandidates(electionId);
-    
+
     // For each candidate, check if they're in any active elections
     for (const ec of electionCandidates) {
       await this.updateCandidateActiveStatus(ec.candidateId);
-      
+
       // Also update running mate if exists
       if (ec.runningMateId && ec.runningMateId > 0) {
         await this.updateCandidateActiveStatus(ec.runningMateId);
       }
     }
   }
-  
+
   // Helper method to determine and update a candidate's status based on elections
   async updateCandidateActiveStatus(candidateId: number): Promise<void> {
     // Get the candidate
     const candidate = await this.getCandidate(candidateId);
     if (!candidate) return;
-    
+
     // Get all elections where the candidate is the main candidate
     const candidateElections = await this.getCandidateElections(candidateId);
-    
+
     // Get all elections where the candidate is a running mate
     const runningMateElections = Array.from(this.electionCandidates.values())
       .filter(ec => ec.runningMateId === candidateId);
-    
+
     // If not in any elections at all, mark as inactive immediately
     if (candidateElections.length === 0 && runningMateElections.length === 0) {
       if (candidate.status !== 'inactive') {
@@ -442,10 +442,10 @@ export class MemStorage implements IStorage {
       }
       return;
     }
-    
+
     // Get all elections the candidate is part of
     const allElectionEntries = [...candidateElections, ...runningMateElections];
-    
+
     // Gather all the election objects
     const validElections: Election[] = [];
     for (const ec of allElectionEntries) {
@@ -454,7 +454,7 @@ export class MemStorage implements IStorage {
         validElections.push(election);
       }
     }
-    
+
     // If there are no valid elections, mark as inactive
     if (validElections.length === 0) {
       if (candidate.status !== 'inactive') {
@@ -463,11 +463,11 @@ export class MemStorage implements IStorage {
       }
       return;
     }
-    
+
     // Check if the candidate is in any active or upcoming election
     const inActiveElection = validElections.some(e => e.status === 'active');
     const inUpcomingElection = validElections.some(e => e.status === 'upcoming');
-    
+
     // Determine the appropriate status
     let newStatus = 'inactive';
     if (inActiveElection) {
@@ -475,7 +475,7 @@ export class MemStorage implements IStorage {
     } else if (inUpcomingElection) {
       newStatus = 'pending';
     }
-    
+
     // Update status if needed
     if (candidate.status !== newStatus) {
       await this.updateCandidateStatus(candidateId, newStatus);
@@ -484,10 +484,10 @@ export class MemStorage implements IStorage {
       console.log(`Candidate ${candidateId} status remains ${candidate.status}`);
     }
   }
-  
+
   async deleteCandidate(id: number): Promise<void> {
     this.candidates.delete(id);
-    
+
     // After deletion, if no candidates are left, reset the ID counter
     if (this.candidates.size === 0) {
       this.currentCandidateId = 1;
@@ -497,30 +497,30 @@ export class MemStorage implements IStorage {
       this.currentCandidateId = maxId + 1;
     }
   }
-  
+
   // Election-Candidate methods
   async getElectionCandidates(electionId: number): Promise<ElectionCandidate[]> {
     return Array.from(this.electionCandidates.values()).filter(
       (ec) => ec.electionId === electionId
     );
   }
-  
+
   async getCandidateElections(candidateId: number): Promise<ElectionCandidate[]> {
     return Array.from(this.electionCandidates.values()).filter(
       (ec) => ec.candidateId === candidateId
     );
   }
-  
+
   async addCandidateToElection(electionCandidate: InsertElectionCandidate): Promise<ElectionCandidate> {
     const id = this.currentElectionCandidateId++;
-    
+
     // Note: This memory storage implementation assumes and converts between:
     // - electionId/electionStartTime 
     // - candidateId/candidateStudentId
     // - runningMateId/runningMateStudentId
     // These conversions are needed to maintain backward compatibility with code that
     // expects these fields while the database schema uses different fields
-    
+
     // We'll use the electionStartTime and convert candidateId to studentId if needed
     // In memory storage, we're storing using our own properties that don't match the schema
     const newElectionCandidate: any = {
@@ -532,48 +532,48 @@ export class MemStorage implements IStorage {
       compositeId: electionCandidate.compositeId || null,
       createdAt: new Date()
     };
-    
+
     this.electionCandidates.set(id, newElectionCandidate);
-    
+
     // This part assumes we have a way to get candidateId from studentId
     // For now we're assuming candidateId is directly available through the passed object
     const candidateId = (electionCandidate as any).candidateId; 
-    
+
     if (candidateId) {
       await this.updateCandidateActiveStatus(candidateId);
     }
-    
+
     // If there's a running mate, update their status too
     const runningMateId = (electionCandidate as any).runningMateId;
     if (runningMateId && runningMateId > 0) {
       await this.updateCandidateActiveStatus(runningMateId);
     }
-    
+
     return newElectionCandidate;
   }
-  
+
   async getAllElectionCandidates(): Promise<ElectionCandidate[]> {
     return Array.from(this.electionCandidates.values());
   }
-  
+
   async resetCandidateIds(): Promise<void> {
     // Get all candidates sorted by ID
     const sortedCandidates = Array.from(this.candidates.values())
       .sort((a, b) => a.id - b.id);
-    
+
     // Create a new map for the reorganized candidates
     const newCandidatesMap = new Map<number, Candidate>();
-    
+
     // Reassign IDs sequentially
     let newId = 1;
     for (const candidate of sortedCandidates) {
       const updatedCandidate = { ...candidate, id: newId };
       newCandidatesMap.set(newId, updatedCandidate);
-      
+
       // Update the candidate's ID in all election-candidate relationships
       const relatedElectionCandidates = Array.from(this.electionCandidates.values())
         .filter(ec => ec.candidateId === candidate.id || ec.runningMateId === candidate.id);
-      
+
       for (const ec of relatedElectionCandidates) {
         if (ec.candidateId === candidate.id) {
           ec.candidateId = newId;
@@ -581,16 +581,16 @@ export class MemStorage implements IStorage {
         if (ec.runningMateId === candidate.id) {
           ec.runningMateId = newId;
         }
-        
+
         this.electionCandidates.set(ec.id, ec);
       }
-      
+
       newId++;
     }
-    
+
     // Replace the old map with the new one
     this.candidates = newCandidatesMap;
-    
+
     // Update current ID counter
     this.currentCandidateId = newId;
   }
@@ -600,43 +600,43 @@ export class MemStorage implements IStorage {
     const entry = Array.from(this.electionCandidates.values()).find(
       (ec) => ec.electionId === electionId && ec.candidateId === candidateId
     );
-    
+
     if (entry) {
       const runningMateId = entry.runningMateId;
-      
+
       // Delete the relationship
       this.electionCandidates.delete(entry.id);
-      
+
       // Update the candidate's status based on remaining elections
       await this.updateCandidateActiveStatus(candidateId);
-      
+
       // Also update the running mate's status if there was one
       if (runningMateId && runningMateId > 0) {
         await this.updateCandidateActiveStatus(runningMateId);
       }
     }
   }
-  
+
   // Voting token implementation
   private votingTokens: Map<string, VotingToken> = new Map();
   private currentVotingTokenId: number = 1;
-  
+
   async createVotingToken(userId: number, electionId: number): Promise<VotingToken> {
     // Check if user already has a valid token for this election
     const existingToken = await this.getVotingToken(userId, electionId);
     if (existingToken && !existingToken.used && existingToken.expiresAt > new Date()) {
       return existingToken;
     }
-    
+
     // Generate a unique random token
     const tokenString = Array(48).fill(0).map(() => 
       Math.round(Math.random() * 35).toString(36)
     ).join('');
-    
+
     // Set expiration to 10 minutes from now
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + 10);
-    
+
     const token: VotingToken = {
       id: this.currentVotingTokenId++,
       userId,
@@ -646,39 +646,39 @@ export class MemStorage implements IStorage {
       expiresAt,
       createdAt: new Date()
     };
-    
+
     this.votingTokens.set(tokenString, token);
     return token;
   }
-  
+
   async getVotingToken(userId: number, electionId: number): Promise<VotingToken | undefined> {
     return Array.from(this.votingTokens.values()).find(
       token => token.userId === userId && token.electionId === electionId && !token.used
     );
   }
-  
+
   async validateVotingToken(token: string, electionId: number): Promise<boolean> {
     const votingToken = this.votingTokens.get(token);
-    
+
     if (!votingToken) {
       return false;
     }
-    
+
     if (votingToken.electionId !== electionId) {
       return false;
     }
-    
+
     if (votingToken.used) {
       return false;
     }
-    
+
     if (votingToken.expiresAt < new Date()) {
       return false;
     }
-    
+
     return true;
   }
-  
+
   async markTokenAsUsed(token: string): Promise<void> {
     const votingToken = this.votingTokens.get(token);
     if (votingToken) {
@@ -686,29 +686,29 @@ export class MemStorage implements IStorage {
       this.votingTokens.set(token, votingToken);
     }
   }
-  
+
   // Tickets system implementation
   private tickets: Map<number, Ticket> = new Map();
   private currentTicketId: number = 1;
-  
+
   async getTickets(): Promise<Ticket[]> {
     return Array.from(this.tickets.values());
   }
-  
+
   async getUserTickets(userId: number): Promise<Ticket[]> {
     return Array.from(this.tickets.values()).filter(
       (ticket) => ticket.userId === userId
     );
   }
-  
+
   async getTicket(id: number): Promise<Ticket | undefined> {
     return this.tickets.get(id);
   }
-  
+
   async createTicket(userId: number, ticket: InsertTicket): Promise<Ticket> {
     const id = this.currentTicketId++;
     const now = new Date();
-    
+
     const newTicket: Ticket = {
       id,
       userId,
@@ -719,58 +719,58 @@ export class MemStorage implements IStorage {
       createdAt: now,
       updatedAt: now,
     };
-    
+
     this.tickets.set(id, newTicket);
     return newTicket;
   }
-  
+
   async updateTicketStatus(id: number, status: string): Promise<Ticket> {
     const ticket = this.tickets.get(id);
     if (!ticket) {
       throw new Error(`Ticket with id ${id} not found`);
     }
-    
+
     const updatedTicket: Ticket = {
       ...ticket,
       status,
       updatedAt: new Date(),
     };
-    
+
     this.tickets.set(id, updatedTicket);
     return updatedTicket;
   }
-  
+
   // Optional vote history tracking methods
   async recordVote(userId: number, electionId: number): Promise<void> {
     // Mark any tokens as used
     const tokens = Array.from(this.votingTokens.values()).filter(
       token => token.userId === userId && token.electionId === electionId
     );
-    
+
     for (const token of tokens) {
       token.used = true;
       this.votingTokens.set(token.token, token);
     }
   }
-  
+
   async hasUserVoted(userId: number, electionId: number): Promise<boolean> {
     // Check if any tokens are marked as used
     return Array.from(this.votingTokens.values()).some(
       token => token.userId === userId && token.electionId === electionId && token.used
     );
   }
-  
+
   async resetVote(userId: number, electionId: number): Promise<void> {
     // Find all tokens for this user/election and reset their used status
     const tokens = Array.from(this.votingTokens.values()).filter(
       token => token.userId === userId && token.electionId === electionId && token.used
     );
-    
+
     for (const token of tokens) {
       token.used = false;
       this.votingTokens.set(token.token, token);
     }
-    
+
     console.log(`Reset vote for user ${userId} in election ${electionId}, reset ${tokens.length} tokens`);
   }
 }
@@ -783,7 +783,7 @@ export class DatabaseStorage implements IStorage {
       pool,
       createTableIfMissing: true,
     });
-    
+
     // Initialize default users if they don't exist
     this.initializeDefaultUsers();
   }
@@ -801,7 +801,7 @@ export class DatabaseStorage implements IStorage {
           isAdmin: true
         });
       }
-      
+
       // Check if student user exists
       const studentUser = await this.getUserByEmail('balakbarli14184@ada.edu.az');
       if (!studentUser) {
@@ -842,7 +842,7 @@ export class DatabaseStorage implements IStorage {
       // However, for debugging purposes, we'll throw an error but without user enumeration
       throw new Error("Password update failed - account verification error");
     }
-    
+
     await db.update(users)
       .set({ password: newPassword })
       .where(eq(users.email, email));
@@ -860,7 +860,7 @@ export class DatabaseStorage implements IStorage {
     if (existingUser) {
       await this.deletePendingUser(user.email);
     }
-    
+
     const result = await db.insert(pendingUsers).values(user).returning();
     return result[0];
   }
@@ -882,10 +882,10 @@ export class DatabaseStorage implements IStorage {
   async getElections(): Promise<Election[]> {
     // First, fetch all elections
     const allElections = await db.select().from(elections).orderBy(asc(elections.id));
-    
+
     // Then automatically check and update statuses based on dates
     await this.updateElectionStatusesBasedOnTime(allElections);
-    
+
     // Return the elections with updated statuses
     return allElections;
   }
@@ -898,21 +898,21 @@ export class DatabaseStorage implements IStorage {
     }
     return result[0];
   }
-  
+
   // Helper method to update election statuses based on current time
   async updateElectionStatusesBasedOnTime(electionsList: Election[]): Promise<void> {
     const now = new Date();
     const updates: Promise<void>[] = [];
-    
+
     for (const election of electionsList) {
       // Only update blockchain-deployed elections
       if (election.blockchainId !== null) {
         const startDate = new Date(election.startDate);
         const endDate = new Date(election.endDate);
-        
+
         let newStatus = election.status;
         let statusChanged = false;
-        
+
         // Check if election should be active
         if (now >= startDate && now < endDate && election.status === 'upcoming') {
           newStatus = 'active';
@@ -925,20 +925,20 @@ export class DatabaseStorage implements IStorage {
           statusChanged = true;
           console.log(`Automatically updating election ${election.id} to completed status`);
         }
-        
+
         // Update database if status changed
         if (statusChanged) {
           // Update in the database
           updates.push(this.updateElectionStatus(election.id, newStatus));
           // Update the election object for immediate use
           election.status = newStatus;
-          
+
           // Update candidate statuses when election status changes
           // Get all candidates in this election
           const electionCandidatesList = await this.getElectionCandidates(election.id);
           for (const ec of electionCandidatesList) {
             updates.push(this.updateCandidateActiveStatus(ec.candidateId));
-            
+
             if (ec.runningMateId && ec.runningMateId > 0) {
               updates.push(this.updateCandidateActiveStatus(ec.runningMateId));
             }
@@ -946,13 +946,13 @@ export class DatabaseStorage implements IStorage {
         }
       }
     }
-    
+
     // Wait for all updates to complete
     if (updates.length > 0) {
       await Promise.all(updates);
     }
   }
-  
+
   // Helper to update a single election's status based on time
   async updateElectionStatusBasedOnTime(election: Election): Promise<void> {
     await this.updateElectionStatusesBasedOnTime([election]);
@@ -961,17 +961,17 @@ export class DatabaseStorage implements IStorage {
   async createElection(election: InsertElection): Promise<Election> {
     // Convert string dates to Date objects if needed
     let processedElection = { ...election };
-    
+
     // Handle startTime
     if (typeof processedElection.startTime === 'string') {
       processedElection.startTime = new Date(processedElection.startTime);
     }
-    
+
     // Handle endTime
     if (typeof processedElection.endTime === 'string') {
       processedElection.endTime = new Date(processedElection.endTime);
     }
-    
+
     const result = await db.insert(elections).values({
       ...processedElection,
       createdAt: new Date()
@@ -983,7 +983,7 @@ export class DatabaseStorage implements IStorage {
     await db.update(elections)
       .set({ status })
       .where(eq(elections.id, id));
-      
+
     // If the election is marked as completed, update candidate statuses
     if (status === 'completed') {
       await this.updateCandidateStatusesForElection(id);
@@ -993,19 +993,19 @@ export class DatabaseStorage implements IStorage {
   async deleteElection(id: number): Promise<void> {
     // First, get all affected election-candidate relationships
     const electionCandidatesList = await this.getElectionCandidates(id);
-    
+
     // Collect all affected candidate IDs
     const affectedCandidateIds: number[] = [];
     electionCandidatesList.forEach(ec => {
       if (!affectedCandidateIds.includes(ec.candidateId)) {
         affectedCandidateIds.push(ec.candidateId);
       }
-      
+
       if (ec.runningMateId && ec.runningMateId > 0 && !affectedCandidateIds.includes(ec.runningMateId)) {
         affectedCandidateIds.push(ec.runningMateId);
       }
     });
-    
+
     // Delete all election-candidate relationships for this election
     const election = await this.getElection(id);
     if (election) {
@@ -1013,10 +1013,10 @@ export class DatabaseStorage implements IStorage {
       await db.delete(electionCandidates)
         .where(eq(electionCandidates.electionStartTime, election.startTime));
     }
-    
+
     // Delete the election
     await db.delete(elections).where(eq(elections.id, id));
-    
+
     // Update affected candidates' status if they're not in any other elections
     for (const candidateId of affectedCandidateIds) {
       // Check if candidate is still in any elections
@@ -1025,7 +1025,7 @@ export class DatabaseStorage implements IStorage {
         .where(
           eq(electionCandidates.candidateId, candidateId)
         );
-        
+
       if (remainingRelationships.length === 0) {
         // Also check if they're a running mate in any elections
         const asRunningMate = await db.select()
@@ -1033,7 +1033,7 @@ export class DatabaseStorage implements IStorage {
           .where(
             eq(electionCandidates.runningMateId, candidateId)
           );
-          
+
         if (asRunningMate.length === 0) {
           // If not in any elections, update status to inactive
           await this.updateCandidateStatus(candidateId, "inactive");
@@ -1051,20 +1051,20 @@ export class DatabaseStorage implements IStorage {
         .set({ blockchainId: election.blockchainId })
         .where(eq(elections.id, id))
         .returning();
-      
+
       if (!updated.length) {
         throw new Error(`Election with id ${id} not found`);
       }
-      
+
       return updated[0];
     }
-    
+
     // For other updates, proceed normally
     const updateData: any = { ...election };
-    
+
     // Handle field name conversion between frontend and database schema
     // The frontend uses startDate/endDate but the database schema uses startTime/endTime
-    
+
     // Convert startDate to startTime if present
     if (election.startDate) {
       updateData.startTime = election.startDate instanceof Date ? 
@@ -1076,7 +1076,7 @@ export class DatabaseStorage implements IStorage {
       updateData.startTime = election.startTime instanceof Date ? 
         election.startTime : new Date(election.startTime as string);
     }
-    
+
     // Convert endDate to endTime if present
     if (election.endDate) {
       updateData.endTime = election.endDate instanceof Date ? 
@@ -1088,18 +1088,18 @@ export class DatabaseStorage implements IStorage {
       updateData.endTime = election.endTime instanceof Date ? 
         election.endTime : new Date(election.endTime as string);
     }
-    
+
     console.log("Updated election data:", updateData);
-    
+
     const updated = await db.update(elections)
       .set(updateData)
       .where(eq(elections.id, id))
       .returning();
-      
+
     if (!updated.length) {
       throw new Error(`Election with id ${id} not found`);
     }
-    
+
     return updated[0];
   }
 
@@ -1135,11 +1135,11 @@ export class DatabaseStorage implements IStorage {
 
   async updateCandidate(id: number, candidate: Partial<InsertCandidate>): Promise<Candidate> {
     const existingCandidate = await this.getCandidate(id);
-    
+
     if (!existingCandidate) {
       throw new Error(`Candidate with id ${id} not found`);
     }
-    
+
     const updated = await db.update(candidates)
       .set({
         ...candidate,
@@ -1148,7 +1148,7 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(candidates.id, id))
       .returning();
-      
+
     return updated[0];
   }
 
@@ -1160,32 +1160,32 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(candidates.id, id));
   }
-  
+
   // Helper method to update candidate statuses when an election completes
   async updateCandidateStatusesForElection(electionId: number): Promise<void> {
     // Get all candidates in this election
     const electionCandidates = await this.getElectionCandidates(electionId);
-    
+
     // For each candidate, check if they're in any active elections
     for (const ec of electionCandidates) {
       await this.updateCandidateActiveStatus(ec.candidateId);
-      
+
       // Also update running mate if exists
       if (ec.runningMateId && ec.runningMateId > 0) {
         await this.updateCandidateActiveStatus(ec.runningMateId);
       }
     }
   }
-  
+
   // Helper method to determine and update a candidate's status based on elections
   async updateCandidateActiveStatus(candidateId: number): Promise<void> {
     // Get the candidate
     const candidate = await this.getCandidate(candidateId);
     if (!candidate) return;
-    
+
     // Get all elections where the candidate is the main candidate
     const candidateElections = await this.getCandidateElections(candidateId);
-    
+
     // Get all elections where the candidate is a running mate
     // Since the schema uses runningMateStudentId not runningMateId, we need to get the student ID first
     const candidateStudentId = candidate.studentId;
@@ -1201,21 +1201,21 @@ export class DatabaseStorage implements IStorage {
       }
       return;
     }
-    
+
     // Get all elections the candidate is part of
     const combinedElectionIds = [
       ...candidateElections.map(ec => ec.electionId),
       ...runningMateElections.map(ec => ec.electionId)
     ];
-    
+
     // Load the actual election details for checking status
     const electionDetails = await Promise.all(
       combinedElectionIds.map(id => this.getElection(id))
     );
-    
+
     // Filter out null values and ensure we're only considering valid elections
     const validElections = electionDetails.filter(e => e !== undefined) as Election[];
-    
+
     // If there are no valid elections, mark as inactive
     if (validElections.length === 0) {
       if (candidate.status !== 'inactive') {
@@ -1224,11 +1224,11 @@ export class DatabaseStorage implements IStorage {
       }
       return;
     }
-    
+
     // Check if the candidate is in any active or upcoming election
     const inActiveElection = validElections.some(e => e.status === 'active');
     const inUpcomingElection = validElections.some(e => e.status === 'upcoming');
-    
+
     // Determine the appropriate status
     let newStatus = 'inactive';
     if (inActiveElection) {
@@ -1236,7 +1236,7 @@ export class DatabaseStorage implements IStorage {
     } else if (inUpcomingElection) {
       newStatus = 'pending';
     }
-    
+
     // Update status if needed
     if (candidate.status !== newStatus) {
       await this.updateCandidateStatus(candidateId, newStatus);
@@ -1264,34 +1264,34 @@ export class DatabaseStorage implements IStorage {
       console.error(`Cannot get election candidates - election ${electionId} not found`);
       return [];
     }
-    
+
     // Query using the actual schema field (electionStartTime)
     const records = await db.select()
       .from(electionCandidates)
       .where(eq(electionCandidates.electionStartTime, election.startTime));
-      
+
     // Enhance records with virtual fields for backward compatibility
     const enhancedRecords = await Promise.all(records.map(async (record) => {
       // Find candidate ID from studentId
       let candidateId = 0;
       let runningMateId = 0;
-      
+
       try {
         // Get candidate ID from studentId
         const candidate = await db.select()
           .from(candidates)
           .where(eq(candidates.studentId, record.candidateStudentId));
-          
+
         if (candidate.length > 0) {
           candidateId = candidate[0].id;
         }
-        
+
         // If there's a running mate, get their ID too
         if (record.runningMateStudentId) {
           const runningMate = await db.select()
             .from(candidates)
             .where(eq(candidates.studentId, record.runningMateStudentId));
-            
+
           if (runningMate.length > 0) {
             runningMateId = runningMate[0].id;
           }
@@ -1299,7 +1299,7 @@ export class DatabaseStorage implements IStorage {
       } catch (error) {
         console.error("Error enhancing election-candidate record:", error);
       }
-      
+
       // Return record with virtual fields
       return {
         ...record,
@@ -1308,7 +1308,7 @@ export class DatabaseStorage implements IStorage {
         runningMateId: runningMateId // Add virtual field for backward compatibility
       };
     }));
-    
+
     return enhancedRecords;
   }
 
@@ -1319,33 +1319,33 @@ export class DatabaseStorage implements IStorage {
       console.error(`Cannot get candidate elections - candidate ${candidateId} not found`);
       return [];
     }
-    
+
     // Query using the actual schema field (candidateStudentId)
     const records = await db.select()
       .from(electionCandidates)
       .where(eq(electionCandidates.candidateStudentId, candidate.studentId));
-      
+
     // Enhance records with virtual fields for backward compatibility
     const enhancedRecords = await Promise.all(records.map(async (record) => {
       let electionId = 0;
       let runningMateId = 0;
-      
+
       try {
         // Find election ID from startTime
         const electionsList = await db.select()
           .from(elections)
           .where(eq(elections.startTime, record.electionStartTime));
-          
+
         if (electionsList.length > 0) {
           electionId = electionsList[0].id;
         }
-        
+
         // If there's a running mate, get their ID too
         if (record.runningMateStudentId) {
           const runningMate = await db.select()
             .from(candidates)
             .where(eq(candidates.studentId, record.runningMateStudentId));
-            
+
           if (runningMate.length > 0) {
             runningMateId = runningMate[0].id;
           }
@@ -1353,7 +1353,7 @@ export class DatabaseStorage implements IStorage {
       } catch (error) {
         console.error("Error enhancing election-candidate record:", error);
       }
-      
+
       // Return record with virtual fields
       return {
         ...record,
@@ -1362,45 +1362,45 @@ export class DatabaseStorage implements IStorage {
         runningMateId: runningMateId // Add virtual field for backward compatibility
       };
     }));
-    
+
     return enhancedRecords;
   }
 
   async getAllElectionCandidates(): Promise<ElectionCandidate[]> {
     // Get all election-candidate records from database
     const records = await db.select().from(electionCandidates);
-    
+
     // Enhance records with virtual fields for backward compatibility
     const enhancedRecords = await Promise.all(records.map(async (record) => {
       let electionId = 0;
       let candidateId = 0;
       let runningMateId = 0;
-      
+
       try {
         // Find election ID from startTime
         const electionsList = await db.select()
           .from(elections)
           .where(eq(elections.startTime, record.electionStartTime));
-          
+
         if (electionsList.length > 0) {
           electionId = electionsList[0].id;
         }
-        
+
         // Find candidate ID from studentId
         const candidate = await db.select()
           .from(candidates)
           .where(eq(candidates.studentId, record.candidateStudentId));
-          
+
         if (candidate.length > 0) {
           candidateId = candidate[0].id;
         }
-        
+
         // If there's a running mate, get their ID too
         if (record.runningMateStudentId) {
           const runningMate = await db.select()
             .from(candidates)
             .where(eq(candidates.studentId, record.runningMateStudentId));
-            
+
           if (runningMate.length > 0) {
             runningMateId = runningMate[0].id;
           }
@@ -1408,7 +1408,7 @@ export class DatabaseStorage implements IStorage {
       } catch (error) {
         console.error("Error enhancing election-candidate record:", error);
       }
-      
+
       // Return record with virtual fields
       return {
         ...record,
@@ -1417,7 +1417,7 @@ export class DatabaseStorage implements IStorage {
         runningMateId: runningMateId // Add virtual field for backward compatibility
       };
     }));
-    
+
     return enhancedRecords;
   }
 
@@ -1425,7 +1425,7 @@ export class DatabaseStorage implements IStorage {
     // There's a schema mismatch issue: 
     // The code expects properties like electionId/candidateId/runningMateId
     // But the schema defines electionStartTime/candidateStudentId/runningMateStudentId
-    
+
     // We need to handle this case by adapting our implementation
     let electionStartTime: Date | null = null;
     let candidateStudentId: string | null = null;
@@ -1433,9 +1433,9 @@ export class DatabaseStorage implements IStorage {
     let electionId: number | null = null;
     let candidateId: number | null = null;
     let runningMateId: number | null = null;
-    
+
     console.log("Adding candidate to election with data:", JSON.stringify(electionCandidate));
-    
+
     // Check if we have an electionId and convert it to electionStartTime
     if ('electionId' in electionCandidate && electionCandidate.electionId) {
       electionId = electionCandidate.electionId;
@@ -1455,7 +1455,7 @@ export class DatabaseStorage implements IStorage {
     } else {
       throw new Error("Missing required election identifier (electionId or electionStartTime)");
     }
-    
+
     // Check if we have a candidateId and convert it to candidateStudentId
     if ('candidateId' in electionCandidate && electionCandidate.candidateId) {
       candidateId = electionCandidate.candidateId;
@@ -1475,7 +1475,7 @@ export class DatabaseStorage implements IStorage {
     } else {
       throw new Error("Missing required candidate identifier (candidateId or candidateStudentId)");
     }
-    
+
     // Handle running mate if present
     if ('runningMateId' in electionCandidate && electionCandidate.runningMateId) {
       runningMateId = electionCandidate.runningMateId;
@@ -1493,13 +1493,13 @@ export class DatabaseStorage implements IStorage {
     } else if ('runningMateStudentId' in electionCandidate && electionCandidate.runningMateStudentId) {
       runningMateStudentId = electionCandidate.runningMateStudentId;
     }
-    
+
     // Generate composite ID for president-vp pairs if needed
     let compositeId = null;
     if (candidateStudentId && runningMateStudentId) {
       compositeId = `${candidateStudentId}_${runningMateStudentId}`;
     }
-    
+
     // First check if this relationship already exists to avoid duplicates
     // Use the actual schema fields for the query
     console.log("Checking for existing relationship with:", { electionStartTime, candidateStudentId });
@@ -1509,7 +1509,7 @@ export class DatabaseStorage implements IStorage {
         eq(electionCandidates.electionStartTime, electionStartTime),
         eq(electionCandidates.candidateStudentId, candidateStudentId)
       ));
-      
+
     if (existing.length > 0) {
       console.log("Relationship already exists, returning existing record");
       // For backward compatibility, add legacy properties
@@ -1521,7 +1521,7 @@ export class DatabaseStorage implements IStorage {
       };
       return result as ElectionCandidate;
     }
-    
+
     // Insert the relationship using the correct schema fields
     const dbValues = {
       electionStartTime,
@@ -1530,26 +1530,26 @@ export class DatabaseStorage implements IStorage {
       compositeId,
       createdAt: new Date()
     };
-    
+
     console.log("Inserting new relationship with values:", dbValues);
-    
+
     // Insert the relationship
     const result = await db.insert(electionCandidates)
       .values(dbValues)
       .returning();
-    
+
     console.log("Inserted relationship:", result[0]);
-    
+
     // Update candidate statuses based on the election's current status
     if (candidateId) {
       await this.updateCandidateActiveStatus(candidateId);
     }
-    
+
     // If there's a running mate, update their status too
     if (runningMateId) {
       await this.updateCandidateActiveStatus(runningMateId);
     }
-    
+
     // For backward compatibility, add legacy properties to the result
     const enhancedResult = {
       ...result[0],
@@ -1557,7 +1557,7 @@ export class DatabaseStorage implements IStorage {
       candidateId: candidateId,
       runningMateId: runningMateId || 0
     };
-    
+
     return enhancedResult as ElectionCandidate;
   }
 
@@ -1565,13 +1565,13 @@ export class DatabaseStorage implements IStorage {
     // First get the election and candidate to convert IDs to match the schema
     let electionStartTime: Date | null = null;
     let candidateStudentId: string | null = null;
-    
+
     try {
       const election = await this.getElection(electionId);
       if (election) {
         electionStartTime = election.startTime;
       }
-      
+
       const candidate = await this.getCandidate(candidateId);
       if (candidate) {
         candidateStudentId = candidate.studentId;
@@ -1579,12 +1579,12 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error("Error fetching election or candidate data:", error);
     }
-    
+
     if (!electionStartTime || !candidateStudentId) {
       console.error(`Cannot remove candidate from election: missing data conversion for electionId=${electionId}, candidateId=${candidateId}`);
       return;
     }
-    
+
     // Find the relationship using schema fields
     const relationships = await db.select()
       .from(electionCandidates)
@@ -1592,21 +1592,21 @@ export class DatabaseStorage implements IStorage {
         eq(electionCandidates.electionStartTime, electionStartTime),
         eq(electionCandidates.candidateStudentId, candidateStudentId)
       ));
-      
+
     if (relationships.length === 0) {
       return; // Nothing to remove
     }
-    
+
     const relationship = relationships[0];
     let runningMateId: number | null = null;
-    
+
     // If there's a running mate, find their ID by studentId
     if (relationship.runningMateStudentId) {
       try {
         const runningMate = await db.select()
           .from(candidates)
           .where(eq(candidates.studentId, relationship.runningMateStudentId));
-          
+
         if (runningMate.length > 0) {
           runningMateId = runningMate[0].id;
         }
@@ -1614,20 +1614,20 @@ export class DatabaseStorage implements IStorage {
         console.error("Error finding running mate by student ID:", error);
       }
     }
-    
+
     // Delete the relationship
     await db.delete(electionCandidates)
       .where(eq(electionCandidates.id, relationship.id));
-    
+
     // Update the candidate's status based on their remaining elections
     await this.updateCandidateActiveStatus(candidateId);
-    
+
     // Also update the running mate's status if there was one
     if (runningMateId && runningMateId > 0) {
       await this.updateCandidateActiveStatus(runningMateId);
     }
   }
-  
+
   // Voting token implementation for database storage
   async createVotingToken(userId: number, electionId: number): Promise<VotingToken> {
     // Check if user already has a valid token for this election
@@ -1635,16 +1635,16 @@ export class DatabaseStorage implements IStorage {
     if (existingToken && !existingToken.used && existingToken.expiresAt > new Date()) {
       return existingToken;
     }
-    
+
     // Generate a unique random token string
     const tokenString = Array(48).fill(0).map(() => 
       Math.round(Math.random() * 35).toString(36)
     ).join('');
-    
+
     // Set expiration to 10 minutes from now
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + 10);
-    
+
     // Create new token
     const insertedTokens = await db.insert(votingTokens).values({
       userId,
@@ -1654,10 +1654,10 @@ export class DatabaseStorage implements IStorage {
       expiresAt,
       createdAt: new Date()
     }).returning();
-    
+
     return insertedTokens[0];
   }
-  
+
   async getVotingToken(userId: number, electionId: number): Promise<VotingToken | undefined> {
     const tokens = await db.select()
       .from(votingTokens)
@@ -1668,16 +1668,16 @@ export class DatabaseStorage implements IStorage {
           eq(votingTokens.used, false),
         )
       );
-    
+
     // Filter out expired tokens on the application side
     const validTokens = tokens.filter(token => token.expiresAt > new Date());
-    
+
     // Return the most recently created token if there are multiple
     return validTokens.sort((a, b) => 
       b.createdAt.getTime() - a.createdAt.getTime()
     )[0];
   }
-  
+
   async validateVotingToken(token: string, electionId: number): Promise<boolean> {
     const tokens = await db.select()
       .from(votingTokens)
@@ -1688,27 +1688,27 @@ export class DatabaseStorage implements IStorage {
           eq(votingTokens.used, false)
         )
       );
-      
+
     if (tokens.length === 0) {
       return false;
     }
-    
+
     const votingToken = tokens[0];
-    
+
     // Check if token is expired
     if (votingToken.expiresAt < new Date()) {
       return false;
     }
-    
+
     return true;
   }
-  
+
   async markTokenAsUsed(token: string): Promise<void> {
     await db.update(votingTokens)
       .set({ used: true })
       .where(eq(votingTokens.token, token));
   }
-  
+
   // Vote history tracking (optional, blockchain is the main source of truth)
   async recordVote(userId: number, electionId: number): Promise<void> {
     // Mark any tokens for this user/election as used
@@ -1721,7 +1721,7 @@ export class DatabaseStorage implements IStorage {
         )
       );
   }
-  
+
   async hasUserVoted(userId: number, electionId: number): Promise<boolean> {
     // Check if any tokens are marked as used
     const usedTokens = await db.select()
@@ -1733,10 +1733,10 @@ export class DatabaseStorage implements IStorage {
           eq(votingTokens.used, true)
         )
       );
-      
+
     return usedTokens.length > 0;
   }
-  
+
   async resetVote(userId: number, electionId: number): Promise<void> {
     // Reset any used voting tokens for this user and election
     await db.update(votingTokens)
@@ -1748,27 +1748,27 @@ export class DatabaseStorage implements IStorage {
           eq(votingTokens.used, true)
         )
       );
-    
+
     console.log(`Reset vote for user ${userId} in election ${electionId}`);
   }
-  
+
   // Ticket methods
   async getTickets(): Promise<Ticket[]> {
     return await db.select().from(tickets).orderBy(asc(tickets.id));
   }
-  
+
   async getUserTickets(userId: number): Promise<Ticket[]> {
     return await db.select()
       .from(tickets)
       .where(eq(tickets.userId, userId))
       .orderBy(desc(tickets.createdAt));
   }
-  
+
   async getTicket(id: number): Promise<Ticket | undefined> {
     const result = await db.select().from(tickets).where(eq(tickets.id, id));
     return result[0];
   }
-  
+
   async createTicket(userId: number, ticket: InsertTicket): Promise<Ticket> {
     const now = new Date();
     const result = await db.insert(tickets).values({
@@ -1780,10 +1780,10 @@ export class DatabaseStorage implements IStorage {
       createdAt: now,
       updatedAt: now
     }).returning();
-    
+
     return result[0];
   }
-  
+
   async updateTicketStatus(id: number, status: string): Promise<Ticket> {
     const now = new Date();
     const result = await db.update(tickets)
@@ -1793,11 +1793,11 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(tickets.id, id))
       .returning();
-      
+
     if (!result.length) {
       throw new Error(`Ticket with id ${id} not found`);
     }
-    
+
     return result[0];
   }
 }
