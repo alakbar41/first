@@ -549,7 +549,8 @@ export function DeployToBlockchainButton({
     );
   }
 
-  if (isDeployed) {
+  // Check if already deployed (either through local component state or from database)
+  if (isDeployed || election.blockchainId) {
     if (alreadyDeployedWarning) {
       return (
         <TooltipProvider>

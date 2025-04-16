@@ -6,6 +6,7 @@ import { User, CalendarIcon, Clock, Users, ServerIcon } from "lucide-react";
 import { format } from "date-fns";
 import { DeployToBlockchainButton, DeployToBlockchainButtonWithWeb3 } from "./deploy-to-blockchain-button";
 import { queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface ElectionDetailViewProps {
   election: Election;
@@ -99,14 +100,25 @@ export function AdminElectionDetailView({ election, className = "" }: ElectionDe
         const updatedElection = await response.json();
         console.log('Successfully updated election with blockchain ID:', updatedElection);
         
-        // Invalidate the elections cache to refresh all components that use election data
-        queryClient.invalidateQueries({ queryKey: ["/api/elections"] });
+        // Force all components to recognize this election is now on the blockchain
+        // by invalidating all relevant queries
+        queryClient.invalidateQueries();
         
-        // Also invalidate any specific election query if it exists
-        queryClient.invalidateQueries({ queryKey: [`/api/elections/${election.id}`] });
+        // Showing a toast notification to inform the user
+        toast({
+          title: "Blockchain Deployment Successful",
+          description: `Election deployed to blockchain with ID: ${id}`,
+          variant: "success"
+        });
       }
     } catch (error) {
       console.error('Error updating election with blockchain ID:', error);
+      // Show error toast
+      toast({
+        title: "Update Error",
+        description: "Failed to update database with blockchain ID. Please try refreshing the page.",
+        variant: "destructive"
+      });
     }
   };
 
