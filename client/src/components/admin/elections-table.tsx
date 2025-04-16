@@ -120,9 +120,13 @@ export function ElectionsTable({ elections, onEdit, onDelete, onAddCandidates, o
                       <span className="font-medium">Start:</span> {
                         (() => {
                           try {
+                            // Make sure startTime exists and is not null
+                            if (!election.startTime) {
+                              return "Invalid date";
+                            }
                             return format(new Date(election.startTime), "MMM d, yyyy - HH:mm");
                           } catch (error) {
-                            console.error("Error formatting startTime:", error);
+                            console.error("Error formatting startTime:", error, election.startTime);
                             return "Invalid date";
                           }
                         })()
@@ -132,9 +136,13 @@ export function ElectionsTable({ elections, onEdit, onDelete, onAddCandidates, o
                       <span className="font-medium">End:</span> {
                         (() => {
                           try {
+                            // Make sure endTime exists and is not null
+                            if (!election.endTime) {
+                              return "Invalid date";
+                            }
                             return format(new Date(election.endTime), "MMM d, yyyy - HH:mm");
                           } catch (error) {
-                            console.error("Error formatting endTime:", error);
+                            console.error("Error formatting endTime:", error, election.endTime);
                             return "Invalid date";
                           }
                         })()
