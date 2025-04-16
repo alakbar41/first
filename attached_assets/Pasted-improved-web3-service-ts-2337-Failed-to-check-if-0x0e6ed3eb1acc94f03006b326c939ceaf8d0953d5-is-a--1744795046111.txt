@@ -1,0 +1,43 @@
+improved-web3-service.ts:2337 
+ Failed to check if 0x0e6ed3eb1acc94f03006b326c939ceaf8d0953d5 is a registered voter: Error: missing revert data (action="call", data=null, reason=null, transaction={ "data": "0xa9ff6df10000000000000000000000000e6ed3eb1acc94f03006b326c939ceaf8d0953d5", "from": "0x0E6ED3EB1acc94F03006b326C939CeaF8d0953D5", "to": "0xB042Da8a785491E353D0e1b87F8395E1d957EB46" }, invocation=null, revert=null, code=CALL_EXCEPTION, version=6.13.5)
+    at makeError (errors.ts:694:21)
+    at getBuiltinCallException (abi-coder.ts:118:12)
+    at _AbiCoder.getBuiltinCallException (abi-coder.ts:235:16)
+    at BrowserProvider.getRpcError (provider-jsonrpc.ts:989:32)
+    at BrowserProvider.getRpcError (provider-browser.ts:122:22)
+    at provider-jsonrpc.ts:563:45
+improved-web3-service.ts:2337 
+ Failed to check if 0x0e6ed3eb1acc94f03006b326c939ceaf8d0953d5 is a registered voter: Error: missing revert data (action="call", data=null, reason=null, transaction={ "data": "0xa9ff6df10000000000000000000000000e6ed3eb1acc94f03006b326c939ceaf8d0953d5", "from": "0x0E6ED3EB1acc94F03006b326C939CeaF8d0953D5", "to": "0xB042Da8a785491E353D0e1b87F8395E1d957EB46" }, invocation=null, revert=null, code=CALL_EXCEPTION, version=6.13.5)
+    at makeError (errors.ts:694:21)
+    at getBuiltinCallException (abi-coder.ts:118:12)
+    at _AbiCoder.getBuiltinCallException (abi-coder.ts:235:16)
+    at BrowserProvider.getRpcError (provider-jsonrpc.ts:989:32)
+    at BrowserProvider.getRpcError (provider-browser.ts:122:22)
+    at provider-jsonrpc.ts:563:45
+improved-web3-service.ts:2337 
+ Failed to check if 0x0e6ed3eb1acc94f03006b326c939ceaf8d0953d5 is a registered voter: Error: missing revert data (action="call", data=null, reason=null, transaction={ "data": "0xa9ff6df10000000000000000000000000e6ed3eb1acc94f03006b326c939ceaf8d0953d5", "from": "0x0E6ED3EB1acc94F03006b326C939CeaF8d0953D5", "to": "0xB042Da8a785491E353D0e1b87F8395E1d957EB46" }, invocation=null, revert=null, code=CALL_EXCEPTION, version=6.13.5)
+    at makeError (errors.ts:694:21)
+    at getBuiltinCallException (abi-coder.ts:118:12)
+    at _AbiCoder.getBuiltinCallException (abi-coder.ts:235:16)
+    at BrowserProvider.getRpcError (provider-jsonrpc.ts:989:32)
+    at BrowserProvider.getRpcError (provider-browser.ts:122:22)
+    at provider-jsonrpc.ts:563:45
+improved-web3-service.ts:363 
+ Gas estimation failed (transaction would fail): TypeError: Cannot read properties of undefined (reading 'estimateGas')
+    at ImprovedWeb3Service.createElectionWithCandidates (improved-web3-service.ts:352:79)
+    at deployToBlockchain (deploy-to-blockchain-button.tsx:423:54)
+    at async handleDeploy (deploy-to-blockchain-button.tsx:533:5)
+improved-web3-service.ts:364 
+ Error details: {}
+improved-web3-service.ts:461 
+ Failed to create election with candidates: TypeError: Cannot read properties of undefined (reading 'estimateGas')
+    at ImprovedWeb3Service.createElectionWithCandidates (improved-web3-service.ts:352:79)
+    at deployToBlockchain (deploy-to-blockchain-button.tsx:423:54)
+    at async handleDeploy (deploy-to-blockchain-button.tsx:533:5)
+deploy-to-blockchain-button.tsx:480 
+ Failed to deploy election to blockchain: TypeError: Cannot read properties of undefined (reading 'estimateGas')
+    at ImprovedWeb3Service.createElectionWithCandidates (improved-web3-service.ts:352:79)
+    at deployToBlockchain (deploy-to-blockchain-button.tsx:423:54)
+    at async handleDeploy (deploy-to-blockchain-button.tsx:533:5)
+﻿
+

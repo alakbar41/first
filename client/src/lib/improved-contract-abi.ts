@@ -326,6 +326,45 @@ export const IMPROVED_CONTRACT_ABI = [
     "inputs": [
       {
         "internalType": "uint256",
+        "name": "startTime",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "endTime",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "isTicketBased",
+        "type": "bool"
+      },
+      {
+        "internalType": "string[]",
+        "name": "candidateIds",
+        "type": "string[]"
+      },
+      {
+        "internalType": "string[][]",
+        "name": "ticketPairs",
+        "type": "string[][]"
+      }
+    ],
+    "name": "createElectionWithCandidates",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
         "name": "presidentId",
         "type": "uint256"
       },
@@ -559,6 +598,25 @@ export const IMPROVED_CONTRACT_ABI = [
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "voter",
+        "type": "address"
+      }
+    ],
+    "name": "isRegisteredVoter",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
       }
     ],
     "stateMutability": "view",
