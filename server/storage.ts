@@ -1401,58 +1401,88 @@ export class DatabaseStorage implements IStorage {
     return enhancedRecords;
   }
 
-  async addCandidateToElection(electionCandidate: InsertElectionCandidate): Promise<ElectionCandidate> {
+  async addCandidateToElection(electionCandidate: any): Promise<ElectionCandidate> {
     // There's a schema mismatch issue: 
     // The code expects properties like electionId/candidateId/runningMateId
     // But the schema defines electionStartTime/candidateStudentId/runningMateStudentId
     
     // We need to handle this case by adapting our implementation
-    // First get the election to get the startTime (if needed)
-    let electionStartTime = electionCandidate.electionStartTime;
-    let candidateStudentId = electionCandidate.candidateStudentId;
-    let runningMateStudentId = electionCandidate.runningMateStudentId;
+    let electionStartTime: Date | null = null;
+    let candidateStudentId: string | null = null;
+    let runningMateStudentId: string | null = null;
+    let electionId: number | null = null;
+    let candidateId: number | null = null;
+    let runningMateId: number | null = null;
     
-    // For backward compatibility, try to handle if we got legacy fields
-    const legacyElectionCandidate = electionCandidate as any;
+    console.log("Adding candidate to election with data:", JSON.stringify(electionCandidate));
     
-    // If we received an electionId but not electionStartTime, try to get the startTime from the election
-    if (legacyElectionCandidate.electionId && !electionStartTime) {
+    // Check if we have an electionId and convert it to electionStartTime
+    if ('electionId' in electionCandidate && electionCandidate.electionId) {
+      electionId = electionCandidate.electionId;
       try {
-        const election = await this.getElection(legacyElectionCandidate.electionId);
+        const election = await this.getElection(electionCandidate.electionId);
         if (election) {
           electionStartTime = election.startTime;
+        } else {
+          throw new Error(`Election with ID ${electionCandidate.electionId} not found`);
         }
       } catch (error) {
-        console.error("Error fetching election data for relationship:", error);
+        console.error("Error fetching election:", error);
+        throw new Error(`Failed to find election with ID ${electionCandidate.electionId}`);
       }
+    } else if ('electionStartTime' in electionCandidate && electionCandidate.electionStartTime) {
+      electionStartTime = electionCandidate.electionStartTime;
+    } else {
+      throw new Error("Missing required election identifier (electionId or electionStartTime)");
     }
     
-    // If we received a candidateId but not candidateStudentId, try to get the studentId
-    if (legacyElectionCandidate.candidateId && !candidateStudentId) {
+    // Check if we have a candidateId and convert it to candidateStudentId
+    if ('candidateId' in electionCandidate && electionCandidate.candidateId) {
+      candidateId = electionCandidate.candidateId;
       try {
-        const candidate = await this.getCandidate(legacyElectionCandidate.candidateId);
+        const candidate = await this.getCandidate(electionCandidate.candidateId);
         if (candidate) {
           candidateStudentId = candidate.studentId;
+        } else {
+          throw new Error(`Candidate with ID ${electionCandidate.candidateId} not found`);
         }
       } catch (error) {
-        console.error("Error fetching candidate data for relationship:", error);
+        console.error("Error fetching candidate:", error);
+        throw new Error(`Failed to find candidate with ID ${electionCandidate.candidateId}`);
       }
+    } else if ('candidateStudentId' in electionCandidate && electionCandidate.candidateStudentId) {
+      candidateStudentId = electionCandidate.candidateStudentId;
+    } else {
+      throw new Error("Missing required candidate identifier (candidateId or candidateStudentId)");
     }
     
-    // If we received a runningMateId but not runningMateStudentId, try to get the studentId
-    if (legacyElectionCandidate.runningMateId && !runningMateStudentId) {
+    // Handle running mate if present
+    if ('runningMateId' in electionCandidate && electionCandidate.runningMateId) {
+      runningMateId = electionCandidate.runningMateId;
       try {
-        const runningMate = await this.getCandidate(legacyElectionCandidate.runningMateId);
+        const runningMate = await this.getCandidate(electionCandidate.runningMateId);
         if (runningMate) {
           runningMateStudentId = runningMate.studentId;
+        } else {
+          throw new Error(`Running mate with ID ${electionCandidate.runningMateId} not found`);
         }
       } catch (error) {
-        console.error("Error fetching running mate data for relationship:", error);
+        console.error("Error fetching running mate:", error);
+        throw new Error(`Failed to find running mate with ID ${electionCandidate.runningMateId}`);
       }
+    } else if ('runningMateStudentId' in electionCandidate && electionCandidate.runningMateStudentId) {
+      runningMateStudentId = electionCandidate.runningMateStudentId;
+    }
+    
+    // Generate composite ID for president-vp pairs if needed
+    let compositeId = null;
+    if (candidateStudentId && runningMateStudentId) {
+      compositeId = `${candidateStudentId}_${runningMateStudentId}`;
     }
     
     // First check if this relationship already exists to avoid duplicates
     // Use the actual schema fields for the query
+    console.log("Checking for existing relationship with:", { electionStartTime, candidateStudentId });
     const existing = await db.select()
       .from(electionCandidates)
       .where(and(
@@ -1461,12 +1491,13 @@ export class DatabaseStorage implements IStorage {
       ));
       
     if (existing.length > 0) {
+      console.log("Relationship already exists, returning existing record");
       // For backward compatibility, add legacy properties
       const result = {
         ...existing[0],
-        electionId: legacyElectionCandidate.electionId, // Add for backward compatibility
-        candidateId: legacyElectionCandidate.candidateId, // Add for backward compatibility
-        runningMateId: legacyElectionCandidate.runningMateId || 0 // Add for backward compatibility
+        electionId: electionId, 
+        candidateId: candidateId,
+        runningMateId: runningMateId || 0
       };
       return result as ElectionCandidate;
     }
@@ -1476,27 +1507,38 @@ export class DatabaseStorage implements IStorage {
       electionStartTime,
       candidateStudentId,
       runningMateStudentId,
-      compositeId: electionCandidate.compositeId || null,
+      compositeId,
       createdAt: new Date()
     };
+    
+    console.log("Inserting new relationship with values:", dbValues);
     
     // Insert the relationship
     const result = await db.insert(electionCandidates)
       .values(dbValues)
       .returning();
-      
-    // Get the election to check its status
-    const election = await this.getElection(electionCandidate.electionId);
+    
+    console.log("Inserted relationship:", result[0]);
     
     // Update candidate statuses based on the election's current status
-    await this.updateCandidateActiveStatus(electionCandidate.candidateId);
-    
-    // If there's a running mate, update their status too
-    if (electionCandidate.runningMateId && electionCandidate.runningMateId > 0) {
-      await this.updateCandidateActiveStatus(electionCandidate.runningMateId);
+    if (candidateId) {
+      await this.updateCandidateActiveStatus(candidateId);
     }
     
-    return result[0];
+    // If there's a running mate, update their status too
+    if (runningMateId) {
+      await this.updateCandidateActiveStatus(runningMateId);
+    }
+    
+    // For backward compatibility, add legacy properties to the result
+    const enhancedResult = {
+      ...result[0],
+      electionId: electionId,
+      candidateId: candidateId,
+      runningMateId: runningMateId || 0
+    };
+    
+    return enhancedResult as ElectionCandidate;
   }
 
   async removeCandidateFromElection(electionId: number, candidateId: number): Promise<void> {

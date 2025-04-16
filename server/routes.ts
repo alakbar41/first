@@ -886,120 +886,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           errors: result.error.format() 
         });
       }
-
-      // Convert electionId to startTime
-      const election = await storage.getElection(result.data.electionId);
-      if (!election) {
-        return res.status(404).json({ message: "Election not found" });
-      }
-
-      // Convert candidateId to studentId
-      const candidate = await storage.getCandidate(result.data.candidateId);
-      if (!candidate) {
-        return res.status(404).json({ message: "Candidate not found" });
-      }
-
-      // Prepare data with correct schema fields
-      const electionCandidateData = {
-        electionStartTime: election.startTime,
-        candidateStudentId: candidate.studentId,
-        runningMateStudentId: null,
-        compositeId: null
-      };
-
-      // Handle running mate if present
-      if (result.data.runningMateId) {
-        const runningMate = await storage.getCandidate(result.data.runningMateId);
-        if (!runningMate) {
-          return res.status(404).json({ message: "Running mate not found" });
-        }
-        electionCandidateData.runningMateStudentId = runningMate.studentId;
-        electionCandidateData.compositeId = `${candidate.studentId}_${runningMate.studentId}`;
-      }
       
-      // Save this variable for later use
-      const transformedElectionCandidateData = electionCandidateData;
+      console.log("Processing add candidate to election request:", result.data);
       
-      // Get election ID from the request
-      const electionId = result.data.electionId || result.data.electionStartTime;
-      
-      // Verify election exists
-      const electionObj = await storage.getElection(electionId);
-      if (!electionObj) {
-        return res.status(404).json({ message: "Election not found" });
-      }
-      
-      // Prevent adding candidates to elections that are already deployed to blockchain
-      if (electionObj.blockchainId) {
-        return res.status(403).json({ 
-          message: "Cannot modify election after blockchain deployment",
-          detail: "This election has already been deployed to the blockchain. Candidates cannot be added or removed."
-        });
-      }
-      
-      // For president/VP elections, require a running mate
-      if ((electionObj.position === "President/VP" || electionObj.position === "President/Vice President") && !result.data.runningMateId) {
-        return res.status(400).json({ 
-          message: "Running mate is required for President/VP elections" 
-        });
-      }
-      
-      // Check if candidate exists
-      const candidateObj = await storage.getCandidate(result.data.candidateId);
-      if (!candidateObj) {
-        return res.status(404).json({ message: "Candidate not found" });
-      }
-      
-      // Check if candidate position matches election type
-      if ((election.position === "President/VP" || election.position === "President/Vice President") && 
-          candidate.position === "Senator") {
-        return res.status(400).json({ 
-          message: "This candidate is running as a Senator and cannot be added to a President/Vice President election" 
-        });
-      }
-      
-      if (election.position === "Senator" && 
-          (candidate.position === "President" || candidate.position === "Vice President")) {
-        return res.status(400).json({ 
-          message: "This candidate is running as " + candidate.position + " and cannot be added to a Senator election" 
-        });
-      }
-      
-      // Check if running mate exists
-      if (result.data.runningMateId) {
-        const runningMate = await storage.getCandidate(result.data.runningMateId);
-        if (!runningMate) {
-          return res.status(404).json({ message: "Running mate not found" });
-        }
-        
-        // Check if running mate position matches election type
-        if ((election.position === "President/VP" || election.position === "President/Vice President") && 
-            runningMate.position === "Senator") {
-          return res.status(400).json({ 
-            message: "The running mate is registered as a Senator and cannot be added to a President/Vice President election" 
-          });
-        }
-      }
-      
-      // Check if candidate already in this election
-      const existingCandidates = await storage.getElectionCandidates(result.data.electionId);
-      const alreadyAdded = existingCandidates.some(
-        ec => ec.candidateId === result.data.candidateId
-      );
-      
-      if (alreadyAdded) {
-        return res.status(400).json({ message: "Candidate already added to this election" });
-      }
-      
-      // Check if running mate already in this election
-      if (result.data.runningMateId) {
-        const runningMateAlreadyAdded = existingCandidates.some(
-          ec => ec.candidateId === result.data.runningMateId || ec.runningMateId === result.data.runningMateId
-        );
-        
-        if (runningMateAlreadyAdded) {
-          return res.status(400).json({ message: "Running mate already added to this election" });
-        }
+      try {
+        const electionCandidate = await storage.addCandidateToElection(result.data);
+        return res.status(201).json(electionCandidate);
+      } catch (error) {
+        console.error("Error adding candidate to election:", error);
+        return res.status(400).json({ message: error.message || "Failed to add candidate to election" });
       }
       
       const electionCandidate = await storage.addCandidateToElection(result.data);
