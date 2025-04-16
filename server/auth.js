@@ -157,17 +157,24 @@ export function setupAuth(app) {
       await storage.createPendingUser(pendingUser);
       
       try {
-        // Send OTP email
+        // Send OTP email with improved logging
         console.log(`Attempting to send verification OTP to ${email}`);
-        const emailResult = await mailer.sendOtp(email, otp);
-        console.log(`Email sending result: ${JSON.stringify(emailResult)}`);
-      } catch (emailError) {
-        // Log the error but continue with registration
-        console.error("Email sending failed but continuing with registration.");
-        console.error("Email error details:", emailError.message);
+        console.log('OTP code generated:', otp); // Log OTP for testing
         
-        // For troubleshooting, log the OTP to console 
-        console.log(`For troubleshooting - OTP for ${email} is: ${otp}`);
+        const emailResult = await mailer.sendOtp(email, otp);
+        console.log(`Email sent successfully! Message ID: ${emailResult.messageId || 'N/A'}`);
+      } catch (emailError) {
+        // Enhanced error logging with full details
+        console.error("⚠️ Email sending failed:", emailError.message);
+        console.error("Error details:", emailError);
+        
+        if (emailError.code === 'EAUTH') {
+          console.error("Authentication error - Please check EMAIL_USER and EMAIL_PASS environment variables");
+          console.error("For Gmail with 2FA, you MUST use an App Password, not your regular password");
+        }
+        
+        // Always log the OTP code for testing/verification
+        console.log(`IMPORTANT: For testing - OTP for ${email} is: ${otp}`);
       }
       
       res.status(200).json({ 
@@ -217,18 +224,26 @@ export function setupAuth(app) {
       await storage.updatePendingUserOtp(email, newOtp);
       
       try {
-        // Send OTP email with better error handling
+        // Send OTP email with improved logging
         console.log(`Resending OTP to ${email}`);
+        console.log('New OTP code generated:', newOtp); // Log OTP for testing
+        
         const emailResult = await mailer.sendOtp(email, newOtp);
-        console.log(`Email resending result: ${JSON.stringify(emailResult)}`);
+        console.log(`Email sent successfully! Message ID: ${emailResult.messageId || 'N/A'}`);
         
         res.status(200).json({ message: "Verification code sent successfully." });
       } catch (emailError) {
-        console.error("Failed to send OTP email:", emailError.message);
+        // Enhanced error logging with full details
+        console.error("⚠️ Email resending failed:", emailError.message);
+        console.error("Error details:", emailError);
         
-        // Log the OTP for troubleshooting but return success to the client
-        // This allows testing without a working email server
-        console.log(`For troubleshooting - Resent OTP for ${email} is: ${newOtp}`);
+        if (emailError.code === 'EAUTH') {
+          console.error("Authentication error - Please check EMAIL_USER and EMAIL_PASS environment variables");
+          console.error("For Gmail with 2FA, you MUST use an App Password, not your regular password");
+        }
+        
+        // Always log the OTP code for testing/verification
+        console.log(`IMPORTANT: For testing - OTP for ${email} is: ${newOtp}`);
         
         // Return success to avoid revealing email sending issues to client
         res.status(200).json({ message: "Verification code sent successfully." });
