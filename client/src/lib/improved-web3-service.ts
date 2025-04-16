@@ -5,8 +5,8 @@ import { IMPROVED_CONTRACT_ABI } from './improved-contract-abi';
 // REMOVED DIRECT RPC URLs to avoid CSP issues - using MetaMask provider only
 // No direct RPC connections to prevent CSP violations
 console.log("Using MetaMask provider only approach - no RPC URLs");
-// Test network contract address
-const CONTRACT_ADDRESS = '0x64c0f44Adf0a88760DAD24747653e640551b893b';
+// Test network contract address - New unified transaction contract
+const CONTRACT_ADDRESS = '0xB042Da8a785491E353D0e1b87F8395E1d957EB46';
 
 // Log contract interaction attempts
 const logContractInteraction = (method: string, ...args: any[]) => {
