@@ -1,8 +1,223 @@
 import { ethers } from 'ethers';
-import universityVotingABI from '../../blockchain/contracts/UniversityVotingABI.json';
 
-// This contract address needs to be updated with the actual deployed contract address
-const CONTRACT_ADDRESS = import.meta.env.VITE_UNIVERSITY_VOTING_CONTRACT_ADDRESS || '';
+// ABI for the UniversityVoting contract - explicitly defined since we can't import directly from the JSON file
+const universityVotingABI = [
+  {
+    "inputs": [],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": false, "internalType": "uint256", "name": "startTime", "type": "uint256" },
+      { "indexed": false, "internalType": "uint256", "name": "endTime", "type": "uint256" }
+    ],
+    "name": "ElectionCreated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": false, "internalType": "uint256", "name": "startTime", "type": "uint256" },
+      { "indexed": false, "internalType": "string", "name": "studentId", "type": "string" }
+    ],
+    "name": "CandidateAdded",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": false, "internalType": "uint256", "name": "startTime", "type": "uint256" },
+      { "indexed": false, "internalType": "string", "name": "presidentId", "type": "string" },
+      { "indexed": false, "internalType": "string", "name": "vpId", "type": "string" }
+    ],
+    "name": "TicketAdded",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": false, "internalType": "uint256", "name": "startTime", "type": "uint256" },
+      { "indexed": false, "internalType": "address", "name": "voter", "type": "address" },
+      { "indexed": false, "internalType": "uint256", "name": "nonce", "type": "uint256" }
+    ],
+    "name": "VoteCast",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": false, "internalType": "uint256", "name": "startTime", "type": "uint256" },
+      { "indexed": false, "internalType": "address", "name": "voter", "type": "address" },
+      { "indexed": false, "internalType": "string", "name": "reason", "type": "string" }
+    ],
+    "name": "VoteRejected",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": false, "internalType": "uint8", "name": "adminSlot", "type": "uint8" },
+      { "indexed": false, "internalType": "address", "name": "admin", "type": "address" }
+    ],
+    "name": "AdminAssigned",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": false, "internalType": "uint256", "name": "startTime", "type": "uint256" },
+      { "indexed": false, "internalType": "string", "name": "winnerId", "type": "string" }
+    ],
+    "name": "ElectionFinalized",
+    "type": "event"
+  },
+  {
+    "inputs": [{ "internalType": "address", "name": "_admin", "type": "address" }],
+    "name": "setAdmin1",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [{ "internalType": "address", "name": "_admin", "type": "address" }],
+    "name": "setAdmin2",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "startTime", "type": "uint256" },
+      { "internalType": "uint256", "name": "endTime", "type": "uint256" }
+    ],
+    "name": "createElection",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "startTime", "type": "uint256" },
+      { "internalType": "string", "name": "studentId", "type": "string" }
+    ],
+    "name": "addCandidate",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "startTime", "type": "uint256" },
+      { "internalType": "string", "name": "presidentId", "type": "string" },
+      { "internalType": "string", "name": "vpId", "type": "string" }
+    ],
+    "name": "addTicket",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [{ "internalType": "uint256", "name": "startTime", "type": "uint256" }],
+    "name": "updateElectionStatus",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "startTime", "type": "uint256" },
+      { "internalType": "string", "name": "studentId", "type": "string" },
+      { "internalType": "uint256", "name": "nonce", "type": "uint256" }
+    ],
+    "name": "voteForCandidate",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "startTime", "type": "uint256" },
+      { "internalType": "string", "name": "presidentId", "type": "string" },
+      { "internalType": "string", "name": "vpId", "type": "string" },
+      { "internalType": "uint256", "name": "nonce", "type": "uint256" }
+    ],
+    "name": "voteForTicket",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "startTime", "type": "uint256" },
+      { "internalType": "bool", "name": "isTicketBased", "type": "bool" }
+    ],
+    "name": "finalizeResults",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [{ "internalType": "uint256", "name": "startTime", "type": "uint256" }],
+    "name": "getWinnerCandidate",
+    "outputs": [{ "internalType": "string", "name": "", "type": "string" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{ "internalType": "uint256", "name": "startTime", "type": "uint256" }],
+    "name": "getWinnerTicket",
+    "outputs": [{ "internalType": "string", "name": "", "type": "string" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "startTime", "type": "uint256" },
+      { "internalType": "string", "name": "studentId", "type": "string" }
+    ],
+    "name": "getCandidateVotes",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "startTime", "type": "uint256" },
+      { "internalType": "string", "name": "presidentId", "type": "string" },
+      { "internalType": "string", "name": "vpId", "type": "string" }
+    ],
+    "name": "getTicketVotes",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "startTime", "type": "uint256" },
+      { "internalType": "address", "name": "user", "type": "address" }
+    ],
+    "name": "hasUserVoted",
+    "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getAdmins",
+    "outputs": [
+      { "internalType": "address", "name": "", "type": "address" },
+      { "internalType": "address", "name": "", "type": "address" },
+      { "internalType": "address", "name": "", "type": "address" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+];
+
+// UniversityVoting contract address on Polygon Amoy testnet
+const CONTRACT_ADDRESS = import.meta.env.VITE_UNIVERSITY_VOTING_CONTRACT_ADDRESS || '0x64c0f44Adf0a88760DAD24747653e640551b893b';
 
 // This class provides methods to interact with the UniversityVoting contract
 class UniversityVotingService {
