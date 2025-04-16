@@ -16,6 +16,7 @@ import {
   TooltipTrigger
 } from "@/components/ui/tooltip";
 import { BlockchainWrapper } from '../blockchain/BlockchainWrapper';
+import * as transactionCache from '@/lib/blockchain-transaction-cache';
 
 // Convert database election to blockchain election type
 function mapElectionTypeToBlockchain(dbPosition: string): ElectionType {

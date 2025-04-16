@@ -80,8 +80,15 @@ export function recordTransaction(transaction: Omit<BlockchainTransaction, 'time
  */
 export function isTransactionCompleted(id: string): boolean {
   const transactions = getCachedTransactions();
+  console.log(`Checking transaction completion for ID: ${id}`);
+  console.log(`Current cached transactions:`, transactions);
+  
   const transaction = transactions.find(t => t.id === id);
-  return !!transaction && transaction.completed && transaction.status === 'success';
+  
+  const isCompleted = !!transaction && transaction.completed && transaction.status === 'success';
+  console.log(`Transaction ${id} completed status:`, isCompleted);
+  
+  return isCompleted;
 }
 
 /**
