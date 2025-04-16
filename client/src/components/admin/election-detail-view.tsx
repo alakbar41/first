@@ -15,24 +15,59 @@ interface ElectionDetailViewProps {
 export function AdminElectionDetailView({ election, className = "" }: ElectionDetailViewProps) {
   const [blockchainId, setBlockchainId] = useState<number | null>(election.blockchainId || null);
   
-  // Helper function to format dates
+  // Helper function to format dates with validation
   function formatDate(dateString: string | Date) {
-    const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
-    return format(date, "MMM d, yyyy - HH:mm");
+    try {
+      const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+      
+      // Validate the date is a valid Date object
+      if (date instanceof Date && !isNaN(date.getTime())) {
+        return format(date, "MMM d, yyyy - HH:mm");
+      }
+      
+      // Return a fallback for invalid dates
+      return "Date not available";
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return "Date not available";
+    }
   }
 
-  // Get status badge for election
+  // Get status badge for election with validation
   const getStatusBadge = () => {
-    const now = new Date();
-    const startDate = new Date(election.startDate);
-    const endDate = new Date(election.endDate);
-
-    if (now < startDate) {
-      return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Upcoming</Badge>;
-    } else if (now > endDate) {
-      return <Badge className="bg-gray-100 text-gray-800 border-gray-200">Completed</Badge>;
-    } else {
-      return <Badge className="bg-green-100 text-green-800 border-green-200">Active</Badge>;
+    try {
+      const now = new Date();
+      // Use startTime and endTime from the schema fields
+      // Handle both the case where election has startDate or startTime
+      const startTimeStr = election.startDate || election.startTime;
+      const endTimeStr = election.endDate || election.endTime;
+      
+      // Validate dates
+      const startDate = new Date(startTimeStr);
+      const endDate = new Date(endTimeStr);
+      
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        // If dates are invalid, just return the status from the database
+        switch (election.status) {
+          case 'upcoming': 
+            return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Upcoming</Badge>;
+          case 'completed': 
+            return <Badge className="bg-gray-100 text-gray-800 border-gray-200">Completed</Badge>;
+          default: 
+            return <Badge className="bg-green-100 text-green-800 border-green-200">Active</Badge>;
+        }
+      }
+      
+      if (now < startDate) {
+        return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Upcoming</Badge>;
+      } else if (now > endDate) {
+        return <Badge className="bg-gray-100 text-gray-800 border-gray-200">Completed</Badge>;
+      } else {
+        return <Badge className="bg-green-100 text-green-800 border-green-200">Active</Badge>;
+      }
+    } catch (error) {
+      console.error("Error determining election status:", error);
+      return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Unknown</Badge>;
     }
   };
 
