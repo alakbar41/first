@@ -39,20 +39,60 @@ export function getCachedTransactions(): BlockchainTransaction[] {
 }
 
 /**
- * Save transactions to localStorage
+ * Save transactions to localStorage with retry mechanism
  */
-function saveTransactions(transactions: BlockchainTransaction[]): void {
+function saveTransactions(transactions: BlockchainTransaction[]): boolean {
   try {
-    console.log('Saving transactions to cache:', transactions);
-    const dataToSave = JSON.stringify(transactions);
+    if (!Array.isArray(transactions)) {
+      console.error('Invalid transactions data provided to saveTransactions - not an array:', transactions);
+      return false;
+    }
+
+    // Make sure each transaction has the required fields
+    const validTransactions = transactions.filter(t => {
+      if (!t?.id || typeof t.id !== 'string') {
+        console.warn('Filtering out invalid transaction missing ID:', t);
+        return false;
+      }
+      if (typeof t.electionId !== 'number') {
+        console.warn('Filtering out invalid transaction with invalid electionId:', t);
+        return false;
+      }
+      return true;
+    });
+
+    console.log(`Saving ${validTransactions.length} transactions to cache:`, validTransactions);
+    
+    // Convert to JSON and save
+    const dataToSave = JSON.stringify(validTransactions);
     console.log('Stringified data to save:', dataToSave);
     localStorage.setItem(STORAGE_KEY, dataToSave);
     
     // Verify data was saved correctly
     const savedData = localStorage.getItem(STORAGE_KEY);
     console.log('Verification - Data saved to localStorage:', savedData);
+    
+    if (savedData === dataToSave) {
+      console.log('Transactions saved successfully');
+      return true;
+    } else {
+      console.warn('Possible localStorage issue - saved data doesn\'t match original data');
+      
+      // Try one more time with a short delay
+      setTimeout(() => {
+        try {
+          localStorage.setItem(STORAGE_KEY, dataToSave);
+          console.log('Retry saving transactions completed');
+        } catch (retryError) {
+          console.error('Retry failed:', retryError);
+        }
+      }, 50);
+      
+      return false;
+    }
   } catch (error) {
-    console.error('Failed to save transactions to cache:', error);
+    console.error('Failed to save transactions to localStorage:', error);
+    return false;
   }
 }
 
@@ -60,57 +100,113 @@ function saveTransactions(transactions: BlockchainTransaction[]): void {
  * Record a completed transaction
  */
 export function recordTransaction(transaction: Omit<BlockchainTransaction, 'timestamp' | 'status'> & { status?: 'pending' | 'success' | 'failed' }): void {
-  console.log(`Recording transaction to cache: ${transaction.id} (election: ${transaction.electionId}, type: ${transaction.type})`);
-  
-  const transactions = getCachedTransactions();
-  
-  // Check if transaction already exists
-  const existingIndex = transactions.findIndex(t => t.id === transaction.id);
-  console.log(`Transaction ${transaction.id} exists in cache: ${existingIndex >= 0}`);
-  
-  const fullTransaction: BlockchainTransaction = {
-    ...transaction,
-    timestamp: Date.now(),
-    status: transaction.status || 'success'
-  };
-  
-  if (existingIndex >= 0) {
-    // Update existing transaction
-    console.log(`Updating existing transaction in cache: ${transaction.id}`);
-    transactions[existingIndex] = {
-      ...transactions[existingIndex],
-      ...fullTransaction
+  try {
+    if (!transaction || !transaction.id) {
+      console.error('Invalid transaction data provided to recordTransaction:', transaction);
+      return;
+    }
+    
+    console.log(`Recording transaction to cache: ${transaction.id} (election: ${transaction.electionId}, type: ${transaction.type})`);
+    
+    let transactions: BlockchainTransaction[] = [];
+    try {
+      transactions = getCachedTransactions();
+    } catch (error) {
+      console.error('Failed to get existing transactions from cache:', error);
+    }
+    
+    // Check if transaction already exists
+    const existingIndex = transactions.findIndex(t => t.id === transaction.id);
+    console.log(`Transaction ${transaction.id} exists in cache: ${existingIndex >= 0}`);
+    
+    const fullTransaction: BlockchainTransaction = {
+      ...transaction,
+      timestamp: Date.now(),
+      status: transaction.status || 'success',
+      completed: true
     };
-  } else {
-    // Add new transaction
-    console.log(`Adding new transaction to cache: ${transaction.id}`);
-    transactions.push(fullTransaction);
+    
+    if (existingIndex >= 0) {
+      // Update existing transaction
+      console.log(`Updating existing transaction in cache: ${transaction.id}`);
+      transactions[existingIndex] = {
+        ...transactions[existingIndex],
+        ...fullTransaction
+      };
+    } else {
+      // Add new transaction
+      console.log(`Adding new transaction to cache: ${transaction.id}`);
+      transactions.push(fullTransaction);
+    }
+    
+    // Save updated transactions
+    const saved = saveTransactions(transactions);
+    
+    // Verify the transaction was saved correctly
+    if (!saved) {
+      console.warn('Transaction save failed on first attempt - retrying again immediately');
+      saveTransactions(transactions);
+    }
+    
+    // Secondary verification with delay
+    setTimeout(() => {
+      try {
+        const saved = isTransactionCompleted(transaction.id);
+        console.log(`Verification - Transaction ${transaction.id} saved correctly: ${saved}`);
+        
+        if (!saved) {
+          console.warn('Transaction verification failed after delay - attempting to save one more time');
+          saveTransactions(transactions);
+        }
+      } catch (verifyError) {
+        console.error('Error during transaction verification:', verifyError);
+      }
+    }, 200);
+  } catch (error) {
+    console.error('Critical error in recordTransaction:', error);
   }
-  
-  // Save updated transactions
-  saveTransactions(transactions);
-  
-  // Verify the transaction was saved correctly
-  setTimeout(() => {
-    const saved = isTransactionCompleted(transaction.id);
-    console.log(`Verification - Transaction ${transaction.id} saved correctly: ${saved}`);
-  }, 100);
 }
 
 /**
  * Check if a transaction has already been completed
  */
 export function isTransactionCompleted(id: string): boolean {
-  const transactions = getCachedTransactions();
-  console.log(`Checking transaction completion for ID: ${id}`);
-  console.log(`Current cached transactions:`, transactions);
-  
-  const transaction = transactions.find(t => t.id === id);
-  
-  const isCompleted = !!transaction && transaction.completed && transaction.status === 'success';
-  console.log(`Transaction ${id} completed status:`, isCompleted);
-  
-  return isCompleted;
+  try {
+    if (!id) {
+      console.error('Invalid transaction ID provided to isTransactionCompleted');
+      return false;
+    }
+    
+    let transactions: BlockchainTransaction[] = [];
+    try {
+      transactions = getCachedTransactions();
+    } catch (error) {
+      console.error('Failed to get cached transactions in isTransactionCompleted:', error);
+      return false;
+    }
+    
+    console.log(`Checking transaction completion for ID: ${id}`);
+    console.log(`Found ${transactions.length} cached transactions in localStorage`);
+    
+    if (transactions.length > 0) {
+      console.log('Transaction IDs in cache:', transactions.map(t => t.id).join(', '));
+    }
+    
+    const transaction = transactions.find(t => t.id === id);
+    
+    if (transaction) {
+      console.log(`Found transaction ${id} in cache:`, transaction);
+      const isCompleted = transaction.completed && transaction.status === 'success';
+      console.log(`Transaction ${id} completed: ${isCompleted}, status: ${transaction.status}`);
+      return isCompleted;
+    } else {
+      console.log(`Transaction ${id} not found in cache`);
+      return false;
+    }
+  } catch (error) {
+    console.error('Error in isTransactionCompleted:', error);
+    return false;
+  }
 }
 
 /**
@@ -124,13 +220,22 @@ export function clearTransactionCache(): void {
  * Clear transactions older than a certain time (in days)
  */
 export function clearOldTransactions(days: number = 7): void {
-  const transactions = getCachedTransactions();
-  const now = Date.now();
-  const cutoff = now - (days * 24 * 60 * 60 * 1000);
-  
-  const filteredTransactions = transactions.filter(t => t.timestamp >= cutoff);
-  
-  if (filteredTransactions.length !== transactions.length) {
-    saveTransactions(filteredTransactions);
+  try {
+    const transactions: BlockchainTransaction[] = getCachedTransactions();
+    const now = Date.now();
+    const cutoff = now - (days * 24 * 60 * 60 * 1000);
+    
+    console.log(`Clearing transactions older than ${new Date(cutoff).toISOString()} (${days} days old)`);
+    
+    const filteredTransactions = transactions.filter(t => t.timestamp >= cutoff);
+    
+    if (filteredTransactions.length !== transactions.length) {
+      console.log(`Removing ${transactions.length - filteredTransactions.length} old transactions`);
+      saveTransactions(filteredTransactions);
+    } else {
+      console.log('No old transactions to remove');
+    }
+  } catch (error) {
+    console.error('Error in clearOldTransactions:', error);
   }
 }
