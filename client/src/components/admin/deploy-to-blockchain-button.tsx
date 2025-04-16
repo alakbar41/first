@@ -28,34 +28,43 @@ function mapElectionTypeToBlockchain(dbPosition: string): ElectionType {
 // Modified to ensure dates work with blockchain contract requirements
 // - Start time must be in future when deploying 
 // - Start time must be "now" when activating
-function dateToTimestamp(date: Date | string): number {
+function dateToTimestamp(date: Date | string, isEndTime: boolean = false): number {
   const now = Math.floor(Date.now() / 1000); // Current time in seconds
   
   // Handle null, undefined or invalid date inputs
   if (!date) {
-    console.warn("Invalid date input to dateToTimestamp, using current time + 60s");
-    return now + 60; // fallback to 1 minute in the future
+    console.warn("Invalid date input to dateToTimestamp, using current time + offset");
+    return isEndTime ? now + 3600 : now + 60; // End time gets +1 hour, start time gets +1 minute
   }
   
   // Convert string to Date if needed
-  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  let dateObj: Date;
+  if (typeof date === 'string') {
+    // Ensure string is in ISO format with timezone
+    if (!date.includes('Z') && !date.includes('+')) {
+      date = date + 'Z'; // Add UTC indicator to avoid browser locale issues
+    }
+    dateObj = new Date(date);
+  } else {
+    dateObj = date;
+  }
   
   // Ensure it's a valid date
   if (isNaN(dateObj.getTime())) {
-    console.warn("Invalid date object in dateToTimestamp, using current time + 60s");
-    return now + 60; // fallback to 1 minute in the future
+    console.warn("Invalid date object in dateToTimestamp, using current time + offset");
+    return isEndTime ? now + 3600 : now + 60; // End time gets +1 hour, start time gets +1 minute
   }
   
   const dateTimestamp = Math.floor(dateObj.getTime() / 1000);
   
   // Log for debugging
-  console.log(`Converting date ${dateObj.toISOString()} to timestamp ${dateTimestamp} seconds`);
+  console.log(`Converting ${isEndTime ? 'end' : 'start'} date ${dateObj.toISOString()} to timestamp ${dateTimestamp} seconds`);
   
-  // If the date is in the past, return future time (now + 60 seconds)
-  // This ensures our deployment succeeds while still allowing immediate activation
+  // If the date is in the past, return future time
   if (dateTimestamp <= now) {
-    console.log(`Date is in the past, using current time + 60s: ${now + 60}`);
-    return now + 60; // 1 minute in the future
+    const adjustedTime = isEndTime ? now + 3600 : now + 60; // End time gets +1 hour, start time gets +1 minute
+    console.log(`${isEndTime ? 'End' : 'Start'} date is in the past, using alternate time: ${adjustedTime}`);
+    return adjustedTime;
   }
   
   return dateTimestamp;
@@ -343,8 +352,17 @@ export function DeployToBlockchainButton({
       
       // Convert database election to blockchain parameters
       const electionType = mapElectionTypeToBlockchain(election.position);
-      const startTimestamp = dateToTimestamp(new Date(election.startDate));
-      const endTimestamp = dateToTimestamp(new Date(election.endDate));
+      // Use startTime or startDate field, with proper fallback
+      const startTimestamp = dateToTimestamp(election.startDate || election.startTime, false);
+      let endTimestamp = dateToTimestamp(election.endDate || election.endTime, true);
+      
+      // Validate that end time is after start time
+      if (endTimestamp <= startTimestamp) {
+        console.warn("End time must be after start time, adjusting end time");
+        // Set end time to start time + 30 minutes
+        endTimestamp = startTimestamp + 1800;
+        console.log(`Adjusted end time to ${endTimestamp} (30 minutes after start time)`);
+      }
       
       // Create election on blockchain
       console.log(`Deploying ${election.name} to blockchain...`);
