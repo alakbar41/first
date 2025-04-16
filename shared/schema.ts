@@ -161,11 +161,7 @@ export const insertCandidateSchema = createInsertSchema(candidates).omit({
 });
 export const insertElectionCandidateSchema = createInsertSchema(
   electionCandidates,
-).omit({ id: true, createdAt: true }).extend({
-  electionId: z.number().optional(), // For backward compatibility
-  candidateId: z.number().optional(), // For backward compatibility
-  runningMateId: z.number().optional() // For backward compatibility
-});
+).omit({ id: true, createdAt: true });
 export const votingTokenSchema = createInsertSchema(votingTokens).omit({
   id: true,
   createdAt: true,
