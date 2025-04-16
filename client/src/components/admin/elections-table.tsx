@@ -117,10 +117,28 @@ export function ElectionsTable({ elections, onEdit, onDelete, onAddCandidates, o
                 <td className="px-6 py-4 text-sm text-gray-500">
                   <div className="flex flex-col space-y-1">
                     <div>
-                      <span className="font-medium">Start:</span> {format(new Date(election.startDate), "MMM d, yyyy - HH:mm")}
+                      <span className="font-medium">Start:</span> {
+                        (() => {
+                          try {
+                            return format(new Date(election.startTime), "MMM d, yyyy - HH:mm");
+                          } catch (error) {
+                            console.error("Error formatting startTime:", error);
+                            return "Invalid date";
+                          }
+                        })()
+                      }
                     </div>
                     <div>
-                      <span className="font-medium">End:</span> {format(new Date(election.endDate), "MMM d, yyyy - HH:mm")}
+                      <span className="font-medium">End:</span> {
+                        (() => {
+                          try {
+                            return format(new Date(election.endTime), "MMM d, yyyy - HH:mm");
+                          } catch (error) {
+                            console.error("Error formatting endTime:", error);
+                            return "Invalid date";
+                          }
+                        })()
+                      }
                     </div>
                   </div>
                 </td>
@@ -137,12 +155,12 @@ export function ElectionsTable({ elections, onEdit, onDelete, onAddCandidates, o
                   <div className="flex flex-col space-y-2">
                     <BlockchainDeploymentStatus election={election} />
                     
-                    {election.blockchainId && 
-                     election.blockchainId > 0 && 
+                    {(election as any).blockchainId && 
+                     (election as any).blockchainId > 0 && 
                      election.status !== "completed" && (
                       <ActivateElectionButton 
                         electionId={election.id}
-                        blockchainId={election.blockchainId as number}
+                        blockchainId={(election as any).blockchainId as number}
                         size="sm"
                         variant="outline"
                         className="mt-2"
