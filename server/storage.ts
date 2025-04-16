@@ -1233,19 +1233,167 @@ export class DatabaseStorage implements IStorage {
 
   // Election-Candidate methods
   async getElectionCandidates(electionId: number): Promise<ElectionCandidate[]> {
-    return await db.select()
+    // Get the election to find its startTime for matching in the schema
+    const election = await this.getElection(electionId);
+    if (!election) {
+      console.error(`Cannot get election candidates - election ${electionId} not found`);
+      return [];
+    }
+    
+    // Query using the actual schema field (electionStartTime)
+    const records = await db.select()
       .from(electionCandidates)
-      .where(eq(electionCandidates.electionId, electionId));
+      .where(eq(electionCandidates.electionStartTime, election.startTime));
+      
+    // Enhance records with virtual fields for backward compatibility
+    const enhancedRecords = await Promise.all(records.map(async (record) => {
+      // Find candidate ID from studentId
+      let candidateId = 0;
+      let runningMateId = 0;
+      
+      try {
+        // Get candidate ID from studentId
+        const candidate = await db.select()
+          .from(candidates)
+          .where(eq(candidates.studentId, record.candidateStudentId));
+          
+        if (candidate.length > 0) {
+          candidateId = candidate[0].id;
+        }
+        
+        // If there's a running mate, get their ID too
+        if (record.runningMateStudentId) {
+          const runningMate = await db.select()
+            .from(candidates)
+            .where(eq(candidates.studentId, record.runningMateStudentId));
+            
+          if (runningMate.length > 0) {
+            runningMateId = runningMate[0].id;
+          }
+        }
+      } catch (error) {
+        console.error("Error enhancing election-candidate record:", error);
+      }
+      
+      // Return record with virtual fields
+      return {
+        ...record,
+        electionId: electionId, // Add virtual field for backward compatibility
+        candidateId: candidateId, // Add virtual field for backward compatibility
+        runningMateId: runningMateId // Add virtual field for backward compatibility
+      };
+    }));
+    
+    return enhancedRecords;
   }
 
   async getCandidateElections(candidateId: number): Promise<ElectionCandidate[]> {
-    return await db.select()
+    // Get the candidate to find its studentId for matching in the schema
+    const candidate = await this.getCandidate(candidateId);
+    if (!candidate) {
+      console.error(`Cannot get candidate elections - candidate ${candidateId} not found`);
+      return [];
+    }
+    
+    // Query using the actual schema field (candidateStudentId)
+    const records = await db.select()
       .from(electionCandidates)
-      .where(eq(electionCandidates.candidateId, candidateId));
+      .where(eq(electionCandidates.candidateStudentId, candidate.studentId));
+      
+    // Enhance records with virtual fields for backward compatibility
+    const enhancedRecords = await Promise.all(records.map(async (record) => {
+      let electionId = 0;
+      let runningMateId = 0;
+      
+      try {
+        // Find election ID from startTime
+        const electionsList = await db.select()
+          .from(elections)
+          .where(eq(elections.startTime, record.electionStartTime));
+          
+        if (electionsList.length > 0) {
+          electionId = electionsList[0].id;
+        }
+        
+        // If there's a running mate, get their ID too
+        if (record.runningMateStudentId) {
+          const runningMate = await db.select()
+            .from(candidates)
+            .where(eq(candidates.studentId, record.runningMateStudentId));
+            
+          if (runningMate.length > 0) {
+            runningMateId = runningMate[0].id;
+          }
+        }
+      } catch (error) {
+        console.error("Error enhancing election-candidate record:", error);
+      }
+      
+      // Return record with virtual fields
+      return {
+        ...record,
+        electionId: electionId, // Add virtual field for backward compatibility
+        candidateId: candidateId, // Add virtual field for backward compatibility
+        runningMateId: runningMateId // Add virtual field for backward compatibility
+      };
+    }));
+    
+    return enhancedRecords;
   }
 
   async getAllElectionCandidates(): Promise<ElectionCandidate[]> {
-    return await db.select().from(electionCandidates);
+    // Get all election-candidate records from database
+    const records = await db.select().from(electionCandidates);
+    
+    // Enhance records with virtual fields for backward compatibility
+    const enhancedRecords = await Promise.all(records.map(async (record) => {
+      let electionId = 0;
+      let candidateId = 0;
+      let runningMateId = 0;
+      
+      try {
+        // Find election ID from startTime
+        const electionsList = await db.select()
+          .from(elections)
+          .where(eq(elections.startTime, record.electionStartTime));
+          
+        if (electionsList.length > 0) {
+          electionId = electionsList[0].id;
+        }
+        
+        // Find candidate ID from studentId
+        const candidate = await db.select()
+          .from(candidates)
+          .where(eq(candidates.studentId, record.candidateStudentId));
+          
+        if (candidate.length > 0) {
+          candidateId = candidate[0].id;
+        }
+        
+        // If there's a running mate, get their ID too
+        if (record.runningMateStudentId) {
+          const runningMate = await db.select()
+            .from(candidates)
+            .where(eq(candidates.studentId, record.runningMateStudentId));
+            
+          if (runningMate.length > 0) {
+            runningMateId = runningMate[0].id;
+          }
+        }
+      } catch (error) {
+        console.error("Error enhancing election-candidate record:", error);
+      }
+      
+      // Return record with virtual fields
+      return {
+        ...record,
+        electionId: electionId, // Add virtual field for backward compatibility
+        candidateId: candidateId, // Add virtual field for backward compatibility
+        runningMateId: runningMateId // Add virtual field for backward compatibility
+      };
+    }));
+    
+    return enhancedRecords;
   }
 
   async addCandidateToElection(electionCandidate: InsertElectionCandidate): Promise<ElectionCandidate> {
