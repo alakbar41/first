@@ -62,9 +62,15 @@ contract UniversityVoting {
     event AdminAssigned(uint8 adminSlot, address admin);
     event ElectionFinalized(uint256 startTime, string winnerId);
 
-    function createElection(uint256 startTime, uint256 endTime) external onlyAdmin {
+    function createElectionWithCandidates(
+        uint256 startTime,
+        uint256 endTime,
+        bool isTicketBased,
+        string[] calldata candidateIds,
+        string[][] calldata ticketPairs
+    ) external onlyAdmin {
         require(endTime > startTime, "End time must be after start time");
-        require(elections[startTime].startTime == 0, "Election with this start time already exists");
+        require(elections[startTime].startTime == 0, "Election already exists");
 
         elections[startTime] = Election({
             startTime: startTime,
@@ -75,26 +81,24 @@ contract UniversityVoting {
         });
 
         emit ElectionCreated(startTime, endTime);
-    }
 
-    function addCandidate(uint256 startTime, string calldata studentId) external onlyAdmin {
-        require(elections[startTime].startTime != 0, "Election does not exist");
-        bytes32 hash = keccak256(abi.encodePacked(studentId));
-        require(bytes(electionCandidates[startTime][hash].studentId).length == 0, "Candidate already added");
-
-        electionCandidates[startTime][hash] = Candidate(studentId, 0);
-        emit CandidateAdded(startTime, studentId);
-    }
-
-    function addTicket(uint256 startTime, string calldata presidentId, string calldata vpId) external onlyAdmin {
-        require(elections[startTime].startTime != 0, "Election does not exist");
-        require(keccak256(abi.encodePacked(presidentId)) != keccak256(abi.encodePacked(vpId)), "President and VP must be different");
-
-        bytes32 hash = keccak256(abi.encodePacked(presidentId, "_", vpId));
-        require(bytes(electionTickets[startTime][hash].presidentStudentId).length == 0, "Ticket already added");
-
-        electionTickets[startTime][hash] = Ticket(presidentId, vpId, 0);
-        emit TicketAdded(startTime, presidentId, vpId);
+        if (isTicketBased) {
+            for (uint i = 0; i < ticketPairs.length; i++) {
+                string memory pres = ticketPairs[i][0];
+                string memory vp = ticketPairs[i][1];
+                require(keccak256(abi.encodePacked(pres)) != keccak256(abi.encodePacked(vp)), "President and VP must be different");
+                bytes32 hash = keccak256(abi.encodePacked(pres, "_", vp));
+                electionTickets[startTime][hash] = Ticket(pres, vp, 0);
+                emit TicketAdded(startTime, pres, vp);
+            }
+        } else {
+            for (uint i = 0; i < candidateIds.length; i++) {
+                string memory studentId = candidateIds[i];
+                bytes32 hash = keccak256(abi.encodePacked(studentId));
+                electionCandidates[startTime][hash] = Candidate(studentId, 0);
+                emit CandidateAdded(startTime, studentId);
+            }
+        }
     }
 
     function updateElectionStatus(uint256 startTime) public {

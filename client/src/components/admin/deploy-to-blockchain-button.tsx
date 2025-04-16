@@ -340,7 +340,7 @@ export function DeployToBlockchainButton({
       // Toast to indicate the process has started
       toast({
         title: "Deploying to Blockchain",
-        description: "Starting the deployment and registration process. This will deploy the election and register all candidates automatically.",
+        description: "Starting the unified deployment process. This will deploy the election and register all candidates in a single transaction.",
         duration: 5000,
       });
 
@@ -368,23 +368,66 @@ export function DeployToBlockchainButton({
       console.log(`Deploying ${election.name} to blockchain...`);
       console.log(`Election type: ${electionType}, Start: ${startTimestamp}, End: ${endTimestamp}`);
 
-      // Show more detailed toast for user with manual gas configuration instructions
+      // Show more detailed toast for user with manual gas configuration instructions for the bundled tx
       toast({
-        title: "Creating Election on Blockchain",
-        description: "Please approve the transaction in MetaMask. For best results, click the Edit button in MetaMask and manually set: Gas limit to at least 2000000, Max priority fee to 25 gwei, and Max fee to 60 gwei.",
+        title: "Creating Election with Candidates",
+        description: "Please approve the transaction in MetaMask. This is a unified transaction that deploys everything at once. For best results, click the Edit button in MetaMask and manually set: Gas limit to at least 3000000, Max priority fee to 30 gwei, and Max fee to 70 gwei.",
         duration: 10000,
       });
 
-      // Call the web3 service to create the election with extra logging
-      console.log("About to call createElection on web3Service");
+      // Prepare the candidate data for the bundled election creation
+      // We need to collect either candidateIds (for senator elections) or ticketPairs (for president/VP elections)
+      const isPresidentElection = electionType === ElectionType.PresidentVP;
+      const candidateIds: string[] = [];
+      const ticketPairs: string[][] = [];
 
-      const blockchainElectionId = await web3Service.createElection(
+      if (electionCandidates && electionCandidates.length > 0) {
+        // Log candidates for debugging
+        console.log("Candidates for election:", electionCandidates);
+        
+        if (isPresidentElection) {
+          // For President elections, we need to organize candidates into president/VP pairs
+          // Each ticket needs a president and a running mate
+          for (const candidate of electionCandidates) {
+            if (candidate.runningMateStudentId) {
+              // Add [president, vp] pair
+              ticketPairs.push([candidate.candidateStudentId, candidate.runningMateStudentId]);
+              console.log(`Added ticket: [${candidate.candidateStudentId}, ${candidate.runningMateStudentId}]`);
+            } else {
+              console.warn(`President candidate without running mate: ${candidate.candidateStudentId}`);
+              // We'll still add them as individual candidates
+              candidateIds.push(candidate.candidateStudentId);
+            }
+          }
+        } else {
+          // For Senator elections, simply collect all candidate IDs
+          for (const candidate of electionCandidates) {
+            candidateIds.push(candidate.candidateStudentId);
+            console.log(`Added senator candidate: ${candidate.candidateStudentId}`);
+          }
+        }
+      }
+
+      // Log the data we've prepared
+      console.log(`Prepared data for deployment:
+        Election Type: ${electionType} (${isPresidentElection ? 'President/VP' : 'Senator'})
+        Start Time: ${startTimestamp}
+        End Time: ${endTimestamp}
+        Senator Candidates: ${candidateIds.length}
+        President/VP Tickets: ${ticketPairs.length}
+      `);
+
+      // Call the web3 service to create the election with candidates in a single transaction
+      console.log("About to call createElectionWithCandidates on web3Service");
+
+      const blockchainElectionId = await web3Service.createElectionWithCandidates(
         electionType,
         startTimestamp,
         endTimestamp,
-        true // isEndTime parameter (tells contract this is an end time, not a duration)
+        candidateIds,
+        ticketPairs
       );
-      console.log(`Successfully deployed election to blockchain with ID: ${blockchainElectionId}`);
+      console.log(`Successfully deployed election with candidates to blockchain with ID: ${blockchainElectionId}`);
 
       // Update the election in the database with the blockchain ID
       try {
@@ -413,44 +456,6 @@ export function DeployToBlockchainButton({
 
           // Also invalidate any specific election query if it exists
           queryClient.invalidateQueries({ queryKey: [`/api/elections/${election.id}`] });
-        }
-
-        // Now register all candidates for this election
-        if (electionCandidates && electionCandidates.length > 0) {
-          toast({
-            title: "Registering Candidates",
-            description: `Registering ${electionCandidates.length} candidates for the election. Please approve each transaction in MetaMask.`,
-            duration: 10000,
-          });
-
-          // For each candidate in this election, register them on the blockchain
-          for (let i = 0; i < electionCandidates.length; i++) {
-            const ec = electionCandidates[i];
-            try {
-              toast({
-                title: "Registering Candidate",
-                description: `Registering candidate ${i+1} of ${electionCandidates.length}. Please approve the transaction in MetaMask.`,
-                duration: 5000,
-              });
-
-              await registerCandidateForElection(ec.candidateId, election.id, blockchainElectionId);
-
-              toast({
-                title: "Candidate Registered",
-                description: `Successfully registered candidate ${i+1} of ${electionCandidates.length}.`,
-                duration: 3000,
-              });
-            } catch (error: any) {
-              console.error(`Failed to register candidate ${ec.candidateId} for election ${election.id}:`, error);
-
-              toast({
-                title: "Candidate Registration Failed",
-                description: `Failed to register candidate ${i+1} of ${electionCandidates.length}: ${error.message || "Unknown error"}`,
-                variant: "destructive",
-                duration: 5000,
-              });
-            }
-          }
         }
 
       } catch (error) {
@@ -491,7 +496,7 @@ export function DeployToBlockchainButton({
       } else if (error.message && error.message.includes("Internal JSON-RPC error")) {
         toast({
           title: "Polygon Network Congestion",
-          description: "The Polygon Amoy testnet is experiencing high congestion. Please try again with manual configuration in MetaMask: click Edit during transaction confirmation and set Gas limit to 2000000, Max priority fee to 25 gwei, and Max fee to 60 gwei.",
+          description: "The Polygon Amoy testnet is experiencing high congestion. Please try again with manual configuration in MetaMask: click Edit during transaction confirmation and set Gas limit to 3000000, Max priority fee to 30 gwei, and Max fee to 70 gwei.",
           variant: "destructive",
           duration: 20000
         });
@@ -639,7 +644,7 @@ export function DeployToBlockchainButton({
       ) : (
         <>
           <ServerIcon className="mr-2 h-4 w-4" />
-          Deploy & Register Candidates
+          Deploy with Candidates
         </>
       )}
     </Button>

@@ -111,6 +111,10 @@ class ImprovedWeb3Service {
   }
 
   // Create an election on the blockchain - with time bounds
+  /**
+   * Legacy createElection function - superseded by createElectionWithCandidates
+   * @deprecated Use createElectionWithCandidates instead
+   */
   async createElection(
     electionType: ElectionType,
     startTime: number,
@@ -279,6 +283,182 @@ Technical error: ${gasError.message}`);
       }
     } catch (error) {
       console.error('Failed to create election:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Creates an election with candidates in a single transaction
+   * This is the recommended way to create an election with the new contract
+   * @param electionType The type of election (Senator = 0, PresidentVP = 1)
+   * @param startTime The start time of the election as a Unix timestamp
+   * @param endTime The end time of the election as a Unix timestamp
+   * @param candidateIds An array of candidate IDs (student IDs) for senator elections
+   * @param ticketPairs An array of president/VP pairs for president elections ([[president1, vp1], [president2, vp2]])
+   * @returns The ID of the created election
+   */
+  async createElectionWithCandidates(
+    electionType: ElectionType,
+    startTime: number,
+    endTime: number,
+    candidateIds: string[],
+    ticketPairs: string[][] = []
+  ): Promise<number> {
+    try {
+      // Check if we have required wallet connection
+      if (!this.walletAddress || !this.signer) {
+        throw new Error('Wallet not connected. Please connect your MetaMask wallet first.');
+      }
+
+      // Make sure we have a contract instance
+      if (!this.contract) {
+        throw new Error('Contract not initialized');
+      }
+
+      // Make absolutely sure the contract is connected with signer
+      if (this.contract.runner !== this.signer) {
+        console.log('Reconnecting contract with signer...');
+        this.contract = this.contract.connect(this.signer);
+      }
+
+      console.log(`Creating election with type: ${electionType}, startTime: ${startTime}, endTime: ${endTime}`);
+      console.log(`Adding ${candidateIds.length} candidates and ${ticketPairs.length} tickets`);
+      console.log('Using contract address:', CONTRACT_ADDRESS);
+      console.log('Connected wallet address:', this.walletAddress);
+
+      const isTicketBased = electionType === ElectionType.PresidentVP;
+      logContractInteraction('createElectionWithCandidates', { 
+        electionType, 
+        startTime, 
+        endTime, 
+        isTicketBased,
+        candidateIds,
+        ticketPairs
+      });
+
+      // Try to estimate gas first to get more detailed error messages
+      try {
+        console.log('Estimating gas for createElectionWithCandidates transaction...');
+
+        // Use extreme gas settings to overcome Polygon Amoy testnet congestion
+        const options = {
+          gasLimit: 3000000, // Extremely high gas limit to ensure transaction success
+          maxPriorityFeePerGas: ethers.parseUnits("25.0", "gwei"), // Very high priority fee to prioritize transaction
+          maxFeePerGas: ethers.parseUnits("50.0", "gwei"), // Very high max fee to ensure acceptance
+          type: 2, // Use EIP-1559 transaction type
+        };
+
+        console.log('Using options:', options);
+        const estimatedGas = await this.contract.createElectionWithCandidates.estimateGas(
+          startTime,
+          endTime,
+          isTicketBased,
+          candidateIds,
+          ticketPairs,
+          options
+        );
+        console.log('Estimated gas for transaction:', estimatedGas);
+      } catch (error) {
+        const gasError = error as any;
+        console.error('Gas estimation failed (transaction would fail):', gasError);
+        console.error('Error details:', JSON.stringify(gasError, null, 2));
+
+        // Get a better error message if possible
+        if (gasError && gasError.message && typeof gasError.message === 'string') {
+          if (gasError.message.includes('execution reverted')) {
+            // Try to extract revert reason if available
+            const revertReason = gasError.message.split('execution reverted: ')[1]?.split('"')[0];
+            if (revertReason) {
+              throw new Error(`Smart contract rejected the operation: ${revertReason}`);
+            } else if (gasError.reason && typeof gasError.reason === 'string') {
+              throw new Error(`Smart contract rejected the operation: ${gasError.reason}`);
+            } else {
+              throw new Error(`
+Smart contract rejected the operation. This may be due to:
+1. Invalid candidate IDs or ticket pairs
+2. The contract has reached its maximum number of elections
+3. Time constraints in the contract are not satisfied
+4. You don't have permission to create elections
+
+Technical error: ${gasError.message}`);
+            }
+          } else if (gasError.message.includes('Internal JSON-RPC error')) {
+            throw new Error(`
+Network error when communicating with blockchain. This may be due to:
+1. Network congestion or temporary issues with the Polygon Amoy testnet
+2. MetaMask configuration issues - try setting the gas price manually
+3. The contract may require more gas than estimated
+
+Try again in a few moments or switch to a different network/wallet.
+
+Technical error: ${gasError.message}`);
+          } else if (gasError.code === 'INSUFFICIENT_FUNDS') {
+            throw new Error(`Your wallet doesn't have enough MATIC tokens to execute this transaction. Please add funds to your wallet on the Polygon Amoy testnet.`);
+          }
+        }
+        throw error;
+      }
+
+      // If gas estimation is successful, proceed with the transaction
+      console.log('Sending createElectionWithCandidates transaction...');
+
+      // Use extremely high gas settings to overcome Polygon Amoy testnet congestion
+      const options = {
+        gasLimit: 5000000, // Ultra high gas limit to ensure election creation success
+        maxPriorityFeePerGas: ethers.parseUnits("35.0", "gwei"), // Very high priority fee to prioritize transaction
+        maxFeePerGas: ethers.parseUnits("70.0", "gwei"), // Very high max fee to ensure acceptance
+        type: 2, // Use EIP-1559 transaction type
+      };
+
+      console.log('Using transaction options:', options);
+      const tx = await this.contract.createElectionWithCandidates(
+        startTime,
+        endTime,
+        isTicketBased,
+        candidateIds,
+        ticketPairs,
+        options
+      );
+
+      console.log('Transaction sent, awaiting confirmation...');
+      const receipt = await tx.wait();
+      console.log('Transaction confirmed:', receipt);
+
+      // Get the election ID from the transaction events
+      console.log('Looking for ElectionCreated event in logs...');
+      console.log('Total log entries:', receipt.logs.length);
+
+      const event = receipt.logs.find((log: any) => 
+        log.topics[0] === ethers.id("ElectionCreated(uint256,uint8,uint256,uint256)")
+      );
+
+      console.log('Found ElectionCreated event:', event ? 'Yes' : 'No');
+
+      if (event) {
+        console.log('Event topics:', event.topics);
+        const decodedData = ethers.AbiCoder.defaultAbiCoder().decode(
+          ['uint256'],
+          event.data
+        );
+        console.log('Decoded election ID:', Number(decodedData[0]));
+        return Number(decodedData[0]);
+      }
+
+      // Fallback - try to get the election ID from election counter
+      console.log('Warning: ElectionCreated event not found. Trying alternative method...');
+      try {
+        const electionCount = await this.contract.getElectionCount();
+        console.log('Current election count:', Number(electionCount));
+        // Subtract 1 since election IDs are 0-indexed
+        return Number(electionCount) - 1;
+      } catch (error) {
+        console.error('Failed to get election count:', error);
+        // Last resort fallback
+        console.warn('Using fallback ID 1 - this may not be accurate!');
+        return 1;
+      }
+    } catch (error) {
+      console.error('Failed to create election with candidates:', error);
       throw error;
     }
   }
