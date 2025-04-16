@@ -1,22 +1,18 @@
 
 import nodemailer from "nodemailer";
 
-// Create reusable transporter with more robust configuration
+// Create simple SMTP transporter - nothing fancy
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
   host: 'smtp.gmail.com',
   port: 587,
-  secure: false,
+  secure: false, // TLS
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS
-  },
-  tls: {
-    rejectUnauthorized: false
   }
 });
 
-// Verify connection configuration
+// Verify SMTP connection on startup
 transporter.verify(function(error, success) {
   if (error) {
     console.error('SMTP connection error:', error);
@@ -27,6 +23,12 @@ transporter.verify(function(error, success) {
 
 export const mailer = {
   async sendOtp(to, otp) {
+    // Validate that recipient email ends with @ada.edu.az
+    if (!to.toLowerCase().endsWith('@ada.edu.az')) {
+      console.error(`Email ${to} is not a valid ADA University email`);
+      throw new Error("Registration requires an ADA University email address.");
+    }
+    
     console.log(`Preparing to send OTP email to: ${to}`);
     
     try {
@@ -34,12 +36,12 @@ export const mailer = {
       const mailOptions = {
         from: `"ADA University Voting" <${process.env.EMAIL_USER}>`,
         to,
-        subject: "Your Verification Code",
+        subject: "Your ADA University Voting Verification Code",
         text: `Your verification code is: ${otp}. This code will expire in 3 minutes.`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 5px;">
             <div style="text-align: center; padding: 20px;">
-              <h2 style="color: #005A9C; margin: 0;">Verification Code</h2>
+              <h2 style="color: #005A9C; margin: 0;">ADA University Voting</h2>
             </div>
             <p style="color: #666; font-size: 16px;">Thank you for registering with the ADA University Voting System.</p>
             <div style="background-color: #f5f5f5; padding: 20px; text-align: center; margin: 20px 0; border-radius: 5px;">
@@ -51,20 +53,23 @@ export const mailer = {
         `
       };
       
-      // Send the email with better error handling
+      // Send the email
       const info = await transporter.sendMail(mailOptions);
-      console.log(`Email sent successfully! Message ID: ${info.messageId}`);
+      console.log(`✅ Email sent successfully to ${to}! Message ID: ${info.messageId}`);
       return info;
       
     } catch (error) {
-      console.error('Email sending failed:', error);
+      console.error('❌ Email sending failed:', error.message);
       
+      // Log detailed error information for troubleshooting
       if (error.code === 'EAUTH') {
-        console.error('Gmail authentication failed. Make sure to:');
-        console.error('1. Use an App Password if 2FA is enabled');
-        console.error('2. Enable "Less secure app access" if not using 2FA');
-        console.error('3. Check EMAIL_USER and EMAIL_PASS environment variables');
+        console.error('SMTP Authentication failed - check your EMAIL_USER and EMAIL_PASS environment variables');
+      } else if (error.code === 'ESOCKET') {
+        console.error('SMTP Connection error - check network settings');
       }
+      
+      // Always log the OTP for testing purposes
+      console.log(`FOR TESTING ONLY - OTP for ${to}: ${otp}`);
       
       throw error;
     }

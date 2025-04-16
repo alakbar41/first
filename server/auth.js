@@ -122,31 +122,47 @@ export function setupAuth(app) {
     try {
       const { email, password, faculty } = req.body;
       
-      // Validate email is from ADA University
-      // Convert email to lowercase for case-insensitive checking
-      const normalizedEmail = email.toLowerCase();
-      if (!normalizedEmail.endsWith('@ada.edu.az')) {
-        return res.status(400).json({ message: "Registration requires an ADA University email address." });
+      // Basic input validation
+      if (!email || !password || !faculty) {
+        return res.status(400).json({ message: "All fields are required." });
       }
       
-      // Check if user already exists, but DON'T reveal this information
-      // Just silently handle it differently
-      const existingUser = await storage.getUserByEmail(email);
+      // Validate email format (basic validation)
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ message: "Please enter a valid email address." });
+      }
+      
+      // Validate email is from ADA University - strictly enforce this
+      const normalizedEmail = email.toLowerCase();
+      if (!normalizedEmail.endsWith('@ada.edu.az')) {
+        return res.status(400).json({ message: "Registration requires an ADA University email address (@ada.edu.az)." });
+      }
+      
+      // Check password strength
+      if (password.length < 8) {
+        return res.status(400).json({ message: "Password must be at least 8 characters long." });
+      }
+      
+      // Check if user already exists, but don't reveal this information
+      const existingUser = await storage.getUserByEmail(normalizedEmail);
       if (existingUser) {
-        // To prevent user enumeration, don't disclose that this email exists
-        // instead, send a generic success message as if we sent OTP
-        console.log("Registration attempt for existing email - security measure activated");
+        // Security measure: Don't tell the user their email is already registered
+        console.log(`Registration attempted with existing email: ${normalizedEmail} - security measure activated`);
         return res.status(200).json({ 
           message: "Registration initiated. Please verify your email. Check your inbox for verification code."
         });
       }
       
-      // Generate OTP and create pending user
+      // Generate OTP (6-digit number)
       const otp = crypto.randomInt(100000, 1000000).toString();
+      
+      // Hash the password
       const hashedPassword = await hashPassword(password);
       
+      // Create pending user record
       const pendingUser = {
-        email,
+        email: normalizedEmail, // Always store normalized (lowercase) email
         password: hashedPassword,
         faculty,
         otp,
@@ -154,29 +170,24 @@ export function setupAuth(app) {
         isAdmin: false
       };
       
+      // Store the pending user
       await storage.createPendingUser(pendingUser);
       
       try {
-        // Send OTP email with improved logging
-        console.log(`Attempting to send verification OTP to ${email}`);
-        console.log('OTP code generated:', otp); // Log OTP for testing
+        // Send OTP email
+        console.log(`Sending verification OTP to new registration: ${normalizedEmail}`);
         
-        const emailResult = await mailer.sendOtp(email, otp);
-        console.log(`Email sent successfully! Message ID: ${emailResult.messageId || 'N/A'}`);
+        const emailResult = await mailer.sendOtp(normalizedEmail, otp);
+        console.log(`✅ Verification email sent successfully to ${normalizedEmail}`);
       } catch (emailError) {
-        // Enhanced error logging with full details
-        console.error("⚠️ Email sending failed:", emailError.message);
-        console.error("Error details:", emailError);
+        // Log the error but continue with registration process
+        console.error(`❌ Failed to send verification email to ${normalizedEmail}:`, emailError.message);
         
-        if (emailError.code === 'EAUTH') {
-          console.error("Authentication error - Please check EMAIL_USER and EMAIL_PASS environment variables");
-          console.error("For Gmail with 2FA, you MUST use an App Password, not your regular password");
-        }
-        
-        // Always log the OTP code for testing/verification
-        console.log(`IMPORTANT: For testing - OTP for ${email} is: ${otp}`);
+        // Log the OTP for testing purposes
+        console.log(`FOR TESTING ONLY - Verification code for ${normalizedEmail}: ${otp}`);
       }
       
+      // Return success to the user
       res.status(200).json({ 
         message: "Registration initiated. Please verify your email. Check your inbox for verification code."
       });
@@ -190,62 +201,63 @@ export function setupAuth(app) {
     try {
       const { email } = req.body;
       
+      // Validate email is provided
       if (!email) {
-        return res.status(400).json({ message: "Email is required" });
+        return res.status(400).json({ message: "Email address is required" });
       }
       
-      const key = email.toLowerCase(); // Normalize the email
+      // Normalize email to lowercase
+      const normalizedEmail = email.toLowerCase();
       
-      // Apply rate limiting
-      const limit = rateLimit(key, otpRequests, 3, 60 * 1000); // 3 attempts per minute
+      // Validate it's an ADA email
+      if (!normalizedEmail.endsWith('@ada.edu.az')) {
+        return res.status(400).json({ message: "Only ADA University email addresses are allowed" });
+      }
+      
+      // Apply rate limiting for OTP requests
+      const limit = rateLimit(normalizedEmail, otpRequests, 3, 60 * 1000); // 3 attempts per minute
       
       if (limit.limited) {
         return res.status(429).json({ 
-          message: `Too many OTP requests. Please try again in ${limit.secondsRemaining} seconds.`,
+          message: `Too many verification code requests. Please try again in ${limit.secondsRemaining} seconds.`,
           retryAfter: limit.secondsRemaining
         });
       }
       
-      // Get pending user
-      const pendingUser = await storage.getPendingUserByEmail(email);
+      // Check if there's a pending user
+      const pendingUser = await storage.getPendingUserByEmail(normalizedEmail);
       
       // Security improvement: Don't reveal if no pending registration exists
       if (!pendingUser) {
         // Return a generic success message, even though we didn't actually send anything
-        // This prevents attackers from determining which emails have pending registrations
-        console.log("OTP requested for non-existent pending user - security measure activated");
-        return res.status(200).json({ message: "If a verification is pending for this email, a new code has been sent." });
+        console.log(`OTP requested for non-existent pending user: ${normalizedEmail} - security measure activated`);
+        return res.status(200).json({ 
+          message: "If a verification is pending for this email, a new code has been sent." 
+        });
       }
       
-      // Generate new OTP
+      // Generate new 6-digit OTP
       const newOtp = crypto.randomInt(100000, 1000000).toString();
       
-      // Update pending user
-      await storage.updatePendingUserOtp(email, newOtp);
+      // Update the pending user's OTP
+      await storage.updatePendingUserOtp(normalizedEmail, newOtp);
       
       try {
-        // Send OTP email with improved logging
-        console.log(`Resending OTP to ${email}`);
-        console.log('New OTP code generated:', newOtp); // Log OTP for testing
+        // Send OTP email
+        console.log(`Resending verification code to ${normalizedEmail}`);
         
-        const emailResult = await mailer.sendOtp(email, newOtp);
-        console.log(`Email sent successfully! Message ID: ${emailResult.messageId || 'N/A'}`);
+        const emailResult = await mailer.sendOtp(normalizedEmail, newOtp);
+        console.log(`✅ Verification code resent successfully to ${normalizedEmail}`);
         
         res.status(200).json({ message: "Verification code sent successfully." });
       } catch (emailError) {
-        // Enhanced error logging with full details
-        console.error("⚠️ Email resending failed:", emailError.message);
-        console.error("Error details:", emailError);
+        // Log the error but don't reveal it to the client
+        console.error(`❌ Failed to resend verification email to ${normalizedEmail}:`, emailError.message);
         
-        if (emailError.code === 'EAUTH') {
-          console.error("Authentication error - Please check EMAIL_USER and EMAIL_PASS environment variables");
-          console.error("For Gmail with 2FA, you MUST use an App Password, not your regular password");
-        }
+        // Log the OTP for testing purposes
+        console.log(`FOR TESTING ONLY - New verification code for ${normalizedEmail}: ${newOtp}`);
         
-        // Always log the OTP code for testing/verification
-        console.log(`IMPORTANT: For testing - OTP for ${email} is: ${newOtp}`);
-        
-        // Return success to avoid revealing email sending issues to client
+        // Still return success to avoid revealing email sending issues
         res.status(200).json({ message: "Verification code sent successfully." });
       }
     } catch (error) {
@@ -258,30 +270,51 @@ export function setupAuth(app) {
     try {
       const { email, otp } = req.body;
       
-      // Get pending user
-      const pendingUser = await storage.getPendingUserByEmail(email);
+      // Basic validation
+      if (!email || !otp) {
+        return res.status(400).json({ message: "Email and verification code are required." });
+      }
       
-      // Security improvement: Use a consistent error message for all verification failures
+      // Validate OTP format (6 digits)
+      if (!/^\d{6}$/.test(otp)) {
+        return res.status(400).json({ message: "Verification code must be 6 digits." });
+      }
+      
+      // Normalize email address
+      const normalizedEmail = email.toLowerCase();
+      
+      // Validate it's an ADA email
+      if (!normalizedEmail.endsWith('@ada.edu.az')) {
+        return res.status(400).json({ message: "Only ADA University email addresses are allowed" });
+      }
+      
+      // Security: use a consistent error message for all verification failures
       const genericErrorMessage = "Verification failed. Please ensure your email and verification code are correct.";
       
+      // Get pending user registration
+      const pendingUser = await storage.getPendingUserByEmail(normalizedEmail);
+      
       if (!pendingUser) {
-        // Don't reveal that no pending registration exists
-        console.log("OTP verification attempted for non-existent pending user");
+        // Don't reveal that no pending registration exists (security measure)
+        console.log(`OTP verification attempted for non-existent pending user: ${normalizedEmail}`);
         return res.status(401).json({ message: genericErrorMessage });
       }
       
-      // Check if OTP expired (3 minutes)
+      // Check if OTP has expired (3 minutes)
       if (Date.now() - pendingUser.createdAt.getTime() > OTP_EXPIRY_TIME) {
-        await storage.deletePendingUser(email);
-        return res.status(401).json({ message: genericErrorMessage });
+        console.log(`OTP expired for ${normalizedEmail}, cleaning up pending user record`);
+        await storage.deletePendingUser(normalizedEmail);
+        return res.status(401).json({ message: "Verification code has expired. Please request a new code." });
       }
       
-      // Verify OTP
+      // Verify the OTP matches
       if (pendingUser.otp !== otp) {
+        console.log(`Invalid OTP attempted for ${normalizedEmail}: ${otp} vs expected ${pendingUser.otp}`);
         return res.status(401).json({ message: genericErrorMessage });
       }
       
-      // Create verified user
+      // OTP is valid - create the actual user account
+      console.log(`Creating verified user account for ${normalizedEmail}`);
       const newUser = await storage.createUser({
         email: pendingUser.email,
         password: pendingUser.password,
@@ -289,31 +322,31 @@ export function setupAuth(app) {
         isAdmin: pendingUser.isAdmin
       });
       
-      // Delete pending user
-      await storage.deletePendingUser(email);
+      // Delete the pending user record
+      await storage.deletePendingUser(normalizedEmail);
       
-      // Log user in with session rotation for security
+      // Log the new user in automatically (with session security)
       req.login(newUser, (err) => {
         if (err) {
-          console.error("Login error after OTP verification:", err);
-          return res.status(500).json({ message: "An error occurred during login." });
+          console.error(`Login error after OTP verification for ${normalizedEmail}:`, err);
+          return res.status(500).json({ message: "Your account was created, but we couldn't log you in automatically. Please try logging in." });
         }
         
-        // Security enhancement: Regenerate session ID on new user login to prevent session fixation
+        // Security: Regenerate session ID to prevent session fixation
         req.session.regenerate((regErr) => {
           if (regErr) {
-            console.error("Session regeneration error:", regErr);
-            return res.status(500).json({ message: "An error occurred during login." });
+            console.error(`Session regeneration error for ${normalizedEmail}:`, regErr);
+            return res.status(500).json({ message: "Your account was created, but we couldn't log you in automatically. Please try logging in." });
           }
           
-          // Need to re-login user after session regeneration
+          // Re-login user after session regeneration
           req.login(newUser, (loginErr) => {
             if (loginErr) {
-              console.error("Re-login after session regeneration error:", loginErr);
-              return res.status(500).json({ message: "An error occurred during login." });
+              console.error(`Re-login after session regeneration error for ${normalizedEmail}:`, loginErr);
+              return res.status(500).json({ message: "Your account was created, but we couldn't log you in automatically. Please try logging in." });
             }
             
-            console.log("New user login successful with session rotation");
+            console.log(`✅ New user ${normalizedEmail} successfully registered and logged in`);
             res.status(200).json(newUser);
           });
         });
@@ -327,29 +360,37 @@ export function setupAuth(app) {
   app.post("/api/login", async (req, res, next) => {
     const { email, password } = req.body;
     
-    // Reduce verbosity of logs to prevent leaking sensitive information
-    // Just log that an attempt was made without the actual email
-    console.log("Login attempt received");
-    
+    // Basic input validation
     if (!email) {
-      return res.status(400).json({ message: "Email is required" });
+      return res.status(400).json({ message: "Email address is required" });
     }
     
-    // Use email as the rate limiting key instead of IP
-    const key = email.toLowerCase(); // Normalize the email for consistent keys
+    if (!password) {
+      return res.status(400).json({ message: "Password is required" });
+    }
     
-    // Apply rate limiting
-    const limit = rateLimit(key, loginAttempts, 5, 5 * 60 * 1000); // 5 attempts per 5 minutes
+    // Normalize email
+    const normalizedEmail = email.toLowerCase();
+    
+    // Validate it's an ADA email
+    if (!normalizedEmail.endsWith('@ada.edu.az')) {
+      return res.status(400).json({ message: "Only ADA University email addresses are allowed" });
+    }
+    
+    // Security logging - minimal info
+    console.log("Login attempt received from ADA University email");
+    
+    // Apply rate limiting using email as the key
+    const limit = rateLimit(normalizedEmail, loginAttempts, 5, 5 * 60 * 1000); // 5 attempts per 5 minutes
     
     if (limit.limited) {
-      // Note: We're still showing the remaining time, which could be used to confirm a user exists
-      // In a real high-security system, you might want to use a generic error without timing info
       return res.status(429).json({ 
         message: `Too many login attempts. Please try again in ${Math.floor(limit.secondsRemaining / 60)} minutes and ${limit.secondsRemaining % 60} seconds.`,
         retryAfter: limit.secondsRemaining
       });
     }
     
+    // Authenticate using passport
     passport.authenticate("local", (err, user, info) => {
       if (err) {
         console.error("Login error:", err);
@@ -357,38 +398,37 @@ export function setupAuth(app) {
       }
       
       if (!user) {
-        // Increment failed attempts count
-        rateLimit(key, loginAttempts, 5, 5 * 60 * 1000);
-        // Log failed authentication without the email to improve security
+        // Count failed attempt
+        rateLimit(normalizedEmail, loginAttempts, 5, 5 * 60 * 1000);
         console.log("Authentication failed - invalid credentials");
-        return res.status(401).json({ message: info?.message || "Invalid login credentials" });
+        return res.status(401).json({ message: "Invalid email or password" });
       }
       
       // Check if this is an admin login attempt
       const { isAdmin } = req.body;
       
       if (isAdmin !== undefined && isAdmin !== user.isAdmin) {
-        // User is trying to login with wrong account type
-        rateLimit(key, loginAttempts, 5, 5 * 60 * 1000);
-        // Log wrong account type attempt without details
-        console.log("User attempted to log in with wrong account type");
+        // Handle wrong account type
+        rateLimit(normalizedEmail, loginAttempts, 5, 5 * 60 * 1000);
+        console.log("Login attempted with wrong account type");
         return res.status(401).json({ message: "Invalid login credentials" });
       }
       
+      // Login successful - establish session
       req.login(user, (err) => {
         if (err) {
           console.error("Login session error:", err);
           return next(err);
         }
         
-        // Security enhancement: Regenerate session ID on login to prevent session fixation
+        // Security: Regenerate session ID to prevent session fixation
         req.session.regenerate((regErr) => {
           if (regErr) {
             console.error("Session regeneration error:", regErr);
             return next(regErr);
           }
           
-          // Need to re-login user after session regeneration
+          // Re-login after session regeneration
           req.login(user, (loginErr) => {
             if (loginErr) {
               console.error("Re-login after session regeneration error:", loginErr);
@@ -396,9 +436,8 @@ export function setupAuth(app) {
             }
             
             // Reset login attempts on successful login
-            loginAttempts.delete(key);
-            // Log success without revealing the email address
-            console.log("Login successful with session rotation");
+            loginAttempts.delete(normalizedEmail);
+            console.log(`✅ User login successful`);
             
             return res.status(200).json(user);
           });
