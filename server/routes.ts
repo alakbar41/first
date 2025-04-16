@@ -377,10 +377,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if start date is being changed - this affects the blockchain identifier mapping
-      if (req.body.startDate && election.startDate !== req.body.startDate) {
-        console.log(`Election ${id} start date changed from ${election.startDate} to ${req.body.startDate}`);
+      // Handle the case where frontend sends startDate but database expects startTime
+      if (req.body.startDate) {
+        // Convert dates to ISO strings for consistent comparison
+        const frontendStartDate = new Date(req.body.startDate).toISOString();
+        const dbStartTime = election.startTime.toISOString();
+        
+        if (frontendStartDate !== dbStartTime) {
+          console.log(`Election ${id} start date changed from ${dbStartTime} to ${frontendStartDate}`);
+        }
       }
       
+      // Forward to storage.updateElection which will handle the field name conversion
       const updatedElection = await storage.updateElection(id, req.body);
       res.json(updatedElection);
     } catch (error) {
@@ -418,13 +426,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       console.log(`Updating blockchain ID for election ${id} to ${blockchainId}`);
-      console.log(`Election start time: ${election.startDate} (used as stable identifier for blockchain mapping)`);
+      console.log(`Election start time: ${election.startTime} (used as stable identifier for blockchain mapping)`);
       
       // Use the simplified updateElection method which handles blockchainId updates specially
       const updatedElection = await storage.updateElection(id, { blockchainId });
       
       // Store the start timestamp as the stable identifier
-      const startTimestamp = new Date(election.startDate).getTime() / 1000;
+      const startTimestamp = new Date(election.startTime).getTime() / 1000;
       console.log(`Election ${id} start timestamp (seconds): ${startTimestamp} - This is the stable identifier used for blockchain mapping`);
       
       // After updating the blockchain ID, immediately check if the election should be active based on dates

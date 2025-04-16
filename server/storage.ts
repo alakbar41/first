@@ -1062,16 +1062,34 @@ export class DatabaseStorage implements IStorage {
     // For other updates, proceed normally
     const updateData: any = { ...election };
     
-    // Only handle dates if they're present in the update
-    if (election.startTime) {
+    // Handle field name conversion between frontend and database schema
+    // The frontend uses startDate/endDate but the database schema uses startTime/endTime
+    
+    // Convert startDate to startTime if present
+    if (election.startDate) {
+      updateData.startTime = election.startDate instanceof Date ? 
+        election.startDate : new Date(election.startDate as string);
+      // Remove the startDate field since it doesn't exist in the database schema
+      delete updateData.startDate;
+    } 
+    else if (election.startTime) {
       updateData.startTime = election.startTime instanceof Date ? 
         election.startTime : new Date(election.startTime as string);
     }
     
-    if (election.endTime) {
+    // Convert endDate to endTime if present
+    if (election.endDate) {
+      updateData.endTime = election.endDate instanceof Date ? 
+        election.endDate : new Date(election.endDate as string);
+      // Remove the endDate field since it doesn't exist in the database schema
+      delete updateData.endDate;
+    }
+    else if (election.endTime) {
       updateData.endTime = election.endTime instanceof Date ? 
         election.endTime : new Date(election.endTime as string);
     }
+    
+    console.log("Updated election data:", updateData);
     
     const updated = await db.update(elections)
       .set(updateData)

@@ -120,12 +120,18 @@ export function EditElectionDialog({ open, onOpenChange, election }: EditElectio
       checkDeploymentStatus();
       
       try {
-        const startDate = new Date(election.startDate);
-        const endDate = new Date(election.endDate);
+        // Handle field name mismatch - backend uses startTime/endTime, frontend uses startDate/endDate
+        const startDate = election.startDate 
+          ? new Date(election.startDate) 
+          : (election.startTime ? new Date(election.startTime) : null);
+        
+        const endDate = election.endDate 
+          ? new Date(election.endDate) 
+          : (election.endTime ? new Date(election.endTime) : null);
         
         // Verify dates are valid before setting them
-        const validStartDate = !isNaN(startDate.getTime()) ? startDate : new Date();
-        const validEndDate = !isNaN(endDate.getTime()) ? endDate : new Date();
+        const validStartDate = startDate && !isNaN(startDate.getTime()) ? startDate : new Date();
+        const validEndDate = endDate && !isNaN(endDate.getTime()) ? endDate : new Date();
         
         form.reset({
           name: election.name,
