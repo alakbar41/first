@@ -28,13 +28,33 @@ function mapElectionTypeToBlockchain(dbPosition: string): ElectionType {
 // Modified to ensure dates work with blockchain contract requirements
 // - Start time must be in future when deploying 
 // - Start time must be "now" when activating
-function dateToTimestamp(date: Date): number {
+function dateToTimestamp(date: Date | string): number {
   const now = Math.floor(Date.now() / 1000); // Current time in seconds
-  const dateTimestamp = Math.floor(date.getTime() / 1000);
+  
+  // Handle null, undefined or invalid date inputs
+  if (!date) {
+    console.warn("Invalid date input to dateToTimestamp, using current time + 60s");
+    return now + 60; // fallback to 1 minute in the future
+  }
+  
+  // Convert string to Date if needed
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  
+  // Ensure it's a valid date
+  if (isNaN(dateObj.getTime())) {
+    console.warn("Invalid date object in dateToTimestamp, using current time + 60s");
+    return now + 60; // fallback to 1 minute in the future
+  }
+  
+  const dateTimestamp = Math.floor(dateObj.getTime() / 1000);
+  
+  // Log for debugging
+  console.log(`Converting date ${dateObj.toISOString()} to timestamp ${dateTimestamp} seconds`);
   
   // If the date is in the past, return future time (now + 60 seconds)
   // This ensures our deployment succeeds while still allowing immediate activation
   if (dateTimestamp <= now) {
+    console.log(`Date is in the past, using current time + 60s: ${now + 60}`);
     return now + 60; // 1 minute in the future
   }
   
