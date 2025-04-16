@@ -27,6 +27,7 @@ export function CreateElectionDialog({ open, onOpenChange }: CreateElectionDialo
   // Form state
   const [name, setName] = useState("");
   const [position, setPosition] = useState("");
+  const [description, setDescription] = useState("");
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [eligibility, setEligibility] = useState("all");
@@ -58,6 +59,7 @@ export function CreateElectionDialog({ open, onOpenChange }: CreateElectionDialo
   const resetForm = () => {
     setName("");
     setPosition("");
+    setDescription("");
     setStartDate(undefined);
     setEndDate(undefined);
     setEligibility("all");
@@ -112,7 +114,7 @@ export function CreateElectionDialog({ open, onOpenChange }: CreateElectionDialo
       const payload = {
         name: data.name,
         position: data.position === "president_vp" ? "President/Vice President" : "Senator",
-        description: `Election for ${data.position === "president_vp" ? "President/Vice President" : "Senator"} position`,
+        description: data.description,
         startTime: startDateIso,
         endTime: endDateIso,
         // For Senator elections, use the faculty as an array. For others, use an empty array
@@ -162,7 +164,7 @@ export function CreateElectionDialog({ open, onOpenChange }: CreateElectionDialo
     e.preventDefault();
     
     // Validate required fields
-    if (!name || !position || !finalStartDate || !finalEndDate) {
+    if (!name || !position || !description || !finalStartDate || !finalEndDate) {
       toast({
         title: "Invalid form",
         description: "Please fill out all required fields.",
@@ -185,6 +187,7 @@ export function CreateElectionDialog({ open, onOpenChange }: CreateElectionDialo
     const data = {
       name,
       position,
+      description,
       startDate: finalStartDate,
       endDate: finalEndDate,
       eligibility,
@@ -229,6 +232,20 @@ export function CreateElectionDialog({ open, onOpenChange }: CreateElectionDialo
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          
+          {/* Election Description */}
+          <div className="space-y-3">
+            <Label htmlFor="description" className="text-sm font-medium text-purple-800">Election Description*</Label>
+            <textarea
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Enter a description of this election"
+              className="w-full px-3 py-2 border rounded-md bg-white border-purple-200 focus:border-purple-400 focus:ring-purple-400"
+              rows={3}
+              required
+            />
           </div>
           
           {/* Eligibility */}
