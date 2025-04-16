@@ -1169,9 +1169,11 @@ export class DatabaseStorage implements IStorage {
     const candidateElections = await this.getCandidateElections(candidateId);
     
     // Get all elections where the candidate is a running mate
+    // Since the schema uses runningMateStudentId not runningMateId, we need to get the student ID first
+    const candidateStudentId = candidate.studentId;
     const runningMateElections = await db.select()
       .from(electionCandidates)
-      .where(eq(electionCandidates.runningMateId, candidateId));
+      .where(eq(electionCandidates.runningMateStudentId, candidateStudentId));
 
     // If not in any elections at all, mark as inactive immediately
     if (candidateElections.length === 0 && runningMateElections.length === 0) {
