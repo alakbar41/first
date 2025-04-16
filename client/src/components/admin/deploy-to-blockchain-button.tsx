@@ -381,7 +381,8 @@ export function DeployToBlockchainButton({
       const blockchainElectionId = await web3Service.createElection(
         electionType,
         startTimestamp,
-        endTimestamp
+        endTimestamp,
+        true // isEndTime parameter (tells contract this is an end time, not a duration)
       );
       console.log(`Successfully deployed election to blockchain with ID: ${blockchainElectionId}`);
 

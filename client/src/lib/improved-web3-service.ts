@@ -114,7 +114,8 @@ class ImprovedWeb3Service {
   async createElection(
     electionType: ElectionType,
     startTime: number,
-    endTime: number
+    endTime: number,
+    isEndTime: boolean = true
   ): Promise<number> {
     try {
       // Check if we have required wallet connection
@@ -172,6 +173,7 @@ class ImprovedWeb3Service {
           electionType,
           startTime,
           endTime,
+          isEndTime,
           options
         );
         console.log('Estimated gas for transaction:', estimatedGas);
@@ -232,6 +234,7 @@ Technical error: ${gasError.message}`);
         electionType,
         startTime,
         endTime,
+        isEndTime,
         options
       );
 
