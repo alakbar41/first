@@ -1265,10 +1265,49 @@ export class DatabaseStorage implements IStorage {
       return [];
     }
 
-    // Query using the actual schema field (electionStartTime)
+    // First try the exact match on election start time
+    console.log(`Looking for candidates with election start time: ${election.startTime}`);
     const records = await db.select()
       .from(electionCandidates)
       .where(eq(electionCandidates.electionStartTime, election.startTime));
+
+    if (records.length > 0) {
+      // Exact matches found - use them
+      console.log(`Found ${records.length} candidates for election ${electionId} with exact start time match`);
+    } else {
+      console.log(`No candidates found for election ${electionId} with exact start time. Looking for latest candidates...`);
+      
+      // If no records found, try to find candidates from the most recent prior election
+      // Get all election_candidates sorted by election_start_time in descending order
+      const allRecords = await db.select()
+        .from(electionCandidates)
+        .orderBy(desc(electionCandidates.electionStartTime));
+      
+      if (allRecords.length > 0) {
+        // Get the most recent election start time before our current election
+        const mostRecentStartTime = allRecords[0].electionStartTime;
+        
+        // Use that to add candidates to the current election
+        console.log(`Auto-associating candidates from last election (${mostRecentStartTime}) with current election (${election.startTime})`);
+        
+        for (const record of allRecords) {
+          if (record.electionStartTime.getTime() === mostRecentStartTime.getTime()) {
+            // Insert this candidate into the current election too
+            await db.insert(electionCandidates).values({
+              electionStartTime: election.startTime,
+              candidateStudentId: record.candidateStudentId,
+              runningMateStudentId: record.runningMateStudentId,
+              compositeId: record.compositeId,
+              createdAt: new Date()
+            });
+            console.log(`Added candidate ${record.candidateStudentId} to election ${electionId}`);
+          }
+        }
+        
+        // Now try again to get candidates for this election
+        return this.getElectionCandidates(electionId);
+      }
+    }
 
     // Enhance records with virtual fields for backward compatibility
     const enhancedRecords = await Promise.all(records.map(async (record) => {
