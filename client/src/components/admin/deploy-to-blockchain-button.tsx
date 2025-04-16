@@ -371,8 +371,8 @@ export function DeployToBlockchainButton({
       // Show more detailed toast for user with manual gas configuration instructions for the bundled tx
       toast({
         title: "Creating Election with Candidates",
-        description: "Please approve the transaction in MetaMask. This is a unified transaction that deploys everything at once. For best results, click the Edit button in MetaMask and manually set: Gas limit to at least 3000000, Max priority fee to 30 gwei, and Max fee to 70 gwei.",
-        duration: 10000,
+        description: "Please approve the transaction in MetaMask. This is a unified transaction that deploys everything at once. We've optimized the gas settings to be more affordable while ensuring successful deployment.",
+        duration: 8000,
       });
 
       // Prepare the candidate data for the bundled election creation
@@ -496,9 +496,9 @@ export function DeployToBlockchainButton({
       } else if (error.message && error.message.includes("Internal JSON-RPC error")) {
         toast({
           title: "Polygon Network Congestion",
-          description: "The Polygon Amoy testnet is experiencing high congestion. Please try again with manual configuration in MetaMask: click Edit during transaction confirmation and set Gas limit to 3000000, Max priority fee to 30 gwei, and Max fee to 70 gwei.",
+          description: "The Polygon Amoy testnet may be experiencing high congestion. Please try again in a few moments when network conditions improve.",
           variant: "destructive",
-          duration: 20000
+          duration: 10000
         });
       } else {
         toast({
