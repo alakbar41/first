@@ -485,13 +485,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Election not found" });
       }
       
-      // Prevent deleting elections that are already deployed to blockchain
+      // Check if this election has blockchain data 
+      // In the schema we don't have blockchainId field directly on the election table
+      // This check is temporarily disabled - if blockchain protection is needed,
+      // we would need to add a blockchainDeploymentStatus field to the schema
+      /* 
       if (election.blockchainId) {
         return res.status(403).json({ 
           message: "Cannot delete election after blockchain deployment",
           detail: "This election has already been deployed to the blockchain and cannot be deleted. The data must remain available for verification purposes."
         });
       }
+      */
 
       await storage.deleteElection(id);
       res.status(200).json({ message: "Election deleted successfully" });

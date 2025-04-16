@@ -514,22 +514,39 @@ export class MemStorage implements IStorage {
   async addCandidateToElection(electionCandidate: InsertElectionCandidate): Promise<ElectionCandidate> {
     const id = this.currentElectionCandidateId++;
     
-    const newElectionCandidate: ElectionCandidate = {
+    // Note: This memory storage implementation assumes and converts between:
+    // - electionId/electionStartTime 
+    // - candidateId/candidateStudentId
+    // - runningMateId/runningMateStudentId
+    // These conversions are needed to maintain backward compatibility with code that
+    // expects these fields while the database schema uses different fields
+    
+    // We'll use the electionStartTime and convert candidateId to studentId if needed
+    // In memory storage, we're storing using our own properties that don't match the schema
+    const newElectionCandidate: any = {
       id,
-      electionId: electionCandidate.electionId,
-      candidateId: electionCandidate.candidateId,
-      runningMateId: electionCandidate.runningMateId || 0,
+      electionId: (electionCandidate as any).electionId, // Backward compatibility
+      electionStartTime: electionCandidate.electionStartTime,
+      candidateStudentId: electionCandidate.candidateStudentId,
+      runningMateStudentId: electionCandidate.runningMateStudentId || null,
+      compositeId: electionCandidate.compositeId || null,
       createdAt: new Date()
     };
     
     this.electionCandidates.set(id, newElectionCandidate);
     
-    // Update candidate status based on the election's status
-    await this.updateCandidateActiveStatus(electionCandidate.candidateId);
+    // This part assumes we have a way to get candidateId from studentId
+    // For now we're assuming candidateId is directly available through the passed object
+    const candidateId = (electionCandidate as any).candidateId; 
+    
+    if (candidateId) {
+      await this.updateCandidateActiveStatus(candidateId);
+    }
     
     // If there's a running mate, update their status too
-    if (electionCandidate.runningMateId && electionCandidate.runningMateId > 0) {
-      await this.updateCandidateActiveStatus(electionCandidate.runningMateId);
+    const runningMateId = (electionCandidate as any).runningMateId;
+    if (runningMateId && runningMateId > 0) {
+      await this.updateCandidateActiveStatus(runningMateId);
     }
     
     return newElectionCandidate;
@@ -1232,25 +1249,87 @@ export class DatabaseStorage implements IStorage {
   }
 
   async addCandidateToElection(electionCandidate: InsertElectionCandidate): Promise<ElectionCandidate> {
+    // There's a schema mismatch issue: 
+    // The code expects properties like electionId/candidateId/runningMateId
+    // But the schema defines electionStartTime/candidateStudentId/runningMateStudentId
+    
+    // We need to handle this case by adapting our implementation
+    // First get the election to get the startTime (if needed)
+    let electionStartTime = electionCandidate.electionStartTime;
+    let candidateStudentId = electionCandidate.candidateStudentId;
+    let runningMateStudentId = electionCandidate.runningMateStudentId;
+    
+    // For backward compatibility, try to handle if we got legacy fields
+    const legacyElectionCandidate = electionCandidate as any;
+    
+    // If we received an electionId but not electionStartTime, try to get the startTime from the election
+    if (legacyElectionCandidate.electionId && !electionStartTime) {
+      try {
+        const election = await this.getElection(legacyElectionCandidate.electionId);
+        if (election) {
+          electionStartTime = election.startTime;
+        }
+      } catch (error) {
+        console.error("Error fetching election data for relationship:", error);
+      }
+    }
+    
+    // If we received a candidateId but not candidateStudentId, try to get the studentId
+    if (legacyElectionCandidate.candidateId && !candidateStudentId) {
+      try {
+        const candidate = await this.getCandidate(legacyElectionCandidate.candidateId);
+        if (candidate) {
+          candidateStudentId = candidate.studentId;
+        }
+      } catch (error) {
+        console.error("Error fetching candidate data for relationship:", error);
+      }
+    }
+    
+    // If we received a runningMateId but not runningMateStudentId, try to get the studentId
+    if (legacyElectionCandidate.runningMateId && !runningMateStudentId) {
+      try {
+        const runningMate = await this.getCandidate(legacyElectionCandidate.runningMateId);
+        if (runningMate) {
+          runningMateStudentId = runningMate.studentId;
+        }
+      } catch (error) {
+        console.error("Error fetching running mate data for relationship:", error);
+      }
+    }
+    
     // First check if this relationship already exists to avoid duplicates
+    // Use the actual schema fields for the query
     const existing = await db.select()
       .from(electionCandidates)
       .where(and(
-        eq(electionCandidates.electionId, electionCandidate.electionId),
-        eq(electionCandidates.candidateId, electionCandidate.candidateId)
+        eq(electionCandidates.electionStartTime, electionStartTime),
+        eq(electionCandidates.candidateStudentId, candidateStudentId)
       ));
       
     if (existing.length > 0) {
-      return existing[0]; // Return the existing relationship
+      // For backward compatibility, add legacy properties
+      const result = {
+        ...existing[0],
+        electionId: legacyElectionCandidate.electionId, // Add for backward compatibility
+        candidateId: legacyElectionCandidate.candidateId, // Add for backward compatibility
+        runningMateId: legacyElectionCandidate.runningMateId || 0 // Add for backward compatibility
+      };
+      return result as ElectionCandidate;
     }
+    
+    // Insert the relationship using the correct schema fields
+    const dbValues = {
+      electionStartTime,
+      candidateStudentId,
+      runningMateStudentId,
+      compositeId: electionCandidate.compositeId || null,
+      createdAt: new Date()
+    };
     
     // Insert the relationship
     const result = await db.insert(electionCandidates)
-      .values({
-        ...electionCandidate,
-        runningMateId: electionCandidate.runningMateId || 0,
-        createdAt: new Date()
-      })
+      .values(dbValues)
       .returning();
       
     // Get the election to check its status
@@ -1268,12 +1347,35 @@ export class DatabaseStorage implements IStorage {
   }
 
   async removeCandidateFromElection(electionId: number, candidateId: number): Promise<void> {
-    // Find the relationship
+    // First get the election and candidate to convert IDs to match the schema
+    let electionStartTime: Date | null = null;
+    let candidateStudentId: string | null = null;
+    
+    try {
+      const election = await this.getElection(electionId);
+      if (election) {
+        electionStartTime = election.startTime;
+      }
+      
+      const candidate = await this.getCandidate(candidateId);
+      if (candidate) {
+        candidateStudentId = candidate.studentId;
+      }
+    } catch (error) {
+      console.error("Error fetching election or candidate data:", error);
+    }
+    
+    if (!electionStartTime || !candidateStudentId) {
+      console.error(`Cannot remove candidate from election: missing data conversion for electionId=${electionId}, candidateId=${candidateId}`);
+      return;
+    }
+    
+    // Find the relationship using schema fields
     const relationships = await db.select()
       .from(electionCandidates)
       .where(and(
-        eq(electionCandidates.electionId, electionId),
-        eq(electionCandidates.candidateId, candidateId)
+        eq(electionCandidates.electionStartTime, electionStartTime),
+        eq(electionCandidates.candidateStudentId, candidateStudentId)
       ));
       
     if (relationships.length === 0) {
@@ -1281,7 +1383,22 @@ export class DatabaseStorage implements IStorage {
     }
     
     const relationship = relationships[0];
-    const runningMateId = relationship.runningMateId;
+    let runningMateId: number | null = null;
+    
+    // If there's a running mate, find their ID by studentId
+    if (relationship.runningMateStudentId) {
+      try {
+        const runningMate = await db.select()
+          .from(candidates)
+          .where(eq(candidates.studentId, relationship.runningMateStudentId));
+          
+        if (runningMate.length > 0) {
+          runningMateId = runningMate[0].id;
+        }
+      } catch (error) {
+        console.error("Error finding running mate by student ID:", error);
+      }
+    }
     
     // Delete the relationship
     await db.delete(electionCandidates)
