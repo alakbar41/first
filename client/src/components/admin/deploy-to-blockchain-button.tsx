@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { useWeb3 } from "@/hooks/use-web3";
 import { useToast } from "@/hooks/use-toast";
-import { ServerIcon, Loader2, AlertTriangle, Info, Users, CheckCircle, AlertCircle } from "lucide-react";
+import { ServerIcon, Loader2, AlertTriangle, Info, Users } from "lucide-react";
 import { Election } from "@shared/schema";
 import { ElectionType } from '@/lib/improved-web3-service';
 import web3Service from '@/lib/improved-web3-service';
@@ -16,7 +16,6 @@ import {
   TooltipTrigger
 } from "@/components/ui/tooltip";
 import { BlockchainWrapper } from '../blockchain/BlockchainWrapper';
-import * as transactionCache from '@/lib/blockchain-transaction-cache';
 
 // Convert database election to blockchain election type
 function mapElectionTypeToBlockchain(dbPosition: string): ElectionType {
@@ -90,8 +89,8 @@ export function DeployToBlockchainButton({
   const { isInitialized, isWalletConnected, connectWallet } = useWeb3();
   const { toast } = useToast();
   const [isDeploying, setIsDeploying] = useState(false);
-  const [isDeployed, setIsDeployed] = useState(!!election.blockchainId);
-  const [alreadyDeployedWarning, setAlreadyDeployedWarning] = useState(!!election.blockchainId);
+  const [isDeployed, setIsDeployed] = useState(false);
+  const [alreadyDeployedWarning, setAlreadyDeployedWarning] = useState(false);
 
   // Fetch election candidates to verify minimum candidate count
   const { data: electionCandidates = [], isLoading: isLoadingCandidates } = useQuery({
@@ -106,24 +105,12 @@ export function DeployToBlockchainButton({
   const hasMinimumCandidates = electionCandidates.length >= 2;
 
   // Set initial state based on whether the election already has a blockchain ID
-  // or if we have a cached transaction for this election
   useEffect(() => {
     if (election.blockchainId) {
       setIsDeployed(true);
       setAlreadyDeployedWarning(true);
     }
-    
-    // Check if this election has been deployed according to our transaction cache
-    const cacheTransactionId = `deploy-election-${election.id}`;
-    const isCompletedInCache = transactionCache.isTransactionCompleted(cacheTransactionId);
-    
-    console.log(`Election ${election.id} deployment status in cache:`, isCompletedInCache);
-    
-    if (isCompletedInCache) {
-      console.log(`Election ${election.id} found as deployed in browser cache`);
-      setIsDeployed(true);
-    }
-  }, [election.id, election.blockchainId]);
+  }, [election.blockchainId]);
 
   // Separate the wallet connection from deployment
   const connectMetamaskWallet = async (): Promise<boolean> => {
@@ -351,33 +338,6 @@ export function DeployToBlockchainButton({
         await connectWallet();
       }
 
-      // Check if this election has already been deployed by this browser
-      const cacheTransactionId = `deploy-election-${election.id}`;
-      if (transactionCache.isTransactionCompleted(cacheTransactionId)) {
-        console.log(`Election ${election.id} has already been deployed by this browser. Skipping deployment.`);
-        toast({
-          title: "Already Deployed",
-          description: `Election "${election.name}" has already been deployed from this browser. The database may need to be updated with the blockchain ID.`,
-          duration: 5000,
-        });
-        
-        // If it's already deployed but the database doesn't have the blockchain ID,
-        // we can try to look it up and update the database
-        if (!election.blockchainId) {
-          // This would require a way to look up the election ID based on other details
-          // For now, we'll just notify the user to manually check
-          toast({
-            title: "Database Needs Update",
-            description: "Your election appears to be already deployed to blockchain but the database doesn't have the blockchain ID. Please check the admin panel for more details.",
-            duration: 8000,
-          });
-        }
-        
-        setIsDeployed(true);
-        setIsDeploying(false);
-        return;
-      }
-
       // Toast to indicate the process has started
       toast({
         title: "Deploying to Blockchain",
@@ -504,15 +464,6 @@ export function DeployToBlockchainButton({
         // Continue the flow even if database update fails, as the blockchain deployment was successful
       }
 
-      // Record the successful transaction in the cache
-      transactionCache.recordTransaction({
-        id: cacheTransactionId,
-        type: 'deploy',
-        electionId: election.id,
-        blockchainId: blockchainElectionId,
-        completed: true
-      });
-
       toast({
         title: "Election Deployed Successfully",
         description: `Election "${election.name}" has been deployed to blockchain with ID ${blockchainElectionId} and all candidates have been registered.`,
@@ -598,8 +549,7 @@ export function DeployToBlockchainButton({
     );
   }
 
-  // Check if already deployed (either through local component state or from database)
-  if (isDeployed || election.blockchainId) {
+  if (isDeployed) {
     if (alreadyDeployedWarning) {
       return (
         <TooltipProvider>
@@ -674,29 +624,12 @@ export function DeployToBlockchainButton({
     );
   }
 
-  // Display a message when already deployed
-  if (isDeployed || alreadyDeployedWarning) {
-    return (
-      <Button
-        variant="outline"
-        size={size}
-        disabled={true}
-        className={`${className} bg-green-50 text-green-700 border-green-200`}
-      >
-        <>
-          <CheckCircle className="mr-2 h-4 w-4" />
-          Already Deployed (ID: {election.blockchainId})
-        </>
-      </Button>
-    );
-  }
-
   return (
     <Button
       variant={variant}
       size={size}
       onClick={handleDeploy}
-      disabled={isDeploying || !isInitialized || isLoadingCandidates || !hasMinimumCandidates}
+      disabled={isDeploying || !isInitialized || isLoadingCandidates}
       className={`${className} ${isDeploying ? 'bg-purple-100 text-purple-800' : ''}`}
     >
       {isDeploying ? (
@@ -708,11 +641,6 @@ export function DeployToBlockchainButton({
         <>
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           Checking Candidates...
-        </>
-      ) : !hasMinimumCandidates ? (
-        <>
-          <AlertCircle className="mr-2 h-4 w-4" />
-          Need at least 2 candidates
         </>
       ) : (
         <>
