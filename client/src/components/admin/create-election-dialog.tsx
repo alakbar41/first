@@ -113,8 +113,8 @@ export function CreateElectionDialog({ open, onOpenChange }: CreateElectionDialo
         name: data.name,
         position: data.position === "president_vp" ? "President/Vice President" : "Senator",
         description: `Election for ${data.position === "president_vp" ? "President/Vice President" : "Senator"} position`,
-        startDate: startDateIso,
-        endDate: endDateIso,
+        startTime: startDateIso,
+        endTime: endDateIso,
         // For Senator elections, use the faculty as an array. For others, use an empty array
         eligibleFaculties: data.position === "president_vp" ? [] : [data.eligibility],
         status: "upcoming", // Default status for new elections

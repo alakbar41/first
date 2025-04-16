@@ -336,9 +336,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/elections", isAdmin, async (req, res) => {
     try {
+      console.log("Received election data:", JSON.stringify(req.body, null, 2));
       const result = insertElectionSchema.safeParse(req.body);
       
       if (!result.success) {
+        console.log("Election validation failed:", JSON.stringify(result.error.format(), null, 2));
         return res.status(400).json({ 
           message: "Invalid election data", 
           errors: result.error.format() 
@@ -348,6 +350,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const election = await storage.createElection(result.data);
       res.status(201).json(election);
     } catch (error) {
+      console.error("Failed to create election:", error);
       res.status(500).json({ message: "Failed to create election" });
     }
   });
