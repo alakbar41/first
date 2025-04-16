@@ -7,6 +7,7 @@ import { useWeb3 } from "@/hooks/use-web3";
 import web3Service from '@/lib/improved-web3-service';
 import { ElectionStatus } from '@/lib/improved-web3-service';
 import { UpdateBlockchainStatusButton } from './update-blockchain-status-button';
+import { BlockchainWrapper } from '../blockchain/BlockchainWrapper';
 
 // Used to force a refresh when blockchainId changes
 const getKey = (election: Election) => `blockchain-status-${election.id}-${election.blockchainId || 'none'}`;
@@ -18,7 +19,8 @@ interface BlockchainDeploymentStatusProps {
   className?: string;
 }
 
-export function BlockchainDeploymentStatus({ 
+// Internal component that expects to be within a Web3Provider context
+function BlockchainDeploymentStatusInner({ 
   election,
   showTooltip = true,
   showDetailed = false,
@@ -336,5 +338,14 @@ export function BlockchainDeploymentStatus({
         )}
       </Tooltip>
     </TooltipProvider>
+  );
+}
+
+// Export the wrapped component to ensure Web3Provider is always present
+export function BlockchainDeploymentStatus(props: BlockchainDeploymentStatusProps) {
+  return (
+    <BlockchainWrapper>
+      <BlockchainDeploymentStatusInner {...props} />
+    </BlockchainWrapper>
   );
 }

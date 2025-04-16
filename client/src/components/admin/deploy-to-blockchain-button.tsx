@@ -15,6 +15,7 @@ import {
   TooltipProvider,
   TooltipTrigger
 } from "@/components/ui/tooltip";
+import { BlockchainWrapper } from '../blockchain/BlockchainWrapper';
 
 // Convert database election to blockchain election type
 function mapElectionTypeToBlockchain(dbPosition: string): ElectionType {
@@ -648,5 +649,14 @@ export function DeployToBlockchainButton({
         </>
       )}
     </Button>
+  );
+}
+
+// Export the wrapped component with blockchain context
+export function DeployToBlockchainButtonWithWeb3(props: DeployToBlockchainButtonProps) {
+  return (
+    <BlockchainWrapper>
+      <DeployToBlockchainButton {...props} />
+    </BlockchainWrapper>
   );
 }
