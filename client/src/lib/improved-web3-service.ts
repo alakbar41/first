@@ -664,24 +664,30 @@ Technical error: ${gasError.message}`);
     }
   }
 
-  // Try to activate an election using the autoUpdateElectionStatus function
+  // Try to activate an election using the updateElectionStatus function
   // This is more reliable than direct activation as it has fewer restrictions
   /**
    * Automatically update an election's status based on its time bounds.
-   * This is a public function that calls the contract's autoUpdateElectionStatus function
+   * This is a public function that calls the contract's updateElectionStatus function
    * which performs automatic state transitions based on current time.
    * 
    * This function can be used to fix elections that are stuck in incorrect states.
    * 
    * @param electionId The ID of the election to update
    */
+  /**
+   * Updates the status of an election automatically based on current time
+   * This calls the contract's updateElectionStatus function which automatically
+   * determines the correct status based on the current time
+   * @param electionId - The ID of the election to update
+   */
   async autoUpdateElectionStatus(electionId: number): Promise<void> {
     try {
       await this.initializeIfNeeded();
 
-      console.log(`Running full election status auto-update for election ${electionId}`);
+      console.log(`Running election status auto-update for election ${electionId}`);
 
-      // First, check the election's current status
+      // Check the election's current status
       const electionDetails = await this.getElectionDetails(electionId);
       console.log(`Current election status: ${electionDetails.status}`);
       console.log(`Start time: ${new Date(electionDetails.startTime * 1000).toLocaleString()}`);
@@ -691,84 +697,55 @@ Technical error: ${gasError.message}`);
       const currentTime = Math.floor(Date.now() / 1000);
       console.log(`Current time: ${new Date(currentTime * 1000).toLocaleString()}`);
 
-      // Calculate target status based on time
-      let targetStatus: ElectionStatus;
-
+      // Calculate expected status based on time (for logging purposes only)
+      let expectedStatus: ElectionStatus;
       if (currentTime < electionDetails.startTime) {
-        targetStatus = ElectionStatus.Pending;
+        expectedStatus = ElectionStatus.Pending;
         console.log(`Election should be in Pending state (current time before start time)`);
       } else if (currentTime <= electionDetails.endTime) {
-        targetStatus = ElectionStatus.Active;
+        expectedStatus = ElectionStatus.Active;
         console.log(`Election should be in Active state (current time between start and end time)`);
       } else {
-        targetStatus = ElectionStatus.Completed;
+        expectedStatus = ElectionStatus.Completed;
         console.log(`Election should be in Completed state (current time after end time)`);
       }
 
-      // If already in the correct state, nothing to do
-      if (electionDetails.status === targetStatus) {
-        console.log(`Election ${electionId} is already in the correct state (${targetStatus}). No action needed.`);
+      // If already in the expected state, nothing to do
+      if (electionDetails.status === expectedStatus) {
+        console.log(`Election ${electionId} is already in the correct state (${expectedStatus}). No action needed.`);
         return;
       }
 
-      console.log(`Election ${electionId} should be in state ${targetStatus} but is in state ${electionDetails.status}. Attempting to update...`);
+      console.log(`Election ${electionId} should be in state ${expectedStatus} but is in state ${electionDetails.status}. Calling updateElectionStatus...`);
 
       // Use moderate gas settings for updating election status
       const options = {
-        gasLimit: 750000, // Sufficient gas limit for auto-updating election status
+        gasLimit: 750000, // Sufficient gas limit for updating election status
         maxPriorityFeePerGas: ethers.parseUnits("3.0", "gwei"), // Moderate priority fee
         maxFeePerGas: ethers.parseUnits("12.0", "gwei"), // Reasonable max fee
         type: 2, // Use EIP-1559 transaction type
       };
 
-      // First try using autoUpdateElectionStatus
+      // Call the updateElectionStatus function with just the electionId parameter
+      // This function takes only one parameter according to the ABI
       try {
-        console.log(`Trying autoUpdateElectionStatus first...`);
-        const tx = await this.contract.autoUpdateElectionStatus(electionId, options);
-        console.log(`Auto-update transaction sent: ${tx.hash}`);
+        console.log(`Calling updateElectionStatus(${electionId})...`);
+        const tx = await this.contract.updateElectionStatus(electionId, options);
+        console.log(`Update transaction sent: ${tx.hash}`);
 
         const receipt = await tx.wait(2);
-        console.log(`Auto-update transaction confirmed:`, receipt);
+        console.log(`Update transaction confirmed:`, receipt);
 
-        // Check if the status was updated
+        // Check if the status was updated as expected
         const updatedDetails = await this.getElectionDetails(electionId);
-        if (updatedDetails.status === targetStatus) {
-          console.log(`Successfully updated election ${electionId} status to ${targetStatus} using autoUpdateElectionStatus.`);
-          return;
-        }
-
-        console.log(`Auto-update method did not change status to ${targetStatus}. Current status: ${updatedDetails.status}. Trying direct method...`);
-      } catch (autoError) {
-        console.error(`Auto-update method failed:`, autoError);
-        console.log(`Falling back to direct method...`);
-      }
-
-      // If auto-update didn't work, try direct method
-      try {
-        console.log(`Trying direct updateElectionStatus with status=${targetStatus}...`);
-        const directOptions = {
-          gasLimit: 1000000, // Sufficient gas limit for direct status updates
-          maxPriorityFeePerGas: ethers.parseUnits("4.0", "gwei"), // Moderate priority fee for important operations
-          maxFeePerGas: ethers.parseUnits("15.0", "gwei"), // Reasonable max fee for important operations
-          type: 2, // Use EIP-1559 transaction type
-        };
-
-        const directTx = await this.contract.updateElectionStatus(electionId, targetStatus, directOptions);
-        console.log(`Direct update transaction sent: ${directTx.hash}`);
-
-        const directReceipt = await directTx.wait(2);
-        console.log(`Direct update transaction confirmed:`, directReceipt);
-
-        // Verify the result
-        const finalDetails = await this.getElectionDetails(electionId);
-        if (finalDetails.status === targetStatus) {
-          console.log(`Successfully updated election ${electionId} status to ${targetStatus} using direct method.`);
+        if (updatedDetails.status === expectedStatus) {
+          console.log(`Successfully updated election ${electionId} status to ${expectedStatus}.`);
         } else {
-          console.warn(`Failed to update election ${electionId} status. Current status: ${finalDetails.status}, Target status: ${targetStatus}`);
+          console.log(`Updated election ${electionId}, current status: ${updatedDetails.status} (expected: ${expectedStatus})`);
         }
-      } catch (directError: unknown) {
-        console.error(`Direct update method failed:`, directError);
-        const errorMessage = directError instanceof Error ? directError.message : 'Unknown error';
+      } catch (error: unknown) {
+        console.error(`updateElectionStatus call failed:`, error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         throw new Error(`Failed to update election status: ${errorMessage}`);
       }
     } catch (error: unknown) {
@@ -809,13 +786,13 @@ Technical error: ${gasError.message}`);
         return false;
       }
 
-      // Call the autoUpdateElectionStatus function
-      const tx = await this.contract.autoUpdateElectionStatus(electionId, options);
-      console.log(`Auto-update transaction sent: ${tx.hash}`);
+      // Call the updateElectionStatus function
+      const tx = await this.contract.updateElectionStatus(electionId, options);
+      console.log(`Update election status transaction sent: ${tx.hash}`);
 
       // Wait for confirmations
       const receipt = await tx.wait(2);
-      console.log(`Auto-update transaction confirmed:`, receipt);
+      console.log(`Update election status transaction confirmed:`, receipt);
 
       // Check if activation was successful by comparing before and after status
       const updatedDetails = await this.getElectionDetails(electionId);
@@ -1651,60 +1628,89 @@ Technical error: ${gasError.message}`);
         };
       }
 
+      // First, try to update the election status to ensure it's current
+      console.log(`Updating election ${electionId} status`);
       try {
-        // First, try to check if the election exists by accessing the elections mapping directly
-        // This is more reliable than getElectionDetails which might have encoding issues
-        console.log(`Checking if election ${electionId} exists by accessing elections mapping`);
-        const electionStruct = await this.contract.elections(electionId);
-
-        // If we get here without error, the election exists, so we can safely call getElectionDetails
-        console.log(`Election ${electionId} exists in contract, fetching details`);
-        const details = await this.contract.getElectionDetails(electionId);
-
-        return {
-          id: Number(details[0]),
-          electionType: Number(details[1]),
-          status: Number(details[2]),
-          startTime: Number(details[3]),
-          endTime: Number(details[4]),
-          totalVotesCast: Number(details[5]),
-          resultsFinalized: details[6]
-        };
-      } catch (contractError) {
-        console.warn(`Error accessing election ${electionId} data:`, contractError);
-        console.log(`Falling back to direct elections mapping`);
-
+        // This function only takes one parameter (electionId)
+        await this.contract.updateElectionStatus(electionId);
+        console.log(`Successfully updated election ${electionId} status`);
+      } catch (updateError) {
+        // Log but continue - the election might not exist or we might not have permission
+        console.warn(`Could not update election ${electionId} status:`, updateError);
+      }
+      
+      // Get election information using available functions from the official ABI
+      let electionExists = false;
+      let electionType = ElectionType.Senator; // Default
+      let status = ElectionStatus.Pending; // Default
+      let startTime = 0;
+      let endTime = 0;
+      let totalVotesCast = 0;
+      let resultsFinalized = false;
+      
+      // Try to get the election status using methods from the official ABI
+      try {
+        // Get the election status directly from the contract
+        status = await this.contract.getElectionStatus(electionId);
+        electionExists = true;
+        console.log(`Successfully got status for election ${electionId}: ${status}`);
+          
+        // Try to get other election details if possible
         try {
-          // Try to access the raw election struct directly
-          const electionData = await this.contract.elections(electionId);
-          console.log(`Raw election data from elections mapping:`, electionData);
-
-          // Parse the struct fields based on the ABI
-          return {
-            id: Number(electionData.id),
-            electionType: Number(electionData.electionType),
-            status: Number(electionData.status),
-            startTime: Number(electionData.startTime),
-            endTime: Number(electionData.endTime),
-            totalVotesCast: Number(electionData.totalVotesCast),
-            resultsFinalized: Boolean(electionData.resultsFinalized)
-          };
-        } catch (fallbackError) {
-          console.error(`Fallback also failed for election ${electionId}:`, fallbackError);
-          console.warn(`Election ${electionId} likely doesn't exist on the blockchain`);
-
-          // Return a default election with error indicators
-          return {
-            id: electionId,
-            electionType: ElectionType.Senator, 
-            status: ElectionStatus.Pending,
-            startTime: 0,
-            endTime: 0,
-            totalVotesCast: 0,
-            resultsFinalized: false
-          };
+          const electionStartTime = await this.contract.getElectionStartTime(electionId);
+          startTime = Number(electionStartTime);
+          console.log(`Successfully got start time for election ${electionId}: ${startTime}`);
+        } catch (timeError) {
+          console.warn(`Could not get start time for election ${electionId}:`, timeError);
+        }
+          
+        try {
+          const electionEndTime = await this.contract.getElectionEndTime(electionId);
+          endTime = Number(electionEndTime);
+          console.log(`Successfully got end time for election ${electionId}: ${endTime}`);
+        } catch (timeError) {
+          console.warn(`Could not get end time for election ${electionId}:`, timeError);
+        }
+      } catch (statusError) {
+        console.warn(`Could not get status for election ${electionId}:`, statusError);
+        
+        // Try an alternative method to check if the election exists
+        try {
+          // If we can get candidates, the election must exist
+          const candidates = await this.contract.getElectionCandidates(electionId);
+          if (candidates) {
+            electionExists = true;
+            console.log(`Election ${electionId} exists (has candidates)`);
+          }
+        } catch (candidatesError) {
+          console.warn(`Could not get candidates for election ${electionId}:`, candidatesError);
         }
       }
+              
+      // If we confirmed the election exists, return with the details we found
+      if (electionExists) {
+        return {
+          id: electionId,
+          electionType: electionType,
+          status: status,
+          startTime: startTime,
+          endTime: endTime,
+          totalVotesCast: totalVotesCast,
+          resultsFinalized: resultsFinalized
+        };
+      }
+      
+      // If we couldn't confirm the election exists, return default values
+      console.warn(`Election ${electionId} likely doesn't exist on the blockchain`);
+      return {
+        id: electionId,
+        electionType: ElectionType.Senator, 
+        status: ElectionStatus.Pending,
+        startTime: 0,
+        endTime: 0,
+        totalVotesCast: 0,
+        resultsFinalized: false
+      };
     } catch (error) {
       console.error(`Failed to get election details for ID ${electionId}:`, error);
       // Return a default election object instead of throwing an error
