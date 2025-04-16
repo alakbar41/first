@@ -6,76 +6,65 @@ let transporter;
 // Create our transporter based on configuration
 function createTransporter() {
   // Check for required email credentials
-  if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-    try {
-      // Create Gmail transporter
-      transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS
-        },
-        // Required for better compatibility with Gmail
-        tls: {
-          rejectUnauthorized: false
-        }
-      });
-      
-      console.log("Email service initialized with Gmail account:", process.env.EMAIL_USER);
-      
-      // Verify connection
-      transporter.verify(function(error, success) {
-        if (error) {
-          console.error("Email verification error:", error);
-          console.log("Falling back to Ethereal for development...");
-          createTestAccount();
-        } else {
-          console.log("Email server is ready to send messages");
-        }
-      });
-    } catch (error) {
-      console.error("Error setting up Gmail transporter:", error);
-      createTestAccount();
-    }
-  } else {
-    console.log("EMAIL_USER and EMAIL_PASS environment variables not found");
-    createTestAccount();
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    console.error("Missing required environment variables: EMAIL_USER and EMAIL_PASS");
+    console.log("Creating fallback console logger for development...");
+    // Create fallback logger transporter
+    transporter = {
+      sendMail: async (mailOptions) => {
+        console.log("\n=== DEVELOPMENT MODE - EMAIL WOULD BE SENT ===");
+        console.log(`To: ${mailOptions.to}`);
+        console.log(`Subject: ${mailOptions.subject}`);
+        console.log(`OTP Code: ${mailOptions.text.split(': ')[1]?.split('.')[0]}`);
+        console.log("============================================\n");
+        return { messageId: 'dev-mode-no-transport' };
+      }
+    };
+    return;
+  }
+
+  try {
+    // Create Gmail transporter
+    transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      },
+      tls: {
+        rejectUnauthorized: false
+      }
+    });
+
+    console.log("Email service initialized with Gmail account:", process.env.EMAIL_USER);
+
+    // Verify connection
+    transporter.verify(function(error, success) {
+      if (error) {
+        console.error("Email verification error:", error);
+        createFallbackLogger();
+      } else {
+        console.log("Email server is ready to send messages");
+      }
+    });
+  } catch (error) {
+    console.error("Error setting up Gmail transporter:", error);
+    createFallbackLogger();
   }
 }
 
-// Fallback to Ethereal for development
-async function createTestAccount() {
-  try {
-    // Generate Ethereal test account
-    const testAccount = await nodemailer.createTestAccount();
-    
-    console.log("Created Ethereal test account:", testAccount.user);
-    
-    // Create reusable transporter with test account
-    transporter = nodemailer.createTransport({
-      host: "smtp.ethereal.email",
-      port: 587,
-      secure: false,
-      auth: {
-        user: testAccount.user,
-        pass: testAccount.pass,
-      },
-    });
-    
-    console.log("Email service initialized with Ethereal test account");
-  } catch (error) {
-    console.error("Failed to create any email transport:", error);
-    // Last resort fallback to console logging
-    transporter = {
-      sendMail: async (mailOptions) => {
-        console.log("DEVELOPMENT MODE - EMAIL WOULD BE SENT:");
-        console.log(`To: ${mailOptions.to}`);
-        console.log(`Subject: ${mailOptions.subject}`);
-        console.log(`OTP Code: ${mailOptions.text.split(': ')[1].split('.')[0]}`);
-        return { messageId: 'test-message-id' };
-      }
-    };
-  }
+function createFallbackLogger() {
+  console.log("Creating fallback console logger...");
+  transporter = {
+    sendMail: async (mailOptions) => {
+      console.log("\n=== DEVELOPMENT MODE - EMAIL WOULD BE SENT ===");
+      console.log(`To: ${mailOptions.to}`);
+      console.log(`Subject: ${mailOptions.subject}`);
+      console.log(`OTP Code: ${mailOptions.text.split(': ')[1]?.split('.')[0]}`);
+      console.log("============================================\n");
+      return { messageId: 'dev-mode-no-transport' };
+    }
+  };
 }
 
 // Initialize transporter
@@ -83,9 +72,8 @@ createTransporter();
 
 export const mailer = {
   async sendOtp(to, otp) {
-    // Ensure transporter is available before attempting to send
     if (!transporter) {
-      console.log("Transporter not initialized yet, creating a temporary one for logging OTP");
+      console.log("Transporter not initialized, logging OTP for development");
       console.log(`DEVELOPMENT MODE - OTP for ${to} is: ${otp}`);
       return { messageId: 'dev-mode-no-transport' };
     }
@@ -118,17 +106,11 @@ export const mailer = {
 
       const info = await transporter.sendMail(mailOptions);
       console.log("Email sent:", info.messageId);
-      
-      // If using Ethereal, log preview URL
-      if (transporter.options && transporter.options.host === "smtp.ethereal.email") {
-        console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info));
-      }
-      
       return info;
     } catch (error) {
       console.error("Error sending email:", error);
-      console.log(`ERROR, but OTP for ${to} is: ${otp}`);
-      // In development, don't fail the registration flow even if email sending fails
+      // Log the OTP to console in development
+      console.log(`Failed to send email. OTP for ${to} is: ${otp}`);
       return { messageId: 'error-fallback' };
     }
   }
