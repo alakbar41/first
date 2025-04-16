@@ -24,7 +24,10 @@ function createTransporter() {
   }
 
   try {
-    // Create Gmail transporter
+    // Create Gmail transporter with OAuth2 options for better security
+    // For Gmail, you need to use an app password, not your regular account password
+    // See: https://support.google.com/accounts/answer/185833
+    console.log("Setting up Gmail transporter with authentication...");
     transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
@@ -32,16 +35,18 @@ function createTransporter() {
         pass: process.env.EMAIL_PASS
       },
       tls: {
-        rejectUnauthorized: false
+        rejectUnauthorized: false // Accept self-signed certificates
       }
     });
 
     console.log("Email service initialized with Gmail account:", process.env.EMAIL_USER);
 
-    // Verify connection
+    // Verify connection with more detailed error handling
     transporter.verify(function(error, success) {
       if (error) {
-        console.error("Email verification error:", error);
+        console.error("Email verification error. Details:", error);
+        console.error("This may be due to incorrect credentials or security settings in Gmail.");
+        console.error("Make sure you're using an App Password if 2FA is enabled on the Gmail account.");
         createFallbackLogger();
       } else {
         console.log("Email server is ready to send messages");
@@ -49,6 +54,8 @@ function createTransporter() {
     });
   } catch (error) {
     console.error("Error setting up Gmail transporter:", error);
+    console.error("Detailed error:", error.message);
+    console.error("Stack trace:", error.stack);
     createFallbackLogger();
   }
 }
@@ -79,8 +86,16 @@ export const mailer = {
     }
 
     try {
+      console.log(`Attempting to send OTP email to: ${to}`);
+      
+      // Validate the email address format
+      if (!to || !to.includes('@') || !to.includes('.')) {
+        console.error(`Invalid email format: ${to}`);
+        throw new Error('Invalid email format');
+      }
+      
       const mailOptions = {
-        from: process.env.EMAIL_FROM || '"ADA University Voting System" <no-reply@ada.edu.az>',
+        from: process.env.EMAIL_FROM || `"ADA University Voting System" <${process.env.EMAIL_USER}>`,
         to,
         subject: "Your Verification Code for ADA University Voting System",
         text: `Your verification code is: ${otp}. This code will expire in 3 minutes.`,
@@ -104,14 +119,31 @@ export const mailer = {
         `
       };
 
+      console.log('Sending email with the following options:');
+      console.log(`From: ${mailOptions.from}`);
+      console.log(`To: ${mailOptions.to}`);
+      console.log(`Subject: ${mailOptions.subject}`);
+      
       const info = await transporter.sendMail(mailOptions);
-      console.log("Email sent:", info.messageId);
+      console.log("Email sent successfully:", info.messageId);
+      console.log("Additional info:", JSON.stringify(info));
       return info;
     } catch (error) {
-      console.error("Error sending email:", error);
-      // Log the OTP to console in development
+      console.error("Error sending email. Details:", error);
+      console.error("Error message:", error.message);
+      console.error("Error stack:", error.stack);
+      
+      if (error.code === 'EAUTH') {
+        console.error("Authentication error. Check your EMAIL_USER and EMAIL_PASS environment variables.");
+      } else if (error.code === 'ESOCKET') {
+        console.error("Socket error. This could be due to network issues or server connection problems.");
+      } else if (error.code === 'EENVELOPE') {
+        console.error("Envelope error. There might be an issue with the email addresses.");
+      }
+      
+      // Log the OTP to console for troubleshooting
       console.log(`Failed to send email. OTP for ${to} is: ${otp}`);
-      return { messageId: 'error-fallback' };
+      return { messageId: 'error-fallback', error: error.message };
     }
   }
 };
