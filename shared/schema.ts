@@ -145,6 +145,13 @@ export const insertPendingUserSchema = createInsertSchema(pendingUsers).extend({
 export const insertElectionSchema = createInsertSchema(elections).omit({
   id: true,
   createdAt: true,
+}).extend({
+  startTime: z.union([z.date(), z.string().refine(val => !isNaN(Date.parse(val)), {
+    message: 'startTime must be a valid date string',
+  })]),
+  endTime: z.union([z.date(), z.string().refine(val => !isNaN(Date.parse(val)), {
+    message: 'endTime must be a valid date string',
+  })])
 });
 export const insertCandidateSchema = createInsertSchema(candidates).omit({
   id: true,
