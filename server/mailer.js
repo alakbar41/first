@@ -1,58 +1,71 @@
+
 import nodemailer from "nodemailer";
 
-// Create a direct nodemailer transport with the simplest configuration
+// Create reusable transporter with more robust configuration
 const transporter = nodemailer.createTransport({
-  service: 'gmail',  // Using 'gmail' as the service identifier
+  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 587,
+  secure: false,
   auth: {
     user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS  // This should be an App Password for Gmail with 2FA
+    pass: process.env.EMAIL_PASS
+  },
+  tls: {
+    rejectUnauthorized: false
   }
 });
 
-console.log(`Nodemailer configured with email: ${process.env.EMAIL_USER}`);
+// Verify connection configuration
+transporter.verify(function(error, success) {
+  if (error) {
+    console.error('SMTP connection error:', error);
+  } else {
+    console.log("SMTP server is ready to send emails");
+  }
+});
 
-// Export the mailer object with a sendOtp method
 export const mailer = {
   async sendOtp(to, otp) {
     console.log(`Preparing to send OTP email to: ${to}`);
     
     try {
-      // Define email content
+      // Define email content with improved styling
       const mailOptions = {
-        from: `ADA University Voting <${process.env.EMAIL_USER}>`,
+        from: `"ADA University Voting" <${process.env.EMAIL_USER}>`,
         to,
         subject: "Your Verification Code",
         text: `Your verification code is: ${otp}. This code will expire in 3 minutes.`,
         html: `
-          <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 5px;">
-            <h2 style="color: #005A9C; text-align: center;">Verification Code</h2>
-            <p>Thank you for registering with the ADA University Voting System.</p>
-            <div style="background-color: #f5f5f5; padding: 15px; text-align: center; margin: 20px 0;">
-              <p style="font-size: 24px; font-weight: bold; margin: 0;">${otp}</p>
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 5px;">
+            <div style="text-align: center; padding: 20px;">
+              <h2 style="color: #005A9C; margin: 0;">Verification Code</h2>
             </div>
-            <p>This code will expire in <strong>3 minutes</strong>.</p>
+            <p style="color: #666; font-size: 16px;">Thank you for registering with the ADA University Voting System.</p>
+            <div style="background-color: #f5f5f5; padding: 20px; text-align: center; margin: 20px 0; border-radius: 5px;">
+              <p style="font-size: 32px; font-weight: bold; margin: 0; color: #005A9C; letter-spacing: 5px;">${otp}</p>
+            </div>
+            <p style="color: #666; font-size: 14px;">This code will expire in <strong>3 minutes</strong>.</p>
+            <p style="color: #888; font-size: 12px; text-align: center; margin-top: 20px;">If you didn't request this code, please ignore this email.</p>
           </div>
         `
       };
       
-      // Send the email
+      // Send the email with better error handling
       const info = await transporter.sendMail(mailOptions);
       console.log(`Email sent successfully! Message ID: ${info.messageId}`);
       return info;
       
     } catch (error) {
-      console.error(`FAILED to send email: ${error.message}`);
+      console.error('Email sending failed:', error);
       
-      // Show detailed error info for debugging
       if (error.code === 'EAUTH') {
-        console.error("Gmail authentication failed - check EMAIL_USER and EMAIL_PASS");
-        console.error("For Gmail with 2FA, you MUST use an App Password");
+        console.error('Gmail authentication failed. Make sure to:');
+        console.error('1. Use an App Password if 2FA is enabled');
+        console.error('2. Enable "Less secure app access" if not using 2FA');
+        console.error('3. Check EMAIL_USER and EMAIL_PASS environment variables');
       }
       
-      // Log the OTP (just for testing)
-      console.log(`The OTP that would have been sent to ${to} is: ${otp}`);
-      
-      // Re-throw to be handled by caller
       throw error;
     }
   }
