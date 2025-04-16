@@ -894,11 +894,11 @@ Technical error: ${gasError.message}`);
 
       console.log(`Auto-update method did not activate election. Falling back to direct activation...`);
 
-      // Use ultra-high gas settings to ensure transaction success on Polygon Amoy
+      // Use optimized gas settings for activation on Polygon Amoy
       const options = {
         gasLimit: 600000, // Moderate gas limit for election activation 
-        maxPriorityFeePerGas: ethers.parseUnits("30.0", "gwei"), // Very high priority fee
-        maxFeePerGas: ethers.parseUnits("70.0", "gwei"), // Very high max fee
+        maxPriorityFeePerGas: ethers.parseUnits("4.0", "gwei"), // Moderate priority fee for activation
+        maxFeePerGas: ethers.parseUnits("15.0", "gwei"), // Reasonable max fee for activation
         type: 2, // Use EIP-1559 transaction type
       };
 
@@ -1114,11 +1114,11 @@ Technical error: ${gasError.message}`);
         throw new Error('Wallet not connected. Please connect your MetaMask wallet first.');
       }
 
-      // Use ultra-high gas settings to ensure transaction success on Polygon Amoy
+      // Use optimized gas settings for stopping an election on Polygon Amoy
       const options = {
         gasLimit: 600000, // Moderate gas limit optimized for operations
-        maxPriorityFeePerGas: ethers.parseUnits("30.0", "gwei"), // Very high priority fee
-        maxFeePerGas: ethers.parseUnits("70.0", "gwei"), // Very high max fee
+        maxPriorityFeePerGas: ethers.parseUnits("4.0", "gwei"), // Moderate priority fee for important operations
+        maxFeePerGas: ethers.parseUnits("15.0", "gwei"), // Reasonable max fee for important operations
         type: 2, // Use EIP-1559 transaction type
       };
 
