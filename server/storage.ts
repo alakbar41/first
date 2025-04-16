@@ -942,8 +942,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createElection(election: InsertElection): Promise<Election> {
+    // Convert string dates to Date objects if needed
+    let processedElection = { ...election };
+    
+    // Handle startTime
+    if (typeof processedElection.startTime === 'string') {
+      processedElection.startTime = new Date(processedElection.startTime);
+    }
+    
+    // Handle endTime
+    if (typeof processedElection.endTime === 'string') {
+      processedElection.endTime = new Date(processedElection.endTime);
+    }
+    
     const result = await db.insert(elections).values({
-      ...election,
+      ...processedElection,
       createdAt: new Date()
     }).returning();
     return result[0];
@@ -1028,14 +1041,14 @@ export class DatabaseStorage implements IStorage {
     const updateData: any = { ...election };
     
     // Only handle dates if they're present in the update
-    if (election.startDate) {
-      updateData.startDate = election.startDate instanceof Date ? 
-        election.startDate : new Date(election.startDate as string);
+    if (election.startTime) {
+      updateData.startTime = election.startTime instanceof Date ? 
+        election.startTime : new Date(election.startTime as string);
     }
     
-    if (election.endDate) {
-      updateData.endDate = election.endDate instanceof Date ? 
-        election.endDate : new Date(election.endDate as string);
+    if (election.endTime) {
+      updateData.endTime = election.endTime instanceof Date ? 
+        election.endTime : new Date(election.endTime as string);
     }
     
     const updated = await db.update(elections)
