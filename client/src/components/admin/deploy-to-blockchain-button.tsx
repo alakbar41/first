@@ -338,6 +338,36 @@ export function DeployToBlockchainButton({
         await connectWallet();
       }
 
+      // Import full transaction cache module
+      const transactionCache = await import('@/lib/blockchain-transaction-cache');
+
+      // Check if this election has already been deployed by this browser
+      const cacheTransactionId = `deploy-election-${election.id}`;
+      if (transactionCache.isTransactionCompleted(cacheTransactionId)) {
+        console.log(`Election ${election.id} has already been deployed by this browser. Skipping deployment.`);
+        toast({
+          title: "Already Deployed",
+          description: `Election "${election.name}" has already been deployed from this browser. The database may need to be updated with the blockchain ID.`,
+          duration: 5000,
+        });
+        
+        // If it's already deployed but the database doesn't have the blockchain ID,
+        // we can try to look it up and update the database
+        if (!election.blockchainId) {
+          // This would require a way to look up the election ID based on other details
+          // For now, we'll just notify the user to manually check
+          toast({
+            title: "Database Needs Update",
+            description: "Your election appears to be already deployed to blockchain but the database doesn't have the blockchain ID. Please check the admin panel for more details.",
+            duration: 8000,
+          });
+        }
+        
+        setIsDeployed(true);
+        setIsDeploying(false);
+        return;
+      }
+
       // Toast to indicate the process has started
       toast({
         title: "Deploying to Blockchain",
@@ -463,6 +493,15 @@ export function DeployToBlockchainButton({
         console.error('Error updating election with blockchain ID:', error);
         // Continue the flow even if database update fails, as the blockchain deployment was successful
       }
+
+      // Record the successful transaction in the cache
+      transactionCache.recordTransaction({
+        id: cacheTransactionId,
+        type: 'deploy',
+        electionId: election.id,
+        blockchainId: blockchainElectionId,
+        completed: true
+      });
 
       toast({
         title: "Election Deployed Successfully",
