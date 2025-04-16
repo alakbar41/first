@@ -838,7 +838,7 @@ Technical error: ${gasError.message}`);
       const nonce = await provider.getTransactionCount(walletAddress);
       console.log(`Retrieved nonce ${nonce} for wallet ${walletAddress} directly from provider`);
 
-      console.log`Starting election ${electionId} with custom gas settings and nonce ${nonce}`);
+      console.log(`Starting election ${electionId} with custom gas settings and nonce ${nonce}`);
 
       // Use populateTransaction to separate contract parameters from transaction options
       const tx = await contract.updateElectionStatus.populateTransaction(
