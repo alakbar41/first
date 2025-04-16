@@ -25,12 +25,16 @@ const STORAGE_KEY = 'blockchain_transactions';
 export function getCachedTransactions(): BlockchainTransaction[] {
   try {
     const data = localStorage.getItem(STORAGE_KEY);
+    console.log('Raw blockchain transaction cache data:', data);
     if (data) {
-      return JSON.parse(data);
+      const parsed = JSON.parse(data);
+      console.log('Parsed blockchain transactions:', parsed);
+      return parsed;
     }
   } catch (error) {
     console.error('Failed to parse cached transactions:', error);
   }
+  console.log('No blockchain transactions found in cache');
   return [];
 }
 
@@ -39,7 +43,14 @@ export function getCachedTransactions(): BlockchainTransaction[] {
  */
 function saveTransactions(transactions: BlockchainTransaction[]): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions));
+    console.log('Saving transactions to cache:', transactions);
+    const dataToSave = JSON.stringify(transactions);
+    console.log('Stringified data to save:', dataToSave);
+    localStorage.setItem(STORAGE_KEY, dataToSave);
+    
+    // Verify data was saved correctly
+    const savedData = localStorage.getItem(STORAGE_KEY);
+    console.log('Verification - Data saved to localStorage:', savedData);
   } catch (error) {
     console.error('Failed to save transactions to cache:', error);
   }
@@ -49,10 +60,13 @@ function saveTransactions(transactions: BlockchainTransaction[]): void {
  * Record a completed transaction
  */
 export function recordTransaction(transaction: Omit<BlockchainTransaction, 'timestamp' | 'status'> & { status?: 'pending' | 'success' | 'failed' }): void {
+  console.log(`Recording transaction to cache: ${transaction.id} (election: ${transaction.electionId}, type: ${transaction.type})`);
+  
   const transactions = getCachedTransactions();
   
   // Check if transaction already exists
   const existingIndex = transactions.findIndex(t => t.id === transaction.id);
+  console.log(`Transaction ${transaction.id} exists in cache: ${existingIndex >= 0}`);
   
   const fullTransaction: BlockchainTransaction = {
     ...transaction,
@@ -62,17 +76,25 @@ export function recordTransaction(transaction: Omit<BlockchainTransaction, 'time
   
   if (existingIndex >= 0) {
     // Update existing transaction
+    console.log(`Updating existing transaction in cache: ${transaction.id}`);
     transactions[existingIndex] = {
       ...transactions[existingIndex],
       ...fullTransaction
     };
   } else {
     // Add new transaction
+    console.log(`Adding new transaction to cache: ${transaction.id}`);
     transactions.push(fullTransaction);
   }
   
   // Save updated transactions
   saveTransactions(transactions);
+  
+  // Verify the transaction was saved correctly
+  setTimeout(() => {
+    const saved = isTransactionCompleted(transaction.id);
+    console.log(`Verification - Transaction ${transaction.id} saved correctly: ${saved}`);
+  }, 100);
 }
 
 /**

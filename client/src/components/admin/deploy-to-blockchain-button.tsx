@@ -106,12 +106,24 @@ export function DeployToBlockchainButton({
   const hasMinimumCandidates = electionCandidates.length >= 2;
 
   // Set initial state based on whether the election already has a blockchain ID
+  // or if we have a cached transaction for this election
   useEffect(() => {
     if (election.blockchainId) {
       setIsDeployed(true);
       setAlreadyDeployedWarning(true);
     }
-  }, [election.blockchainId]);
+    
+    // Check if this election has been deployed according to our transaction cache
+    const cacheTransactionId = `deploy-election-${election.id}`;
+    const isCompletedInCache = transactionCache.isTransactionCompleted(cacheTransactionId);
+    
+    console.log(`Election ${election.id} deployment status in cache:`, isCompletedInCache);
+    
+    if (isCompletedInCache) {
+      console.log(`Election ${election.id} found as deployed in browser cache`);
+      setIsDeployed(true);
+    }
+  }, [election.id, election.blockchainId]);
 
   // Separate the wallet connection from deployment
   const connectMetamaskWallet = async (): Promise<boolean> => {
@@ -338,9 +350,6 @@ export function DeployToBlockchainButton({
       if (!isWalletConnected) {
         await connectWallet();
       }
-
-      // Import full transaction cache module
-      const transactionCache = await import('@/lib/blockchain-transaction-cache');
 
       // Check if this election has already been deployed by this browser
       const cacheTransactionId = `deploy-election-${election.id}`;
