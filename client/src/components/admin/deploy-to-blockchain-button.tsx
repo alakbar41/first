@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { useWeb3 } from "@/hooks/use-web3";
 import { useToast } from "@/hooks/use-toast";
-import { ServerIcon, Loader2, AlertTriangle, Info, Users } from "lucide-react";
+import { ServerIcon, Loader2, AlertTriangle, Info, Users, CheckCircle, AlertCircle } from "lucide-react";
 import { Election } from "@shared/schema";
 import { ElectionType } from '@/lib/improved-web3-service';
 import web3Service from '@/lib/improved-web3-service';
@@ -89,8 +89,8 @@ export function DeployToBlockchainButton({
   const { isInitialized, isWalletConnected, connectWallet } = useWeb3();
   const { toast } = useToast();
   const [isDeploying, setIsDeploying] = useState(false);
-  const [isDeployed, setIsDeployed] = useState(false);
-  const [alreadyDeployedWarning, setAlreadyDeployedWarning] = useState(false);
+  const [isDeployed, setIsDeployed] = useState(!!election.blockchainId);
+  const [alreadyDeployedWarning, setAlreadyDeployedWarning] = useState(!!election.blockchainId);
 
   // Fetch election candidates to verify minimum candidate count
   const { data: electionCandidates = [], isLoading: isLoadingCandidates } = useQuery({
@@ -625,12 +625,29 @@ export function DeployToBlockchainButton({
     );
   }
 
+  // Display a message when already deployed
+  if (isDeployed || alreadyDeployedWarning) {
+    return (
+      <Button
+        variant="outline"
+        size={size}
+        disabled={true}
+        className={`${className} bg-green-50 text-green-700 border-green-200`}
+      >
+        <>
+          <CheckCircle className="mr-2 h-4 w-4" />
+          Already Deployed (ID: {election.blockchainId})
+        </>
+      </Button>
+    );
+  }
+
   return (
     <Button
       variant={variant}
       size={size}
       onClick={handleDeploy}
-      disabled={isDeploying || !isInitialized || isLoadingCandidates}
+      disabled={isDeploying || !isInitialized || isLoadingCandidates || !hasMinimumCandidates}
       className={`${className} ${isDeploying ? 'bg-purple-100 text-purple-800' : ''}`}
     >
       {isDeploying ? (
@@ -642,6 +659,11 @@ export function DeployToBlockchainButton({
         <>
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           Checking Candidates...
+        </>
+      ) : !hasMinimumCandidates ? (
+        <>
+          <AlertCircle className="mr-2 h-4 w-4" />
+          Need at least 2 candidates
         </>
       ) : (
         <>

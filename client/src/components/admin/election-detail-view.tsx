@@ -15,6 +15,7 @@ interface ElectionDetailViewProps {
 
 export function AdminElectionDetailView({ election, className = "" }: ElectionDetailViewProps) {
   const [blockchainId, setBlockchainId] = useState<number | null>(election.blockchainId || null);
+  const { toast } = useToast();
   
   // Helper function to format dates with validation
   function formatDate(dateString: string | Date) {
@@ -108,7 +109,7 @@ export function AdminElectionDetailView({ election, className = "" }: ElectionDe
         toast({
           title: "Blockchain Deployment Successful",
           description: `Election deployed to blockchain with ID: ${id}`,
-          variant: "success"
+          variant: "default"
         });
       }
     } catch (error) {
