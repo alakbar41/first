@@ -908,13 +908,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const electionId = result.data.electionId || result.data.electionStartTime;
       
       // Verify election exists
-      const election = await storage.getElection(electionId);
-      if (!election) {
+      const electionObj = await storage.getElection(electionId);
+      if (!electionObj) {
         return res.status(404).json({ message: "Election not found" });
       }
       
       // Prevent adding candidates to elections that are already deployed to blockchain
-      if (election.blockchainId) {
+      if (electionObj.blockchainId) {
         return res.status(403).json({ 
           message: "Cannot modify election after blockchain deployment",
           detail: "This election has already been deployed to the blockchain. Candidates cannot be added or removed."
@@ -922,15 +922,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // For president/VP elections, require a running mate
-      if ((election.position === "President/VP" || election.position === "President/Vice President") && !result.data.runningMateId) {
+      if ((electionObj.position === "President/VP" || electionObj.position === "President/Vice President") && !result.data.runningMateId) {
         return res.status(400).json({ 
           message: "Running mate is required for President/VP elections" 
         });
       }
       
       // Check if candidate exists
-      const candidate = await storage.getCandidate(result.data.candidateId);
-      if (!candidate) {
+      const candidateObj = await storage.getCandidate(result.data.candidateId);
+      if (!candidateObj) {
         return res.status(404).json({ message: "Candidate not found" });
       }
       
