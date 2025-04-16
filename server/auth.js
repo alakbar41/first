@@ -122,47 +122,32 @@ export function setupAuth(app) {
     try {
       const { email, password, faculty } = req.body;
       
-      // Basic input validation
+      // Basic validation
       if (!email || !password || !faculty) {
         return res.status(400).json({ message: "All fields are required." });
       }
       
-      // Validate email format (basic validation)
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
-        return res.status(400).json({ message: "Please enter a valid email address." });
-      }
-      
-      // Validate email is from ADA University - strictly enforce this
+      // Normalize email to lowercase
       const normalizedEmail = email.toLowerCase();
-      if (!normalizedEmail.endsWith('@ada.edu.az')) {
-        return res.status(400).json({ message: "Registration requires an ADA University email address (@ada.edu.az)." });
-      }
       
-      // Check password strength
-      if (password.length < 8) {
-        return res.status(400).json({ message: "Password must be at least 8 characters long." });
-      }
-      
-      // Check if user already exists, but don't reveal this information
+      // Check if user already exists
       const existingUser = await storage.getUserByEmail(normalizedEmail);
       if (existingUser) {
-        // Security measure: Don't tell the user their email is already registered
-        console.log(`Registration attempted with existing email: ${normalizedEmail} - security measure activated`);
+        console.log(`Registration attempted with existing email: ${normalizedEmail}`);
         return res.status(200).json({ 
           message: "Registration initiated. Please verify your email. Check your inbox for verification code."
         });
       }
       
-      // Generate OTP (6-digit number)
+      // Generate 6-digit OTP
       const otp = crypto.randomInt(100000, 1000000).toString();
       
       // Hash the password
       const hashedPassword = await hashPassword(password);
       
-      // Create pending user record
+      // Create pending user
       const pendingUser = {
-        email: normalizedEmail, // Always store normalized (lowercase) email
+        email: normalizedEmail,
         password: hashedPassword,
         faculty,
         otp,
@@ -170,24 +155,25 @@ export function setupAuth(app) {
         isAdmin: false
       };
       
-      // Store the pending user
+      // Store pending user
       await storage.createPendingUser(pendingUser);
       
+      // Try to send verification email
       try {
-        // Send OTP email
-        console.log(`Sending verification OTP to new registration: ${normalizedEmail}`);
+        console.log(`Attempting to send OTP to: ${normalizedEmail}`);
         
-        const emailResult = await mailer.sendOtp(normalizedEmail, otp);
-        console.log(`✅ Verification email sent successfully to ${normalizedEmail}`);
+        // Send email with OTP
+        await mailer.sendOtp(normalizedEmail, otp);
+        console.log(`Email sent successfully to ${normalizedEmail}`);
       } catch (emailError) {
-        // Log the error but continue with registration process
-        console.error(`❌ Failed to send verification email to ${normalizedEmail}:`, emailError.message);
+        // Log the error for debugging
+        console.error('Failed to send email:', emailError);
         
-        // Log the OTP for testing purposes
-        console.log(`FOR TESTING ONLY - Verification code for ${normalizedEmail}: ${otp}`);
+        // Log the OTP so we can still test the system
+        console.log(`OTP for ${normalizedEmail}: ${otp}`);
       }
       
-      // Return success to the user
+      // Always return success to the client
       res.status(200).json({ 
         message: "Registration initiated. Please verify your email. Check your inbox for verification code."
       });
@@ -201,63 +187,54 @@ export function setupAuth(app) {
     try {
       const { email } = req.body;
       
-      // Validate email is provided
+      // Basic validation
       if (!email) {
         return res.status(400).json({ message: "Email address is required" });
       }
       
-      // Normalize email to lowercase
+      // Normalize email
       const normalizedEmail = email.toLowerCase();
       
-      // Validate it's an ADA email
-      if (!normalizedEmail.endsWith('@ada.edu.az')) {
-        return res.status(400).json({ message: "Only ADA University email addresses are allowed" });
-      }
-      
-      // Apply rate limiting for OTP requests
+      // Apply rate limiting
       const limit = rateLimit(normalizedEmail, otpRequests, 3, 60 * 1000); // 3 attempts per minute
       
       if (limit.limited) {
         return res.status(429).json({ 
-          message: `Too many verification code requests. Please try again in ${limit.secondsRemaining} seconds.`,
-          retryAfter: limit.secondsRemaining
+          message: `Too many verification code requests. Please try again in ${limit.secondsRemaining} seconds.`
         });
       }
       
-      // Check if there's a pending user
+      // Check for pending user
       const pendingUser = await storage.getPendingUserByEmail(normalizedEmail);
       
-      // Security improvement: Don't reveal if no pending registration exists
       if (!pendingUser) {
-        // Return a generic success message, even though we didn't actually send anything
-        console.log(`OTP requested for non-existent pending user: ${normalizedEmail} - security measure activated`);
+        console.log(`OTP requested for non-existent pending user: ${normalizedEmail}`);
         return res.status(200).json({ 
           message: "If a verification is pending for this email, a new code has been sent." 
         });
       }
       
-      // Generate new 6-digit OTP
+      // Generate new OTP
       const newOtp = crypto.randomInt(100000, 1000000).toString();
       
-      // Update the pending user's OTP
+      // Update pending user record with new OTP
       await storage.updatePendingUserOtp(normalizedEmail, newOtp);
       
       try {
-        // Send OTP email
-        console.log(`Resending verification code to ${normalizedEmail}`);
+        // Send the email with OTP
+        console.log(`Sending new OTP to ${normalizedEmail}`);
         
-        const emailResult = await mailer.sendOtp(normalizedEmail, newOtp);
-        console.log(`✅ Verification code resent successfully to ${normalizedEmail}`);
+        await mailer.sendOtp(normalizedEmail, newOtp);
+        console.log(`New OTP sent to ${normalizedEmail}`);
         
         res.status(200).json({ message: "Verification code sent successfully." });
       } catch (emailError) {
-        // Log the error but don't reveal it to the client
-        console.error(`❌ Failed to resend verification email to ${normalizedEmail}:`, emailError.message);
+        console.error('Failed to send OTP email:', emailError);
         
-        // Log the OTP for testing purposes
-        console.log(`FOR TESTING ONLY - New verification code for ${normalizedEmail}: ${newOtp}`);
+        // Log OTP for testing
+        console.log(`OTP for ${normalizedEmail}: ${newOtp}`);
         
-        // Still return success to avoid revealing email sending issues
+        // Still return success
         res.status(200).json({ message: "Verification code sent successfully." });
       }
     } catch (error) {
@@ -272,49 +249,38 @@ export function setupAuth(app) {
       
       // Basic validation
       if (!email || !otp) {
-        return res.status(400).json({ message: "Email and verification code are required." });
+        return res.status(400).json({ message: "Email and verification code are required" });
       }
       
-      // Validate OTP format (6 digits)
-      if (!/^\d{6}$/.test(otp)) {
-        return res.status(400).json({ message: "Verification code must be 6 digits." });
-      }
-      
-      // Normalize email address
+      // Normalize email
       const normalizedEmail = email.toLowerCase();
       
-      // Validate it's an ADA email
-      if (!normalizedEmail.endsWith('@ada.edu.az')) {
-        return res.status(400).json({ message: "Only ADA University email addresses are allowed" });
-      }
-      
-      // Security: use a consistent error message for all verification failures
-      const genericErrorMessage = "Verification failed. Please ensure your email and verification code are correct.";
-      
-      // Get pending user registration
+      // Get pending user
       const pendingUser = await storage.getPendingUserByEmail(normalizedEmail);
       
+      // Generic error message for security
+      const genericErrorMessage = "Verification failed. Please check your email and verification code.";
+      
       if (!pendingUser) {
-        // Don't reveal that no pending registration exists (security measure)
-        console.log(`OTP verification attempted for non-existent pending user: ${normalizedEmail}`);
+        console.log(`Verification attempted for non-existent user: ${normalizedEmail}`);
         return res.status(401).json({ message: genericErrorMessage });
       }
       
-      // Check if OTP has expired (3 minutes)
+      // Check OTP expiry (3 minutes)
       if (Date.now() - pendingUser.createdAt.getTime() > OTP_EXPIRY_TIME) {
-        console.log(`OTP expired for ${normalizedEmail}, cleaning up pending user record`);
+        console.log(`OTP expired for ${normalizedEmail}`);
         await storage.deletePendingUser(normalizedEmail);
         return res.status(401).json({ message: "Verification code has expired. Please request a new code." });
       }
       
-      // Verify the OTP matches
+      // Verify OTP
       if (pendingUser.otp !== otp) {
-        console.log(`Invalid OTP attempted for ${normalizedEmail}: ${otp} vs expected ${pendingUser.otp}`);
+        console.log(`Invalid OTP for ${normalizedEmail}: ${otp}`);
         return res.status(401).json({ message: genericErrorMessage });
       }
       
       // OTP is valid - create the actual user account
-      console.log(`Creating verified user account for ${normalizedEmail}`);
+      console.log(`Creating verified user for ${normalizedEmail}`);
       const newUser = await storage.createUser({
         email: pendingUser.email,
         password: pendingUser.password,
@@ -322,38 +288,38 @@ export function setupAuth(app) {
         isAdmin: pendingUser.isAdmin
       });
       
-      // Delete the pending user record
+      // Delete pending user
       await storage.deletePendingUser(normalizedEmail);
       
-      // Log the new user in automatically (with session security)
+      // Log user in
       req.login(newUser, (err) => {
         if (err) {
-          console.error(`Login error after OTP verification for ${normalizedEmail}:`, err);
-          return res.status(500).json({ message: "Your account was created, but we couldn't log you in automatically. Please try logging in." });
+          console.error("Login error after verification:", err);
+          return res.status(500).json({ message: "Account created but login failed. Please try logging in." });
         }
         
-        // Security: Regenerate session ID to prevent session fixation
+        // Session regeneration for security
         req.session.regenerate((regErr) => {
           if (regErr) {
-            console.error(`Session regeneration error for ${normalizedEmail}:`, regErr);
-            return res.status(500).json({ message: "Your account was created, but we couldn't log you in automatically. Please try logging in." });
+            console.error("Session regeneration error:", regErr);
+            return res.status(500).json({ message: "Account created but login failed. Please try logging in." });
           }
           
-          // Re-login user after session regeneration
+          // Re-login after session regeneration
           req.login(newUser, (loginErr) => {
             if (loginErr) {
-              console.error(`Re-login after session regeneration error for ${normalizedEmail}:`, loginErr);
-              return res.status(500).json({ message: "Your account was created, but we couldn't log you in automatically. Please try logging in." });
+              console.error("Re-login error:", loginErr);
+              return res.status(500).json({ message: "Account created but login failed. Please try logging in." });
             }
             
-            console.log(`✅ New user ${normalizedEmail} successfully registered and logged in`);
+            console.log(`User ${normalizedEmail} registered and logged in`);
             res.status(200).json(newUser);
           });
         });
       });
     } catch (error) {
-      console.error("OTP verification error:", error);
-      res.status(500).json({ message: "An error occurred during verification." });
+      console.error("Verification error:", error);
+      res.status(500).json({ message: "An error occurred during verification" });
     }
   });
 
