@@ -896,10 +896,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error adding candidate to election:", error);
         return res.status(400).json({ message: error.message || "Failed to add candidate to election" });
       }
-      
-      const electionCandidate = await storage.addCandidateToElection(result.data);
-      res.status(201).json(electionCandidate);
     } catch (error) {
+      console.error("Unexpected error in route handler:", error);
       res.status(500).json({ message: "Failed to add candidate to election" });
     }
   });
