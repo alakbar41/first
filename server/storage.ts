@@ -1007,7 +1007,12 @@ export class DatabaseStorage implements IStorage {
     });
     
     // Delete all election-candidate relationships for this election
-    await db.delete(electionCandidates).where(eq(electionCandidates.electionId, id));
+    const election = await this.getElection(id);
+    if (election) {
+      // Delete using electionStartTime since that's the field in the schema
+      await db.delete(electionCandidates)
+        .where(eq(electionCandidates.electionStartTime, election.startTime));
+    }
     
     // Delete the election
     await db.delete(elections).where(eq(elections.id, id));

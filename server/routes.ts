@@ -874,8 +874,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // Get election ID from the request
+      const electionId = result.data.electionId || result.data.electionStartTime;
+      
       // Verify election exists
-      const election = await storage.getElection(result.data.electionId);
+      const election = await storage.getElection(electionId);
       if (!election) {
         return res.status(404).json({ message: "Election not found" });
       }
