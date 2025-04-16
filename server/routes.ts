@@ -873,6 +873,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
           errors: result.error.format() 
         });
       }
+
+      // Convert electionId to startTime
+      const election = await storage.getElection(result.data.electionId);
+      if (!election) {
+        return res.status(404).json({ message: "Election not found" });
+      }
+
+      // Convert candidateId to studentId
+      const candidate = await storage.getCandidate(result.data.candidateId);
+      if (!candidate) {
+        return res.status(404).json({ message: "Candidate not found" });
+      }
+
+      // Prepare data with correct schema fields
+      const electionCandidateData = {
+        electionStartTime: election.startTime,
+        candidateStudentId: candidate.studentId,
+        runningMateStudentId: null,
+        compositeId: null
+      };
+
+      // Handle running mate if present
+      if (result.data.runningMateId) {
+        const runningMate = await storage.getCandidate(result.data.runningMateId);
+        if (!runningMate) {
+          return res.status(404).json({ message: "Running mate not found" });
+        }
+        electionCandidateData.runningMateStudentId = runningMate.studentId;
+        electionCandidateData.compositeId = `${candidate.studentId}_${runningMate.studentId}`;
+      }
       
       // Get election ID from the request
       const electionId = result.data.electionId || result.data.electionStartTime;
