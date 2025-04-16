@@ -293,7 +293,7 @@ export default function UniversityVotingSyncButton() {
       toast({
         title: 'Blockchain Sync Complete',
         description: 'Elections and candidates have been synchronized with the blockchain',
-        variant: 'success'
+        variant: 'default'
       });
     } catch (error: any) {
       addSyncError(`Sync failed: ${error.message || 'Unknown error'}`);
