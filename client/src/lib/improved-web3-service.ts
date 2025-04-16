@@ -475,11 +475,11 @@ Technical error: ${gasError.message}`);
         throw new Error('Wallet not connected');
       }
 
-      // Use optimized gas settings with higher limits for Polygon Amoy
+      // Use moderate gas settings for Polygon Amoy
       const options = {
-        gasLimit: 500000,
-        maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"),
-        maxFeePerGas: ethers.parseUnits("35.0", "gwei"),
+        gasLimit: 300000, // Sufficient gas limit for voter registration
+        maxPriorityFeePerGas: ethers.parseUnits("2.0", "gwei"), // Lower priority fee
+        maxFeePerGas: ethers.parseUnits("8.0", "gwei"), // Reasonable max fee
         type: 2, // Use EIP-1559 transaction type
       };
 
@@ -503,11 +503,11 @@ Technical error: ${gasError.message}`);
         throw new Error('Wallet not connected');
       }
 
-      // Use optimized gas settings for batch operations
+      // Use moderate gas settings for batch operations
       const options = {
-        gasLimit: 1000000, // Higher gas limit for batch operations
-        maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"),
-        maxFeePerGas: ethers.parseUnits("35.0", "gwei"),
+        gasLimit: 600000, // Moderate gas limit for batch operations
+        maxPriorityFeePerGas: ethers.parseUnits("2.5", "gwei"), // Moderate priority fee
+        maxFeePerGas: ethers.parseUnits("9.0", "gwei"), // Reasonable max fee
         type: 2, // Use EIP-1559 transaction type
       };
 
@@ -531,11 +531,11 @@ Technical error: ${gasError.message}`);
         throw new Error('Wallet not connected');
       }
 
-      // Use optimized gas settings with higher limits for Polygon Amoy
+      // Use moderate gas settings for candidate creation
       const options = {
-        gasLimit: 500000, // Higher gas limit for candidate creation
-        maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"),
-        maxFeePerGas: ethers.parseUnits("35.0", "gwei"),
+        gasLimit: 300000, // Sufficient gas limit for candidate creation
+        maxPriorityFeePerGas: ethers.parseUnits("2.0", "gwei"), // Lower priority fee
+        maxFeePerGas: ethers.parseUnits("8.0", "gwei"), // Reasonable max fee
         type: 2, // Use EIP-1559 transaction type
       };
 
@@ -567,11 +567,11 @@ Technical error: ${gasError.message}`);
         throw new Error('Wallet not connected');
       }
 
-      // Use optimized gas settings with higher limits for Polygon Amoy
+      // Use moderate gas settings for candidate registration
       const options = {
-        gasLimit: 500000,
-        maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"),
-        maxFeePerGas: ethers.parseUnits("35.0", "gwei"),
+        gasLimit: 300000, // Sufficient gas limit for registering candidates
+        maxPriorityFeePerGas: ethers.parseUnits("2.0", "gwei"), // Lower priority fee
+        maxFeePerGas: ethers.parseUnits("8.0", "gwei"), // Reasonable max fee
         type: 2, // Use EIP-1559 transaction type
       };
 
@@ -603,11 +603,11 @@ Technical error: ${gasError.message}`);
         throw new Error('Wallet not connected');
       }
 
-      // Use optimized gas settings with higher limits for Polygon Amoy
+      // Use moderate gas settings for ticket creation
       const options = {
-        gasLimit: 500000, // Higher gas limit for ticket creation
-        maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"),
-        maxFeePerGas: ethers.parseUnits("35.0", "gwei"),
+        gasLimit: 300000, // Sufficient gas limit for ticket creation
+        maxPriorityFeePerGas: ethers.parseUnits("2.0", "gwei"), // Lower priority fee
+        maxFeePerGas: ethers.parseUnits("8.0", "gwei"), // Reasonable max fee
         type: 2, // Use EIP-1559 transaction type
       };
 
@@ -643,11 +643,11 @@ Technical error: ${gasError.message}`);
         throw new Error('Wallet not connected');
       }
 
-      // Use optimized gas settings with higher limits for Polygon Amoy
+      // Use moderate gas settings for ticket registration
       const options = {
-        gasLimit: 500000,
-        maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"),
-        maxFeePerGas: ethers.parseUnits("35.0", "gwei"),
+        gasLimit: 300000, // Sufficient gas limit for registering tickets
+        maxPriorityFeePerGas: ethers.parseUnits("2.0", "gwei"), // Lower priority fee
+        maxFeePerGas: ethers.parseUnits("8.0", "gwei"), // Reasonable max fee
         type: 2, // Use EIP-1559 transaction type
       };
 
@@ -713,11 +713,11 @@ Technical error: ${gasError.message}`);
 
       console.log(`Election ${electionId} should be in state ${targetStatus} but is in state ${electionDetails.status}. Attempting to update...`);
 
-      // Create optimized gas settings for Polygon Amoy
+      // Use moderate gas settings for updating election status
       const options = {
-        gasLimit: 1500000,
-        maxPriorityFeePerGas: ethers.parseUnits("25.0", "gwei"),
-        maxFeePerGas: ethers.parseUnits("60.0", "gwei"),
+        gasLimit: 750000, // Sufficient gas limit for auto-updating election status
+        maxPriorityFeePerGas: ethers.parseUnits("3.0", "gwei"), // Moderate priority fee
+        maxFeePerGas: ethers.parseUnits("12.0", "gwei"), // Reasonable max fee
         type: 2, // Use EIP-1559 transaction type
       };
 
@@ -747,10 +747,10 @@ Technical error: ${gasError.message}`);
       try {
         console.log(`Trying direct updateElectionStatus with status=${targetStatus}...`);
         const directOptions = {
-          gasLimit: 2000000,
-          maxPriorityFeePerGas: ethers.parseUnits("30.0", "gwei"),
-          maxFeePerGas: ethers.parseUnits("70.0", "gwei"),
-          type: 2,
+          gasLimit: 1000000, // Sufficient gas limit for direct status updates
+          maxPriorityFeePerGas: ethers.parseUnits("4.0", "gwei"), // Moderate priority fee for important operations
+          maxFeePerGas: ethers.parseUnits("15.0", "gwei"), // Reasonable max fee for important operations
+          type: 2, // Use EIP-1559 transaction type
         };
 
         const directTx = await this.contract.updateElectionStatus(electionId, targetStatus, directOptions);
@@ -783,11 +783,11 @@ Technical error: ${gasError.message}`);
       // Initialize if needed
       await this.initializeIfNeeded();
 
-      // Create optimized gas settings for Polygon Amoy - medium settings
+      // Use moderate gas settings for Polygon Amoy
       const options = {
-        gasLimit: 1000000,
-        maxPriorityFeePerGas: ethers.parseUnits("20.0", "gwei"),
-        maxFeePerGas: ethers.parseUnits("50.0", "gwei"),
+        gasLimit: 600000, // Moderate gas limit for vote operations
+        maxPriorityFeePerGas: ethers.parseUnits("2.5", "gwei"), // Moderate priority fee
+        maxFeePerGas: ethers.parseUnits("9.0", "gwei"), // Reasonable max fee
         type: 2, // Use EIP-1559 transaction type
       };
 

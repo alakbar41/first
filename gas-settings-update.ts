@@ -1,152 +1,60 @@
-// Template for updating gas settings
-// File will be processed to update gas settings in the improved-web3-service.ts file
+/**
+ * Script to update gas settings in improved-web3-service.ts
+ * 
+ * This script targets the specific gas settings that weren't updated by the previous bash script.
+ * It exports a simple function that can be called to update the settings.
+ */
 
-// Registration voter function (around line 478)
-// Original:
-// Use optimized gas settings with higher limits for Polygon Amoy
-const options1 = {
-  gasLimit: 500000,
-  maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"),
-  maxFeePerGas: ethers.parseUnits("35.0", "gwei"),
-  type: 2, // Use EIP-1559 transaction type
-};
+import * as fs from 'fs';
+import * as path from 'path';
 
-// Replacement:
-// Use moderate gas settings for Polygon Amoy
-const options1_new = {
-  gasLimit: 300000, // Sufficient gas limit for voter registration
-  maxPriorityFeePerGas: ethers.parseUnits("2.0", "gwei"), // Lower priority fee
-  maxFeePerGas: ethers.parseUnits("8.0", "gwei"), // Reasonable max fee
-  type: 2, // Use EIP-1559 transaction type
-};
+// Function to update gas settings in the file
+export function updateGasSettings() {
+  const filePath = path.join(process.cwd(), 'client/src/lib/improved-web3-service.ts');
+  let content = fs.readFileSync(filePath, 'utf8');
 
-// Batch voter registration (around line 506)
-// Original:
-// Use optimized gas settings for batch operations
-const options2 = {
-  gasLimit: 1000000, // Higher gas limit for batch operations
-  maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"),
-  maxFeePerGas: ethers.parseUnits("35.0", "gwei"),
-  type: 2, // Use EIP-1559 transaction type
-};
+  // Array of replacements [searchText, replacementText]
+  const replacements = [
+    // Line 169 - Wallet connection
+    [
+      'gasLimit: 1000000, // Extremely high gas limit to ensure transaction success',
+      'gasLimit: 400000, // Moderate gas limit for wallet operations'
+    ],
+    // Line 230 - Election creation
+    [
+      'gasLimit: 2000000, // Ultra high gas limit to ensure election creation success',
+      'gasLimit: 800000, // Moderate gas limit for election creation while ensuring success'
+    ],
+    // Lines 345, 407 - Create election with candidates
+    [
+      'gasLimit: 1500000, // Reasonable gas limit for creating election with candidates',
+      'gasLimit: 800000, // Optimized gas limit for creating election with candidates'
+    ],
+    // Line 899 - Election activation
+    [
+      'gasLimit: 2000000, // Ultra high gas limit for activation',
+      'gasLimit: 600000, // Moderate gas limit for election activation' 
+    ],
+    // Lines 1119, 1258, 1372 - Various operations with ultra high limits
+    [
+      'gasLimit: 2000000, // Ultra high gas limit for better success chance',
+      'gasLimit: 600000, // Moderate gas limit optimized for operations'
+    ],
+    // Low gas operations remain unchanged as they're already optimized
+  ];
 
-// Replacement:
-// Use moderate gas settings for batch operations
-const options2_new = {
-  gasLimit: 600000, // Moderate gas limit for batch operations
-  maxPriorityFeePerGas: ethers.parseUnits("2.5", "gwei"), // Moderate priority fee
-  maxFeePerGas: ethers.parseUnits("9.0", "gwei"), // Reasonable max fee
-  type: 2, // Use EIP-1559 transaction type
-};
+  // Apply all replacements
+  for (const [search, replace] of replacements) {
+    content = content.replace(new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), replace);
+  }
 
-// Create candidate (around line 534)
-// Original:
-// Use optimized gas settings with higher limits for Polygon Amoy
-const options3 = {
-  gasLimit: 500000, // Higher gas limit for candidate creation
-  maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"),
-  maxFeePerGas: ethers.parseUnits("35.0", "gwei"),
-  type: 2, // Use EIP-1559 transaction type
-};
+  // Write the updated content back to the file
+  fs.writeFileSync(filePath, content);
+  
+  console.log('Additional gas settings successfully updated!');
+}
 
-// Replacement:
-// Use moderate gas settings for candidate creation
-const options3_new = {
-  gasLimit: 300000, // Sufficient gas limit for candidate creation
-  maxPriorityFeePerGas: ethers.parseUnits("2.0", "gwei"), // Lower priority fee
-  maxFeePerGas: ethers.parseUnits("8.0", "gwei"), // Reasonable max fee
-  type: 2, // Use EIP-1559 transaction type
-};
-
-// Register candidate for election (around line 570)
-// Original:
-// Use optimized gas settings with higher limits for Polygon Amoy
-const options4 = {
-  gasLimit: 500000,
-  maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"),
-  maxFeePerGas: ethers.parseUnits("35.0", "gwei"),
-  type: 2, // Use EIP-1559 transaction type
-};
-
-// Replacement:
-// Use moderate gas settings for candidate registration
-const options4_new = {
-  gasLimit: 300000, // Sufficient gas limit for registering candidates
-  maxPriorityFeePerGas: ethers.parseUnits("2.0", "gwei"), // Lower priority fee
-  maxFeePerGas: ethers.parseUnits("8.0", "gwei"), // Reasonable max fee
-  type: 2, // Use EIP-1559 transaction type
-};
-
-// Create ticket (around line 606)
-// Original:
-// Use optimized gas settings with higher limits for Polygon Amoy
-const options5 = {
-  gasLimit: 500000, // Higher gas limit for ticket creation
-  maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"),
-  maxFeePerGas: ethers.parseUnits("35.0", "gwei"),
-  type: 2, // Use EIP-1559 transaction type
-};
-
-// Replacement:
-// Use moderate gas settings for ticket creation
-const options5_new = {
-  gasLimit: 300000, // Sufficient gas limit for ticket creation
-  maxPriorityFeePerGas: ethers.parseUnits("2.0", "gwei"), // Lower priority fee
-  maxFeePerGas: ethers.parseUnits("8.0", "gwei"), // Reasonable max fee
-  type: 2, // Use EIP-1559 transaction type
-};
-
-// Register ticket (around line 646)
-// Original:
-// Use optimized gas settings with higher limits for Polygon Amoy
-const options6 = {
-  gasLimit: 500000,
-  maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"),
-  maxFeePerGas: ethers.parseUnits("35.0", "gwei"),
-  type: 2, // Use EIP-1559 transaction type
-};
-
-// Replacement:
-// Use moderate gas settings for ticket registration
-const options6_new = {
-  gasLimit: 300000, // Sufficient gas limit for registering tickets
-  maxPriorityFeePerGas: ethers.parseUnits("2.0", "gwei"), // Lower priority fee
-  maxFeePerGas: ethers.parseUnits("8.0", "gwei"), // Reasonable max fee
-  type: 2, // Use EIP-1559 transaction type
-};
-
-// Auto-update election status (around line 716)
-// Original:
-// Create optimized gas settings for Polygon Amoy
-const options7 = {
-  gasLimit: 1500000,
-  maxPriorityFeePerGas: ethers.parseUnits("25.0", "gwei"),
-  maxFeePerGas: ethers.parseUnits("60.0", "gwei"),
-  type: 2, // Use EIP-1559 transaction type
-};
-
-// Replacement:
-// Use moderate gas settings for updating election status
-const options7_new = {
-  gasLimit: 750000, // Sufficient gas limit for auto-updating election status
-  maxPriorityFeePerGas: ethers.parseUnits("3.0", "gwei"), // Moderate priority fee
-  maxFeePerGas: ethers.parseUnits("12.0", "gwei"), // Reasonable max fee
-  type: 2, // Use EIP-1559 transaction type
-};
-
-// Direct update (around line 749)
-// Original:
-const directOptions = {
-  gasLimit: 2000000,
-  maxPriorityFeePerGas: ethers.parseUnits("30.0", "gwei"),
-  maxFeePerGas: ethers.parseUnits("70.0", "gwei"),
-  type: 2,
-};
-
-// Replacement:
-const directOptions_new = {
-  gasLimit: 1000000, // Sufficient gas limit for direct status updates
-  maxPriorityFeePerGas: ethers.parseUnits("4.0", "gwei"), // Moderate priority fee for important operations
-  maxFeePerGas: ethers.parseUnits("15.0", "gwei"), // Reasonable max fee for important operations
-  type: 2, // Use EIP-1559 transaction type
-};
+// Run the function if this script is executed directly
+if (require.main === module) {
+  updateGasSettings();
+}
