@@ -1,15 +1,15 @@
+#!/usr/bin/env tsx
 /**
  * Script to update gas settings in improved-web3-service.ts
  * 
  * This script targets the specific gas settings that weren't updated by the previous bash script.
- * It exports a simple function that can be called to update the settings.
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
 
 // Function to update gas settings in the file
-export function updateGasSettings() {
+async function updateGasSettings() {
   const filePath = path.join(process.cwd(), 'client/src/lib/improved-web3-service.ts');
   let content = fs.readFileSync(filePath, 'utf8');
 
@@ -54,7 +54,5 @@ export function updateGasSettings() {
   console.log('Additional gas settings successfully updated!');
 }
 
-// Run the function if this script is executed directly
-if (require.main === module) {
-  updateGasSettings();
-}
+// Run the function
+updateGasSettings().catch(console.error);

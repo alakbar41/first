@@ -166,9 +166,9 @@ class ImprovedWeb3Service {
 
         // Use extreme gas settings to overcome Polygon Amoy testnet congestion
         const options = {
-          gasLimit: 1000000, // Extremely high gas limit to ensure transaction success
-          maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"), // Very high priority fee to prioritize transaction
-          maxFeePerGas: ethers.parseUnits("35.0", "gwei"), // Very high max fee to ensure acceptance
+          gasLimit: 400000, // Moderate gas limit for wallet operations
+          maxPriorityFeePerGas: ethers.parseUnits("3.0", "gwei"), // Moderate priority fee
+          maxFeePerGas: ethers.parseUnits("12.0", "gwei"), // Reasonable max fee
           type: 2, // Use EIP-1559 transaction type
         };
 
@@ -227,9 +227,9 @@ Technical error: ${gasError.message}`);
 
       // Use extremely high gas settings to overcome Polygon Amoy testnet congestion
       const options = {
-        gasLimit: 2000000, // Ultra high gas limit to ensure election creation success
-        maxPriorityFeePerGas: ethers.parseUnits("25.0", "gwei"), // Very high priority fee to prioritize transaction
-        maxFeePerGas: ethers.parseUnits("60.0", "gwei"), // Very high max fee to ensure acceptance
+        gasLimit: 800000, // Moderate gas limit for election creation while ensuring success
+        maxPriorityFeePerGas: ethers.parseUnits("4.0", "gwei"), // Moderate priority fee for important operations
+        maxFeePerGas: ethers.parseUnits("15.0", "gwei"), // Reasonable max fee for important operations
         type: 2, // Use EIP-1559 transaction type
       };
 
@@ -342,7 +342,7 @@ Technical error: ${gasError.message}`);
 
         // Use reasonable gas settings for gas estimation
         const options = {
-          gasLimit: 1500000, // Reasonable gas limit for creating election with candidates
+          gasLimit: 800000, // Optimized gas limit for creating election with candidates
           maxPriorityFeePerGas: ethers.parseUnits("3.0", "gwei"), // Standard priority fee
           maxFeePerGas: ethers.parseUnits("10.0", "gwei"), // Reasonable max fee
           type: 2, // Use EIP-1559 transaction type
@@ -404,7 +404,7 @@ Technical error: ${gasError.message}`);
 
       // Use reasonable gas settings for Polygon Amoy testnet
       const options = {
-        gasLimit: 1500000, // Reasonable gas limit for creating election with candidates
+        gasLimit: 800000, // Optimized gas limit for creating election with candidates
         maxPriorityFeePerGas: ethers.parseUnits("3.0", "gwei"), // Standard priority fee
         maxFeePerGas: ethers.parseUnits("10.0", "gwei"), // Reasonable max fee
         type: 2, // Use EIP-1559 transaction type
@@ -896,7 +896,7 @@ Technical error: ${gasError.message}`);
 
       // Use ultra-high gas settings to ensure transaction success on Polygon Amoy
       const options = {
-        gasLimit: 2000000, // Ultra high gas limit for activation 
+        gasLimit: 600000, // Moderate gas limit for election activation 
         maxPriorityFeePerGas: ethers.parseUnits("30.0", "gwei"), // Very high priority fee
         maxFeePerGas: ethers.parseUnits("70.0", "gwei"), // Very high max fee
         type: 2, // Use EIP-1559 transaction type
@@ -1116,7 +1116,7 @@ Technical error: ${gasError.message}`);
 
       // Use ultra-high gas settings to ensure transaction success on Polygon Amoy
       const options = {
-        gasLimit: 2000000, // Ultra high gas limit for better success chance
+        gasLimit: 600000, // Moderate gas limit optimized for operations
         maxPriorityFeePerGas: ethers.parseUnits("30.0", "gwei"), // Very high priority fee
         maxFeePerGas: ethers.parseUnits("70.0", "gwei"), // Very high max fee
         type: 2, // Use EIP-1559 transaction type
@@ -1255,7 +1255,7 @@ Technical error: ${gasError.message}`);
 
       // Use ultra-high gas settings to ensure transaction success on Polygon Amoy
       const options = {
-        gasLimit: 2000000, // Ultra high gas limit for better success chance
+        gasLimit: 600000, // Moderate gas limit optimized for operations
         maxPriorityFeePerGas: ethers.parseUnits("30.0", "gwei"), // Very high priority fee
         maxFeePerGas: ethers.parseUnits("70.0", "gwei"), // Very high max fee
         type: 2, // Use EIP-1559 transaction type
@@ -1369,7 +1369,7 @@ Technical error: ${gasError.message}`);
 
       // Use ultra-high gas settings to ensure transaction success on Polygon Amoy
       const options = {
-        gasLimit: 2000000, // Ultra high gas limit for better success chance
+        gasLimit: 600000, // Moderate gas limit optimized for operations
         maxPriorityFeePerGas: ethers.parseUnits("30.0", "gwei"), // Very high priority fee
         maxFeePerGas: ethers.parseUnits("70.0", "gwei"), // Very high max fee
         type: 2, // Use EIP-1559 transaction type
