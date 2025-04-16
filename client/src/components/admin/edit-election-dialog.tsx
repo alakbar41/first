@@ -10,6 +10,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { format } from "date-fns";
 import { isElectionDeployedToBlockchain } from "@/lib/blockchain-id-mapping";
 
+// Helper function to safely format dates
+const safeFormatDate = (value: any): string => {
+  if (value && value instanceof Date && !isNaN(value.getTime())) {
+    return format(value, "PPP");
+  }
+  return "Pick a date";
+};
+
 import {
   Dialog,
   DialogContent,
