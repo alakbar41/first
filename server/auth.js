@@ -130,6 +130,16 @@ export function setupAuth(app) {
       // Normalize email to lowercase
       const normalizedEmail = email.toLowerCase();
       
+      // Check if the email has the correct domain
+      if (!normalizedEmail.endsWith('@ada.edu.az')) {
+        return res.status(400).json({ message: "Only ADA University email addresses are allowed." });
+      }
+      
+      // Check password strength
+      if (password.length < 8) {
+        return res.status(400).json({ message: "Password must be at least 8 characters." });
+      }
+      
       // Check if user already exists
       const existingUser = await storage.getUserByEmail(normalizedEmail);
       if (existingUser) {
@@ -141,6 +151,7 @@ export function setupAuth(app) {
       
       // Generate 6-digit OTP
       const otp = crypto.randomInt(100000, 1000000).toString();
+      console.log(`Generated OTP for ${normalizedEmail}: ${otp}`);
       
       // Hash the password
       const hashedPassword = await hashPassword(password);
@@ -152,30 +163,27 @@ export function setupAuth(app) {
         faculty,
         otp,
         createdAt: new Date(),
-        isAdmin: false
+        isAdmin: false,
+        type: 'registration'
       };
       
-      // Store pending user
+      // Store pending user in database
       await storage.createPendingUser(pendingUser);
+      console.log(`Stored pending user for ${normalizedEmail} with OTP: ${otp}`);
       
-      // Try to send verification email
-      try {
-        console.log(`Attempting to send OTP to: ${normalizedEmail}`);
-        
-        // Send email with OTP
-        await mailer.sendOtp(normalizedEmail, otp);
-        console.log(`Email sent successfully to ${normalizedEmail}`);
-      } catch (emailError) {
-        // Log the error for debugging
-        console.error('Failed to send email:', emailError);
-        
-        // Log the OTP so we can still test the system
-        console.log(`OTP for ${normalizedEmail}: ${otp}`);
+      // Send verification email - no try/catch to simplify logic
+      // Our mailer function will handle errors internally
+      const emailResult = await mailer.sendOtp(normalizedEmail, otp);
+      
+      // Check if email might have failed
+      if (emailResult.error) {
+        console.log(`Note: Email might have failed, but registration can continue. Error: ${emailResult.error}`);
+        console.log(`IMPORTANT - OTP for ${normalizedEmail}: ${otp}`);
       }
       
       // Always return success to the client
       res.status(200).json({ 
-        message: "Registration initiated. Please verify your email. Check your inbox for verification code."
+        message: "Registration initiated. Please verify your email. Check your inbox or console for verification code."
       });
     } catch (error) {
       console.error("Registration error:", error);
@@ -194,6 +202,11 @@ export function setupAuth(app) {
       
       // Normalize email
       const normalizedEmail = email.toLowerCase();
+      
+      // Check if the email has the correct domain
+      if (!normalizedEmail.endsWith('@ada.edu.az')) {
+        return res.status(400).json({ message: "Only ADA University email addresses are allowed." });
+      }
       
       // Apply rate limiting
       const limit = rateLimit(normalizedEmail, otpRequests, 3, 60 * 1000); // 3 attempts per minute
@@ -216,27 +229,25 @@ export function setupAuth(app) {
       
       // Generate new OTP
       const newOtp = crypto.randomInt(100000, 1000000).toString();
+      console.log(`Generated new OTP for ${normalizedEmail}: ${newOtp}`);
       
       // Update pending user record with new OTP
       await storage.updatePendingUserOtp(normalizedEmail, newOtp);
+      console.log(`Updated pending user with new OTP for ${normalizedEmail}`);
       
-      try {
-        // Send the email with OTP
-        console.log(`Sending new OTP to ${normalizedEmail}`);
-        
-        await mailer.sendOtp(normalizedEmail, newOtp);
-        console.log(`New OTP sent to ${normalizedEmail}`);
-        
-        res.status(200).json({ message: "Verification code sent successfully." });
-      } catch (emailError) {
-        console.error('Failed to send OTP email:', emailError);
-        
-        // Log OTP for testing
-        console.log(`OTP for ${normalizedEmail}: ${newOtp}`);
-        
-        // Still return success
-        res.status(200).json({ message: "Verification code sent successfully." });
+      // Send verification email - no try/catch since our mailer handles errors internally
+      const emailResult = await mailer.sendOtp(normalizedEmail, newOtp);
+      
+      // Check if email might have failed
+      if (emailResult.error) {
+        console.log(`Note: Email might have failed, but OTP has been updated. Error: ${emailResult.error}`);
+        console.log(`IMPORTANT - New OTP for ${normalizedEmail}: ${newOtp}`);
       }
+      
+      // Always return success
+      res.status(200).json({ 
+        message: "Verification code sent successfully. Check your inbox or console for the code." 
+      });
     } catch (error) {
       console.error("OTP sending error:", error);
       res.status(500).json({ message: "Failed to send verification code." });
