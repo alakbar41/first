@@ -866,7 +866,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Direct endpoint for election candidates
   app.post("/api/election-candidates", isAdmin, async (req, res) => {
     try {
-      const result = insertElectionCandidateSchema.safeParse(req.body);
+      // We need to allow the frontend to send electionId, candidateId, runningMateId
+      // while our database expects different fields, so we'll use a custom validation schema
+      const formSchema = z.object({
+        electionId: z.number({
+          required_error: "Election ID is required",
+        }),
+        candidateId: z.number({
+          required_error: "Candidate ID is required",
+        }),
+        runningMateId: z.number().optional(),
+        _csrf: z.string().optional(),
+      });
+      
+      const result = formSchema.safeParse(req.body);
       if (!result.success) {
         return res.status(400).json({ 
           message: "Invalid election candidate data", 
@@ -903,6 +916,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         electionCandidateData.runningMateStudentId = runningMate.studentId;
         electionCandidateData.compositeId = `${candidate.studentId}_${runningMate.studentId}`;
       }
+      
+      // Save this variable for later use
+      const transformedElectionCandidateData = electionCandidateData;
       
       // Get election ID from the request
       const electionId = result.data.electionId || result.data.electionStartTime;
