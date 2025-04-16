@@ -164,6 +164,9 @@ function isAdmin(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
+// Define OTP expiry time (3 minutes in milliseconds)
+const OTP_EXPIRY_TIME = 3 * 60 * 1000;
+
 // Password hashing function
 async function hashPassword(password: string): Promise<string> {
   const SALT_ROUNDS = 10;
@@ -1050,38 +1053,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Email is required" });
       }
       
+      // Normalize email
+      const normalizedEmail = email.toLowerCase();
+      
+      // Check if email matches ADA University domain
+      if (!normalizedEmail.endsWith('@ada.edu.az')) {
+        return res.status(400).json({ message: "Only ADA University email addresses are allowed" });
+      }
+      
       // Check if a real user exists with this email
-      const user = await storage.getUserByEmail(email);
+      const user = await storage.getUserByEmail(normalizedEmail);
       
       // Only proceed with the actual reset if the user exists
       if (user) {
         // Generate OTP
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const otp = crypto.randomInt(100000, 1000000).toString();
+        console.log(`Generated reset password OTP for ${normalizedEmail}: ${otp}`);
         
         // Check if pending user exists
-        const pendingUser = await storage.getPendingUserByEmail(email);
+        const pendingUser = await storage.getPendingUserByEmail(normalizedEmail);
         if (pendingUser) {
           // Update existing pending user with new OTP
-          await storage.updatePendingUserOtp(email, otp);
+          await storage.updatePendingUserOtp(normalizedEmail, otp);
+          console.log(`Updated existing pending user with new OTP for ${normalizedEmail}`);
         } else {
           // Create a new pending user for password reset with minimum required fields
           await storage.createPendingUser({
-            email,
+            email: normalizedEmail,
             otp,
             type: "reset",
             password: "temporary", // This will be replaced when reset is complete
             faculty: "none", // Not relevant for password reset
             createdAt: new Date()
           });
+          console.log(`Created new pending user for password reset: ${normalizedEmail}`);
         }
         
-        // Send OTP to email
-        await mailer.sendOtp(email, otp);
+        // Send verification email - no try/catch since our mailer handles errors internally
+        const emailResult = await mailer.sendOtp(normalizedEmail, otp);
+        
+        // Check if email might have failed
+        if (emailResult.error) {
+          console.log(`Note: Reset password email might have failed, but OTP has been updated. Error: ${emailResult.error}`);
+          console.log(`IMPORTANT - Reset password OTP for ${normalizedEmail}: ${otp}`);
+        }
+      } else {
+        console.log(`Password reset requested for non-existent email: ${normalizedEmail}`);
       }
       
       // Always return the same success message, whether the user exists or not
       // This prevents user enumeration attacks
-      res.status(200).json({ message: "If the email exists in our system, a verification code has been sent. Please check your inbox." });
+      res.status(200).json({ 
+        message: "If the email exists in our system, a verification code has been sent. Please check your inbox or console for the code." 
+      });
     } catch (error) {
       console.error("Password reset error:", error);
       res.status(500).json({ message: "Failed to initiate password reset" });
@@ -1101,36 +1125,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const { email, otp, newPassword } = result.data;
       
-      // Verify OTP
-      const pendingUser = await storage.getPendingUserByEmail(email);
+      // Normalize email
+      const normalizedEmail = email.toLowerCase();
       
-      if (!pendingUser || pendingUser.otp !== otp) {
+      // Verify OTP
+      const pendingUser = await storage.getPendingUserByEmail(normalizedEmail);
+      
+      // Check OTP expiry if we have a pending user
+      if (pendingUser && Date.now() - pendingUser.createdAt.getTime() > OTP_EXPIRY_TIME) {
+        console.log(`Reset password OTP expired for ${normalizedEmail}`);
+        await storage.deletePendingUser(normalizedEmail);
+        return res.status(401).json({ message: "Verification code has expired. Please request a new code." });
+      }
+      
+      if (!pendingUser || pendingUser.otp !== otp || pendingUser.type !== 'reset') {
         // Security best practice: Use a generic error message to prevent user enumeration
-        // This message does not reveal if the email exists or if just the OTP is wrong
+        console.log(`Invalid reset password attempt: ${!pendingUser ? 'No pending user' : (pendingUser.otp !== otp ? 'Invalid OTP' : 'Wrong type')}`);
         return res.status(400).json({ 
           message: "Verification failed. Please ensure your email and verification code are correct."
         });
       }
       
       // Verify user actually exists before updating password
-      const user = await storage.getUserByEmail(email);
+      const user = await storage.getUserByEmail(normalizedEmail);
       if (!user) {
         // This should rarely happen (only if user was deleted between reset request and verification)
-        // Still using generic message to avoid leaking information
+        console.log(`Reset attempted for non-existent user: ${normalizedEmail}`);
         return res.status(400).json({ 
           message: "Verification failed. Please ensure your email and verification code are correct."
         });
       }
       
+      // Password validation
+      if (newPassword.length < 8) {
+        return res.status(400).json({ message: "New password must be at least 8 characters" });
+      }
+      
       // Hash the new password 
       const hashedPassword = await hashPassword(newPassword);
-      console.log(`Reset password: Generated hash for password (length ${hashedPassword.length})`);
+      console.log(`Reset password: Generated hash for user ${normalizedEmail}`);
       
       // Update password with the hashed version
-      await storage.updateUserPassword(email, hashedPassword);
+      await storage.updateUserPassword(normalizedEmail, hashedPassword);
+      console.log(`Password successfully reset for ${normalizedEmail}`);
       
       // Remove pending user
-      await storage.deletePendingUser(email);
+      await storage.deletePendingUser(normalizedEmail);
       
       res.status(200).json({ message: "Password reset successful" });
     } catch (error) {
