@@ -60,19 +60,6 @@ interface EditElectionDialogProps {
   election?: Election;
 }
 
-// Helper function to safely format a date or return a fallback
-const safeFormatDate = (date: any) => {
-  try {
-    if (date && date instanceof Date && !isNaN(date.getTime())) {
-      return format(date, "PPP");
-    }
-    return null;
-  } catch (error) {
-    console.error("Date formatting error:", error);
-    return null;
-  }
-};
-
 export function EditElectionDialog({ open, onOpenChange, election }: EditElectionDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -119,40 +106,14 @@ export function EditElectionDialog({ open, onOpenChange, election }: EditElectio
       
       checkDeploymentStatus();
       
-      try {
-        // Handle field name mismatch - backend uses startTime/endTime, frontend uses startDate/endDate
-        const startDate = election.startDate 
-          ? new Date(election.startDate) 
-          : (election.startTime ? new Date(election.startTime) : null);
-        
-        const endDate = election.endDate 
-          ? new Date(election.endDate) 
-          : (election.endTime ? new Date(election.endTime) : null);
-        
-        // Verify dates are valid before setting them
-        const validStartDate = startDate && !isNaN(startDate.getTime()) ? startDate : new Date();
-        const validEndDate = endDate && !isNaN(endDate.getTime()) ? endDate : new Date();
-        
-        form.reset({
-          name: election.name,
-          position: election.position,
-          faculty: eligibleFaculty,
-          description: election.description || "",
-          startDate: validStartDate,
-          endDate: validEndDate,
-        });
-      } catch (error) {
-        console.error("Error resetting form with election data:", error);
-        // Reset with default values if there's an error
-        form.reset({
-          name: election.name,
-          position: election.position,
-          faculty: eligibleFaculty,
-          description: election.description || "",
-          startDate: new Date(),
-          endDate: new Date(),
-        });
-      }
+      form.reset({
+        name: election.name,
+        position: election.position,
+        faculty: eligibleFaculty,
+        description: election.description || "",
+        startDate: new Date(election.startDate),
+        endDate: new Date(election.endDate),
+      });
     }
   }, [election, form]);
 
@@ -378,7 +339,7 @@ export function EditElectionDialog({ open, onOpenChange, election }: EditElectio
                               variant={"outline"}
                               className="pl-3 text-left font-normal w-full"
                             >
-                              {field.value && field.value instanceof Date && !isNaN(field.value.getTime()) ? (
+                              {field.value ? (
                                 format(field.value, "PPP")
                               ) : (
                                 <span>Pick a date</span>
@@ -395,7 +356,7 @@ export function EditElectionDialog({ open, onOpenChange, election }: EditElectio
                               if (date) {
                                 // Keep the time from the existing date value
                                 const updatedDate = new Date(date);
-                                if (field.value && field.value instanceof Date && !isNaN(field.value.getTime())) {
+                                if (field.value) {
                                   updatedDate.setHours(
                                     field.value.getHours(),
                                     field.value.getMinutes()
@@ -414,12 +375,10 @@ export function EditElectionDialog({ open, onOpenChange, election }: EditElectio
                         <Input
                           type="time"
                           className="w-[140px]"
-                          value={field.value && field.value instanceof Date && !isNaN(field.value.getTime()) ? 
-                            `${String(field.value.getHours()).padStart(2, '0')}:${String(field.value.getMinutes()).padStart(2, '0')}` : 
-                            '00:00'}
+                          value={field.value ? `${String(field.value.getHours()).padStart(2, '0')}:${String(field.value.getMinutes()).padStart(2, '0')}` : '00:00'}
                           onChange={(e) => {
                             const [hours, minutes] = e.target.value.split(':').map(Number);
-                            const newDate = new Date(field.value instanceof Date && !isNaN(field.value.getTime()) ? field.value : new Date());
+                            const newDate = new Date(field.value || new Date());
                             newDate.setHours(hours, minutes);
                             field.onChange(newDate);
                           }}
@@ -448,7 +407,7 @@ export function EditElectionDialog({ open, onOpenChange, election }: EditElectio
                               variant={"outline"}
                               className="pl-3 text-left font-normal w-full"
                             >
-                              {field.value && field.value instanceof Date && !isNaN(field.value.getTime()) ? (
+                              {field.value ? (
                                 format(field.value, "PPP")
                               ) : (
                                 <span>Pick a date</span>
@@ -465,7 +424,7 @@ export function EditElectionDialog({ open, onOpenChange, election }: EditElectio
                               if (date) {
                                 // Keep the time from the existing date value
                                 const updatedDate = new Date(date);
-                                if (field.value && field.value instanceof Date && !isNaN(field.value.getTime())) {
+                                if (field.value) {
                                   updatedDate.setHours(
                                     field.value.getHours(),
                                     field.value.getMinutes()
@@ -484,12 +443,10 @@ export function EditElectionDialog({ open, onOpenChange, election }: EditElectio
                         <Input
                           type="time"
                           className="w-[140px]"
-                          value={field.value && field.value instanceof Date && !isNaN(field.value.getTime()) ? 
-                            `${String(field.value.getHours()).padStart(2, '0')}:${String(field.value.getMinutes()).padStart(2, '0')}` : 
-                            '00:00'}
+                          value={field.value ? `${String(field.value.getHours()).padStart(2, '0')}:${String(field.value.getMinutes()).padStart(2, '0')}` : '00:00'}
                           onChange={(e) => {
                             const [hours, minutes] = e.target.value.split(':').map(Number);
-                            const newDate = new Date(field.value instanceof Date && !isNaN(field.value.getTime()) ? field.value : new Date());
+                            const newDate = new Date(field.value || new Date());
                             newDate.setHours(hours, minutes);
                             field.onChange(newDate);
                           }}
@@ -502,10 +459,47 @@ export function EditElectionDialog({ open, onOpenChange, election }: EditElectio
               )}
             />
 
-            {/* Submit Button */}
-            <div className="mt-6 flex justify-end">
-              <Button type="submit" disabled={updateElectionMutation.isPending}>
-                {updateElectionMutation.isPending ? "Updating..." : "Update Election"}
+            {/* Status and blockchain warning messages */}
+            <div className="rounded-md border p-4 bg-blue-50">
+              <p className="text-sm text-blue-700">
+                <strong>Note:</strong> Election status is automatically managed based on start and end dates.
+              </p>
+            </div>
+            
+            {/* Blockchain warning for deployed elections */}
+            {isDeployedToBlockchain && (
+              <div className="rounded-md border p-4 bg-amber-50">
+                <div className="flex items-start">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-amber-600 mt-0.5 mr-2">
+                    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+                    <path d="M12 9v4"></path>
+                    <path d="M12 17h.01"></path>
+                  </svg>
+                  <div className="text-sm text-amber-800">
+                    <p className="font-medium">This election has been deployed to the blockchain</p>
+                    <p className="mt-1">Once deployed to the blockchain, elections cannot be modified to maintain data integrity between systems. To make changes, you must delete this election and create a new one.</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end space-x-2">
+              <Button 
+                variant="outline" 
+                onClick={() => onOpenChange(false)} 
+                type="button"
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={updateElectionMutation.isPending || isDeployedToBlockchain}
+              >
+                {updateElectionMutation.isPending 
+                  ? "Saving..." 
+                  : isDeployedToBlockchain 
+                    ? "Cannot Edit Deployed Election" 
+                    : "Save Changes"}
               </Button>
             </div>
           </form>

@@ -5,14 +5,7 @@ import { IMPROVED_CONTRACT_ABI } from './improved-contract-abi';
 // REMOVED DIRECT RPC URLs to avoid CSP issues - using MetaMask provider only
 // No direct RPC connections to prevent CSP violations
 console.log("Using MetaMask provider only approach - no RPC URLs");
-// Test network contract address - New unified transaction contract
-const CONTRACT_ADDRESS = '0xB042Da8a785491E353D0e1b87F8395E1d957EB46';
-
-// Log contract interaction attempts
-const logContractInteraction = (method: string, ...args: any[]) => {
-  console.log(`Attempting ${method} with contract at ${CONTRACT_ADDRESS}`);
-  console.log('Arguments:', ...args);
-};
+const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || '0x903389c84cDd36beC37373300cF7546dbB9d4Ee2'; // ImprovedStudentIdVoting.clean.sol deployment
 
 // Contract enums
 export enum ElectionType {
@@ -61,7 +54,7 @@ class ImprovedWeb3Service {
       // Skip the direct provider initialization - we'll use MetaMask's provider only
       // This avoids issues with CSP (Content Security Policy) blocking RPC connections
       console.log('Using MetaMask provider only approach - no RPC URLs');
-
+      
       this.isInitialized = true;
       return true;
     } catch (error) {
@@ -69,38 +62,38 @@ class ImprovedWeb3Service {
       return false;
     }
   }
-
+  
   // Helper to ensure the service is initialized
   async initializeIfNeeded(): Promise<boolean> {
     // If already initialized, return success
     if (this.isInitialized && this.contract && this.signer) {
       return true;
     }
-
+    
     // If not initialized, try to initialize
     console.log('Service not fully initialized, initializing on demand...');
-
+    
     try {
       // Connect to MetaMask
       if (!window.ethereum) {
         throw new Error('MetaMask is not installed. Please install MetaMask to use blockchain features.');
       }
-
+      
       console.log('Connecting to MetaMask...');
       const ethersProvider = new ethers.BrowserProvider(window.ethereum);
       const signer = await ethersProvider.getSigner();
       this.signer = signer;
       this.walletAddress = await signer.getAddress();
-
+      
       console.log('Connected to wallet:', this.walletAddress);
-
+      
       // Initialize contract
       this.contract = new ethers.Contract(
         CONTRACT_ADDRESS,
         IMPROVED_CONTRACT_ABI,
         signer
       );
-
+      
       console.log('Contract initialized on demand');
       this.isInitialized = true;
       return true;
@@ -111,41 +104,32 @@ class ImprovedWeb3Service {
   }
 
   // Create an election on the blockchain - with time bounds
-  /**
-   * Legacy createElection function - superseded by createElectionWithCandidates
-   * @deprecated Use createElectionWithCandidates instead
-   */
   async createElection(
     electionType: ElectionType,
     startTime: number,
-    endTime: number,
-    isEndTime: boolean = true
+    endTime: number
   ): Promise<number> {
     try {
       // Check if we have required wallet connection
       if (!this.walletAddress || !this.signer) {
         throw new Error('Wallet not connected. Please connect your MetaMask wallet first.');
       }
-
+      
       // Make sure we have a contract instance
       if (!this.contract) {
         throw new Error('Contract not initialized');
       }
-
+      
       // Make absolutely sure the contract is connected with signer
       if (this.contract.runner !== this.signer) {
         console.log('Reconnecting contract with signer...');
         this.contract = this.contract.connect(this.signer);
       }
-
+      
       console.log(`Creating election with type: ${electionType}, startTime: ${startTime}, endTime: ${endTime}`);
       console.log('Using contract address:', CONTRACT_ADDRESS);
       console.log('Connected wallet address:', this.walletAddress);
-
-      logContractInteraction('createElection', { electionType, startTime, endTime });
-      console.log('Contract instance:', this.contract);
-
-
+      
       // Pre-check: Get current election count (not all contracts have this, but it's useful for debugging)
       try {
         const electionCount = await this.contract.getElectionCount();
@@ -153,31 +137,30 @@ class ImprovedWeb3Service {
       } catch (error) {
         console.log('Could not get election count (this is just a debug check):', error);
       }
-
+      
       // Debug: Check if these times make sense
       const currentTime = Math.floor(Date.now() / 1000);
       console.log('Current timestamp:', currentTime);
       console.log('Start timestamp is in the future?', startTime > currentTime);
       console.log('End timestamp is after start?', endTime > startTime);
-
+      
       // Try to estimate gas first to get more detailed error messages
       try {
         console.log('Estimating gas for createElection transaction...');
-
+        
         // Use extreme gas settings to overcome Polygon Amoy testnet congestion
         const options = {
-          gasLimit: 400000, // Moderate gas limit for wallet operations
-          maxPriorityFeePerGas: ethers.parseUnits("3.0", "gwei"), // Moderate priority fee
-          maxFeePerGas: ethers.parseUnits("12.0", "gwei"), // Reasonable max fee
+          gasLimit: 1000000, // Extremely high gas limit to ensure transaction success
+          maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"), // Very high priority fee to prioritize transaction
+          maxFeePerGas: ethers.parseUnits("35.0", "gwei"), // Very high max fee to ensure acceptance
           type: 2, // Use EIP-1559 transaction type
         };
-
+        
         console.log('Using options:', options);
         const estimatedGas = await this.contract.createElection.estimateGas(
           electionType,
           startTime,
           endTime,
-          isEndTime,
           options
         );
         console.log('Estimated gas for transaction:', estimatedGas);
@@ -185,7 +168,7 @@ class ImprovedWeb3Service {
         const gasError = error as any; // Type assertion to avoid TypeScript errors
         console.error('Gas estimation failed (transaction would fail):', gasError);
         console.error('Error details:', JSON.stringify(gasError, null, 2));
-
+        
         // Get a better error message if possible
         if (gasError && gasError.message && typeof gasError.message === 'string') {
           if (gasError.message.includes('execution reverted')) {
@@ -224,50 +207,49 @@ Technical error: ${gasError.message}`);
 
       // If gas estimation is successful, proceed with the transaction
       console.log('Sending createElection transaction...');
-
+      
       // Use extremely high gas settings to overcome Polygon Amoy testnet congestion
       const options = {
-        gasLimit: 800000, // Moderate gas limit for election creation while ensuring success
-        maxPriorityFeePerGas: ethers.parseUnits("4.0", "gwei"), // Moderate priority fee for important operations
-        maxFeePerGas: ethers.parseUnits("15.0", "gwei"), // Reasonable max fee for important operations
+        gasLimit: 2000000, // Ultra high gas limit to ensure election creation success
+        maxPriorityFeePerGas: ethers.parseUnits("25.0", "gwei"), // Very high priority fee to prioritize transaction
+        maxFeePerGas: ethers.parseUnits("60.0", "gwei"), // Very high max fee to ensure acceptance
         type: 2, // Use EIP-1559 transaction type
       };
-
+      
       console.log('Using transaction options:', options);
       const tx = await this.contract.createElection(
         electionType,
         startTime,
         endTime,
-        isEndTime,
         options
       );
-
+      
       console.log('Transaction sent, awaiting confirmation...');
       const receipt = await tx.wait();
       console.log('Transaction confirmed:', receipt);
-
+      
       // Get the election ID from the transaction events
       // For a real implementation, you'd parse the event logs
       // For simplicity, assume the first event is ElectionCreated
       console.log('Looking for ElectionCreated event in logs...');
       console.log('Total log entries:', receipt.logs.length);
-
+      
       const event = receipt.logs.find((log: any) => 
         log.topics[0] === ethers.id("ElectionCreated(uint256,uint8,uint256,uint256)")
       );
-
+      
       console.log('Found ElectionCreated event:', event ? 'Yes' : 'No');
-
+      
       if (event) {
         console.log('Event topics:', event.topics);
         const decodedData = ethers.AbiCoder.defaultAbiCoder().decode(
           ['uint256'],
-          event.data
+          event.topics[1]
         );
         console.log('Decoded election ID:', Number(decodedData[0]));
         return Number(decodedData[0]);
       }
-
+      
       // Fallback - try to get the election ID from election counter
       console.log('Warning: ElectionCreated event not found. Trying alternative method...');
       try {
@@ -287,182 +269,6 @@ Technical error: ${gasError.message}`);
     }
   }
 
-  /**
-   * Creates an election with candidates in a single transaction
-   * This is the recommended way to create an election with the new contract
-   * @param electionType The type of election (Senator = 0, PresidentVP = 1)
-   * @param startTime The start time of the election as a Unix timestamp
-   * @param endTime The end time of the election as a Unix timestamp
-   * @param candidateIds An array of candidate IDs (student IDs) for senator elections
-   * @param ticketPairs An array of president/VP pairs for president elections ([[president1, vp1], [president2, vp2]])
-   * @returns The ID of the created election
-   */
-  async createElectionWithCandidates(
-    electionType: ElectionType,
-    startTime: number,
-    endTime: number,
-    candidateIds: string[],
-    ticketPairs: string[][] = []
-  ): Promise<number> {
-    try {
-      // Check if we have required wallet connection
-      if (!this.walletAddress || !this.signer) {
-        throw new Error('Wallet not connected. Please connect your MetaMask wallet first.');
-      }
-
-      // Make sure we have a contract instance
-      if (!this.contract) {
-        throw new Error('Contract not initialized');
-      }
-
-      // Make absolutely sure the contract is connected with signer
-      if (this.contract.runner !== this.signer) {
-        console.log('Reconnecting contract with signer...');
-        this.contract = this.contract.connect(this.signer);
-      }
-
-      console.log(`Creating election with type: ${electionType}, startTime: ${startTime}, endTime: ${endTime}`);
-      console.log(`Adding ${candidateIds.length} candidates and ${ticketPairs.length} tickets`);
-      console.log('Using contract address:', CONTRACT_ADDRESS);
-      console.log('Connected wallet address:', this.walletAddress);
-
-      const isTicketBased = electionType === ElectionType.PresidentVP;
-      logContractInteraction('createElectionWithCandidates', { 
-        electionType, 
-        startTime, 
-        endTime, 
-        isTicketBased,
-        candidateIds,
-        ticketPairs
-      });
-
-      // Try to estimate gas first to get more detailed error messages
-      try {
-        console.log('Estimating gas for createElectionWithCandidates transaction...');
-
-        // Use reasonable gas settings for gas estimation
-        const options = {
-          gasLimit: 800000, // Optimized gas limit for creating election with candidates
-          maxPriorityFeePerGas: ethers.parseUnits("3.0", "gwei"), // Standard priority fee
-          maxFeePerGas: ethers.parseUnits("10.0", "gwei"), // Reasonable max fee
-          type: 2, // Use EIP-1559 transaction type
-        };
-
-        console.log('Using options:', options);
-        const estimatedGas = await this.contract.createElectionWithCandidates.estimateGas(
-          startTime,
-          endTime,
-          isTicketBased,
-          candidateIds,
-          ticketPairs,
-          options
-        );
-        console.log('Estimated gas for transaction:', estimatedGas);
-      } catch (error) {
-        const gasError = error as any;
-        console.error('Gas estimation failed (transaction would fail):', gasError);
-        console.error('Error details:', JSON.stringify(gasError, null, 2));
-
-        // Get a better error message if possible
-        if (gasError && gasError.message && typeof gasError.message === 'string') {
-          if (gasError.message.includes('execution reverted')) {
-            // Try to extract revert reason if available
-            const revertReason = gasError.message.split('execution reverted: ')[1]?.split('"')[0];
-            if (revertReason) {
-              throw new Error(`Smart contract rejected the operation: ${revertReason}`);
-            } else if (gasError.reason && typeof gasError.reason === 'string') {
-              throw new Error(`Smart contract rejected the operation: ${gasError.reason}`);
-            } else {
-              throw new Error(`
-Smart contract rejected the operation. This may be due to:
-1. Invalid candidate IDs or ticket pairs
-2. The contract has reached its maximum number of elections
-3. Time constraints in the contract are not satisfied
-4. You don't have permission to create elections
-
-Technical error: ${gasError.message}`);
-            }
-          } else if (gasError.message.includes('Internal JSON-RPC error')) {
-            throw new Error(`
-Network error when communicating with blockchain. This may be due to:
-1. Network congestion or temporary issues with the Polygon Amoy testnet
-2. MetaMask configuration issues - try setting the gas price manually
-3. The contract may require more gas than estimated
-
-Try again in a few moments or switch to a different network/wallet.
-
-Technical error: ${gasError.message}`);
-          } else if (gasError.code === 'INSUFFICIENT_FUNDS') {
-            throw new Error(`Your wallet doesn't have enough MATIC tokens to execute this transaction. Please add funds to your wallet on the Polygon Amoy testnet.`);
-          }
-        }
-        throw error;
-      }
-
-      // If gas estimation is successful, proceed with the transaction
-      console.log('Sending createElectionWithCandidates transaction...');
-
-      // Use reasonable gas settings for Polygon Amoy testnet
-      const options = {
-        gasLimit: 800000, // Optimized gas limit for creating election with candidates
-        maxPriorityFeePerGas: ethers.parseUnits("3.0", "gwei"), // Standard priority fee
-        maxFeePerGas: ethers.parseUnits("10.0", "gwei"), // Reasonable max fee
-        type: 2, // Use EIP-1559 transaction type
-      };
-
-      console.log('Using transaction options:', options);
-      const tx = await this.contract.createElectionWithCandidates(
-        startTime,
-        endTime,
-        isTicketBased,
-        candidateIds,
-        ticketPairs,
-        options
-      );
-
-      console.log('Transaction sent, awaiting confirmation...');
-      const receipt = await tx.wait();
-      console.log('Transaction confirmed:', receipt);
-
-      // Get the election ID from the transaction events
-      console.log('Looking for ElectionCreated event in logs...');
-      console.log('Total log entries:', receipt.logs.length);
-
-      const event = receipt.logs.find((log: any) => 
-        log.topics[0] === ethers.id("ElectionCreated(uint256,uint8,uint256,uint256)")
-      );
-
-      console.log('Found ElectionCreated event:', event ? 'Yes' : 'No');
-
-      if (event) {
-        console.log('Event topics:', event.topics);
-        const decodedData = ethers.AbiCoder.defaultAbiCoder().decode(
-          ['uint256'],
-          event.data
-        );
-        console.log('Decoded election ID:', Number(decodedData[0]));
-        return Number(decodedData[0]);
-      }
-
-      // Fallback - try to get the election ID from election counter
-      console.log('Warning: ElectionCreated event not found. Trying alternative method...');
-      try {
-        const electionCount = await this.contract.getElectionCount();
-        console.log('Current election count:', Number(electionCount));
-        // Subtract 1 since election IDs are 0-indexed
-        return Number(electionCount) - 1;
-      } catch (error) {
-        console.error('Failed to get election count:', error);
-        // Last resort fallback
-        console.warn('Using fallback ID 1 - this may not be accurate!');
-        return 1;
-      }
-    } catch (error) {
-      console.error('Failed to create election with candidates:', error);
-      throw error;
-    }
-  }
-
   // Register a voter
   async registerVoter(voterAddress: string): Promise<void> {
     try {
@@ -475,11 +281,11 @@ Technical error: ${gasError.message}`);
         throw new Error('Wallet not connected');
       }
 
-      // Use moderate gas settings for Polygon Amoy
+      // Use optimized gas settings with higher limits for Polygon Amoy
       const options = {
-        gasLimit: 300000, // Sufficient gas limit for voter registration
-        maxPriorityFeePerGas: ethers.parseUnits("2.0", "gwei"), // Lower priority fee
-        maxFeePerGas: ethers.parseUnits("8.0", "gwei"), // Reasonable max fee
+        gasLimit: 500000,
+        maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"),
+        maxFeePerGas: ethers.parseUnits("35.0", "gwei"),
         type: 2, // Use EIP-1559 transaction type
       };
 
@@ -503,11 +309,11 @@ Technical error: ${gasError.message}`);
         throw new Error('Wallet not connected');
       }
 
-      // Use moderate gas settings for batch operations
+      // Use optimized gas settings for batch operations
       const options = {
-        gasLimit: 600000, // Moderate gas limit for batch operations
-        maxPriorityFeePerGas: ethers.parseUnits("2.5", "gwei"), // Moderate priority fee
-        maxFeePerGas: ethers.parseUnits("9.0", "gwei"), // Reasonable max fee
+        gasLimit: 1000000, // Higher gas limit for batch operations
+        maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"),
+        maxFeePerGas: ethers.parseUnits("35.0", "gwei"),
         type: 2, // Use EIP-1559 transaction type
       };
 
@@ -531,18 +337,18 @@ Technical error: ${gasError.message}`);
         throw new Error('Wallet not connected');
       }
 
-      // Use moderate gas settings for candidate creation
+      // Use optimized gas settings with higher limits for Polygon Amoy
       const options = {
-        gasLimit: 300000, // Sufficient gas limit for candidate creation
-        maxPriorityFeePerGas: ethers.parseUnits("2.0", "gwei"), // Lower priority fee
-        maxFeePerGas: ethers.parseUnits("8.0", "gwei"), // Reasonable max fee
+        gasLimit: 500000, // Higher gas limit for candidate creation
+        maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"),
+        maxFeePerGas: ethers.parseUnits("35.0", "gwei"),
         type: 2, // Use EIP-1559 transaction type
       };
 
       const tx = await this.contract.registerCandidate(options);
-
+      
       const receipt = await tx.wait();
-
+      
       // For a real implementation, parse event logs
       // For simplicity, return dummy ID
       return 1;
@@ -567,11 +373,11 @@ Technical error: ${gasError.message}`);
         throw new Error('Wallet not connected');
       }
 
-      // Use moderate gas settings for candidate registration
+      // Use optimized gas settings with higher limits for Polygon Amoy
       const options = {
-        gasLimit: 300000, // Sufficient gas limit for registering candidates
-        maxPriorityFeePerGas: ethers.parseUnits("2.0", "gwei"), // Lower priority fee
-        maxFeePerGas: ethers.parseUnits("8.0", "gwei"), // Reasonable max fee
+        gasLimit: 500000,
+        maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"),
+        maxFeePerGas: ethers.parseUnits("35.0", "gwei"),
         type: 2, // Use EIP-1559 transaction type
       };
 
@@ -580,7 +386,7 @@ Technical error: ${gasError.message}`);
         candidateId,
         options
       );
-
+      
       await tx.wait();
     } catch (error) {
       console.error(`Failed to register candidate ${candidateId} for election ${electionId}:`, error);
@@ -603,11 +409,11 @@ Technical error: ${gasError.message}`);
         throw new Error('Wallet not connected');
       }
 
-      // Use moderate gas settings for ticket creation
+      // Use optimized gas settings with higher limits for Polygon Amoy
       const options = {
-        gasLimit: 300000, // Sufficient gas limit for ticket creation
-        maxPriorityFeePerGas: ethers.parseUnits("2.0", "gwei"), // Lower priority fee
-        maxFeePerGas: ethers.parseUnits("8.0", "gwei"), // Reasonable max fee
+        gasLimit: 500000, // Higher gas limit for ticket creation
+        maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"),
+        maxFeePerGas: ethers.parseUnits("35.0", "gwei"),
         type: 2, // Use EIP-1559 transaction type
       };
 
@@ -616,9 +422,9 @@ Technical error: ${gasError.message}`);
         vpId,
         options
       );
-
+      
       const receipt = await tx.wait();
-
+      
       // For a real implementation, parse event logs
       // For simplicity, return dummy ID
       return 1;
@@ -643,11 +449,11 @@ Technical error: ${gasError.message}`);
         throw new Error('Wallet not connected');
       }
 
-      // Use moderate gas settings for ticket registration
+      // Use optimized gas settings with higher limits for Polygon Amoy
       const options = {
-        gasLimit: 300000, // Sufficient gas limit for registering tickets
-        maxPriorityFeePerGas: ethers.parseUnits("2.0", "gwei"), // Lower priority fee
-        maxFeePerGas: ethers.parseUnits("8.0", "gwei"), // Reasonable max fee
+        gasLimit: 500000,
+        maxPriorityFeePerGas: ethers.parseUnits("15.0", "gwei"),
+        maxFeePerGas: ethers.parseUnits("35.0", "gwei"),
         type: 2, // Use EIP-1559 transaction type
       };
 
@@ -656,7 +462,7 @@ Technical error: ${gasError.message}`);
         ticketId,
         options
       );
-
+      
       await tx.wait();
     } catch (error) {
       console.error(`Failed to register ticket ${ticketId} for election ${electionId}:`, error);
@@ -678,22 +484,22 @@ Technical error: ${gasError.message}`);
   async autoUpdateElectionStatus(electionId: number): Promise<void> {
     try {
       await this.initializeIfNeeded();
-
+      
       console.log(`Running full election status auto-update for election ${electionId}`);
-
+      
       // First, check the election's current status
       const electionDetails = await this.getElectionDetails(electionId);
       console.log(`Current election status: ${electionDetails.status}`);
       console.log(`Start time: ${new Date(electionDetails.startTime * 1000).toLocaleString()}`);
       console.log(`End time: ${new Date(electionDetails.endTime * 1000).toLocaleString()}`);
-
+      
       // Get the current time
       const currentTime = Math.floor(Date.now() / 1000);
       console.log(`Current time: ${new Date(currentTime * 1000).toLocaleString()}`);
-
+      
       // Calculate target status based on time
       let targetStatus: ElectionStatus;
-
+      
       if (currentTime < electionDetails.startTime) {
         targetStatus = ElectionStatus.Pending;
         console.log(`Election should be in Pending state (current time before start time)`);
@@ -704,61 +510,61 @@ Technical error: ${gasError.message}`);
         targetStatus = ElectionStatus.Completed;
         console.log(`Election should be in Completed state (current time after end time)`);
       }
-
+      
       // If already in the correct state, nothing to do
       if (electionDetails.status === targetStatus) {
         console.log(`Election ${electionId} is already in the correct state (${targetStatus}). No action needed.`);
         return;
       }
-
+      
       console.log(`Election ${electionId} should be in state ${targetStatus} but is in state ${electionDetails.status}. Attempting to update...`);
-
-      // Use moderate gas settings for updating election status
+      
+      // Create optimized gas settings for Polygon Amoy
       const options = {
-        gasLimit: 750000, // Sufficient gas limit for auto-updating election status
-        maxPriorityFeePerGas: ethers.parseUnits("3.0", "gwei"), // Moderate priority fee
-        maxFeePerGas: ethers.parseUnits("12.0", "gwei"), // Reasonable max fee
+        gasLimit: 1500000,
+        maxPriorityFeePerGas: ethers.parseUnits("25.0", "gwei"),
+        maxFeePerGas: ethers.parseUnits("60.0", "gwei"),
         type: 2, // Use EIP-1559 transaction type
       };
-
+      
       // First try using autoUpdateElectionStatus
       try {
         console.log(`Trying autoUpdateElectionStatus first...`);
         const tx = await this.contract.autoUpdateElectionStatus(electionId, options);
         console.log(`Auto-update transaction sent: ${tx.hash}`);
-
+        
         const receipt = await tx.wait(2);
         console.log(`Auto-update transaction confirmed:`, receipt);
-
+        
         // Check if the status was updated
         const updatedDetails = await this.getElectionDetails(electionId);
         if (updatedDetails.status === targetStatus) {
           console.log(`Successfully updated election ${electionId} status to ${targetStatus} using autoUpdateElectionStatus.`);
           return;
         }
-
+        
         console.log(`Auto-update method did not change status to ${targetStatus}. Current status: ${updatedDetails.status}. Trying direct method...`);
       } catch (autoError) {
         console.error(`Auto-update method failed:`, autoError);
         console.log(`Falling back to direct method...`);
       }
-
+      
       // If auto-update didn't work, try direct method
       try {
         console.log(`Trying direct updateElectionStatus with status=${targetStatus}...`);
         const directOptions = {
-          gasLimit: 1000000, // Sufficient gas limit for direct status updates
-          maxPriorityFeePerGas: ethers.parseUnits("4.0", "gwei"), // Moderate priority fee for important operations
-          maxFeePerGas: ethers.parseUnits("15.0", "gwei"), // Reasonable max fee for important operations
-          type: 2, // Use EIP-1559 transaction type
+          gasLimit: 2000000,
+          maxPriorityFeePerGas: ethers.parseUnits("30.0", "gwei"),
+          maxFeePerGas: ethers.parseUnits("70.0", "gwei"),
+          type: 2,
         };
-
+        
         const directTx = await this.contract.updateElectionStatus(electionId, targetStatus, directOptions);
         console.log(`Direct update transaction sent: ${directTx.hash}`);
-
+        
         const directReceipt = await directTx.wait(2);
         console.log(`Direct update transaction confirmed:`, directReceipt);
-
+        
         // Verify the result
         const finalDetails = await this.getElectionDetails(electionId);
         if (finalDetails.status === targetStatus) {
@@ -777,53 +583,53 @@ Technical error: ${gasError.message}`);
       throw new Error(`Failed to update election status: ${errorMessage}`);
     }
   }
-
+  
   async tryAutoUpdateElectionStatus(electionId: number): Promise<boolean> {
     try {
       // Initialize if needed
       await this.initializeIfNeeded();
-
-      // Use moderate gas settings for Polygon Amoy
+      
+      // Create optimized gas settings for Polygon Amoy - medium settings
       const options = {
-        gasLimit: 600000, // Moderate gas limit for vote operations
-        maxPriorityFeePerGas: ethers.parseUnits("2.5", "gwei"), // Moderate priority fee
-        maxFeePerGas: ethers.parseUnits("9.0", "gwei"), // Reasonable max fee
+        gasLimit: 1000000,
+        maxPriorityFeePerGas: ethers.parseUnits("20.0", "gwei"),
+        maxFeePerGas: ethers.parseUnits("50.0", "gwei"),
         type: 2, // Use EIP-1559 transaction type
       };
-
+      
       console.log(`Trying autoUpdateElectionStatus for election ${electionId}`);
-
+      
       // Get current status first
       const electionDetails = await this.getElectionDetails(electionId);
       console.log(`Current election status: ${electionDetails.status}`);
-
+      
       // If already active, nothing to do
       if (electionDetails.status === ElectionStatus.Active) {
         console.log(`Election ${electionId} is already active.`);
         return true;
       }
-
+      
       // If completed, can't reactivate
       if (electionDetails.status === ElectionStatus.Completed) {
         console.log(`Election ${electionId} is completed. Cannot reactivate.`);
         return false;
       }
-
+      
       // Call the autoUpdateElectionStatus function
       const tx = await this.contract.autoUpdateElectionStatus(electionId, options);
       console.log(`Auto-update transaction sent: ${tx.hash}`);
-
+      
       // Wait for confirmations
       const receipt = await tx.wait(2);
       console.log(`Auto-update transaction confirmed:`, receipt);
-
+      
       // Check if activation was successful by comparing before and after status
       const updatedDetails = await this.getElectionDetails(electionId);
       const wasSuccessful = updatedDetails.status === ElectionStatus.Active;
-
+      
       console.log(`Auto-update ${wasSuccessful ? 'successfully activated' : 'did not activate'} election ${electionId}.`);
       console.log(`New status: ${updatedDetails.status}`);
-
+      
       return wasSuccessful;
     } catch (error) {
       console.error(`Auto-update election status failed:`, error);
@@ -842,20 +648,20 @@ Technical error: ${gasError.message}`);
           const signer = await ethersProvider.getSigner();
           this.signer = signer;
           this.walletAddress = await signer.getAddress();
-
+          
           this.contract = new ethers.Contract(
             CONTRACT_ADDRESS,
             IMPROVED_CONTRACT_ABI,
             signer
           );
-
+          
           console.log('Contract initialized on-demand for election activation');
         } catch (initError) {
           console.error('Failed to initialize contract on-demand for election activation:', initError);
           throw new Error('Failed to connect to blockchain. Please make sure MetaMask is installed and connected.');
         }
       }
-
+      
       // If still no contract, we can't proceed
       if (!this.contract || !this.signer) {
         throw new Error('Contract could not be initialized. Please make sure MetaMask is installed and connected.');
@@ -865,46 +671,46 @@ Technical error: ${gasError.message}`);
       if (!this.walletAddress) {
         throw new Error('Wallet not connected. Please connect your MetaMask wallet first.');
       }
-
+      
       // First, check the election status
       const electionDetails = await this.getElectionDetails(electionId);
-
+      
       // Log election details for debugging
       console.log(`Starting election ${electionId}. Current status: ${electionDetails.status}, Start time: ${new Date(electionDetails.startTime * 1000).toLocaleString()}, End time: ${new Date(electionDetails.endTime * 1000).toLocaleString()}`);
-
+      
       // If already active, no need to proceed
       if (electionDetails.status === ElectionStatus.Active) {
         console.log(`Election ${electionId} is already active. No action needed.`);
         return;
       }
-
+      
       // If completed, cannot be activated
       if (electionDetails.status === ElectionStatus.Completed || electionDetails.status === ElectionStatus.Cancelled) {
         throw new Error(`Cannot activate election ${electionId} because it is already in ${electionDetails.status === ElectionStatus.Completed ? 'completed' : 'cancelled'} state.`);
       }
-
+      
       // First try to use autoUpdateElectionStatus which has fewer restrictions
       console.log(`First attempting to activate using autoUpdateElectionStatus which has fewer restrictions...`);
       const autoUpdateSuccessful = await this.tryAutoUpdateElectionStatus(electionId);
-
+      
       if (autoUpdateSuccessful) {
         console.log(`Successfully activated election ${electionId} using auto-update method`);
         return; // Success, no need to continue with direct method
       }
-
+      
       console.log(`Auto-update method did not activate election. Falling back to direct activation...`);
 
-      // Use optimized gas settings for activation on Polygon Amoy
+      // Use ultra-high gas settings to ensure transaction success on Polygon Amoy
       const options = {
-        gasLimit: 600000, // Moderate gas limit for election activation 
-        maxPriorityFeePerGas: ethers.parseUnits("4.0", "gwei"), // Moderate priority fee for activation
-        maxFeePerGas: ethers.parseUnits("15.0", "gwei"), // Reasonable max fee for activation
+        gasLimit: 2000000, // Ultra high gas limit for activation 
+        maxPriorityFeePerGas: ethers.parseUnits("30.0", "gwei"), // Very high priority fee
+        maxFeePerGas: ethers.parseUnits("70.0", "gwei"), // Very high max fee
         type: 2, // Use EIP-1559 transaction type
       };
-
+      
       // Get nonce before transaction to ensure proper sequencing
       const nonce = await this.getNextNonce();
-
+      
       console.log(`Starting election ${electionId} with nonce ${nonce} and high gas settings`);
 
       // Use populateTransaction to separate contract parameters from transaction options
@@ -912,31 +718,31 @@ Technical error: ${gasError.message}`);
         electionId, 
         ElectionStatus.Active
       );
-
+      
       // Combine the function call with our transaction options
       const transaction = {
         ...tx,
         ...options,
         nonce
       };
-
+      
       console.log(`Sending activation transaction with options:`, options);
-
+      
       // Send the transaction with the signer
       const txResponse = await this.signer.sendTransaction(transaction);
-
+      
       console.log(`Election activation transaction sent: ${txResponse.hash}`);
-
+      
       // Wait for the transaction to be mined with a longer timeout
       const receipt = await txResponse.wait(3); // Wait for 3 confirmations for better reliability
-
+      
       // Add null check to satisfy TypeScript
       if (!receipt) {
         throw new Error("Transaction was sent but no receipt was returned");
       }
-
+      
       console.log(`Election activation confirmed in block ${receipt.blockNumber}`);
-
+      
       // Verify the status was updated correctly
       const updatedDetails = await this.getElectionDetails(electionId);
       if (updatedDetails.status === ElectionStatus.Active) {
@@ -946,7 +752,7 @@ Technical error: ${gasError.message}`);
       }
     } catch (error: any) {
       console.error(`Failed to start election ${electionId}:`, error);
-
+      
       // Enhanced error handling for different error cases
       if (error.message?.includes("Internal JSON-RPC error") || error.message?.includes("insufficient funds")) {
         throw new Error("Transaction failed due to network congestion or insufficient funds. Please ensure you have enough testnet MATIC and try again with higher gas settings in MetaMask: Gas limit=2000000, Max priority fee=30 gwei, Max fee=70 gwei.");
@@ -962,7 +768,7 @@ Technical error: ${gasError.message}`);
       }
     }
   }
-
+  
   // Start an election with custom gas settings (for retries) - with fully independent lazy initialization
   async startElectionWithCustomGas(electionId: number, customGasOptions: any): Promise<void> {
     let provider = null;
@@ -978,13 +784,13 @@ Technical error: ${gasError.message}`);
           provider = new ethers.BrowserProvider(window.ethereum);
           signer = await provider.getSigner();
           walletAddress = await signer.getAddress();
-
+          
           contract = new ethers.Contract(
             CONTRACT_ADDRESS,
             IMPROVED_CONTRACT_ABI,
             signer
           );
-
+          
           console.log('Fresh contract connection established for custom gas election activation');
         } catch (initError) {
           console.error('Failed to establish fresh connection for custom gas election activation:', initError);
@@ -993,34 +799,34 @@ Technical error: ${gasError.message}`);
       } else {
         throw new Error('MetaMask is not installed. Please install MetaMask to use blockchain features.');
       }
-
+      
       // If we couldn't establish a connection, we can't proceed
       if (!contract || !signer || !walletAddress) {
         throw new Error('Failed to connect to blockchain. Please make sure MetaMask is installed and connected.');
       }
-
+      
       // First, check the election status
       const electionDetails = await this.getElectionDetails(electionId);
-
+      
       // Log election details and gas settings for debugging
       console.log(`Starting election ${electionId} with custom gas settings:`, customGasOptions);
       console.log(`Election status: ${electionDetails.status}, Start time: ${new Date(electionDetails.startTime * 1000).toLocaleString()}, End time: ${new Date(electionDetails.endTime * 1000).toLocaleString()}`);
-
+      
       // If already active, no need to proceed
       if (electionDetails.status === ElectionStatus.Active) {
         console.log(`Election ${electionId} is already active. No action needed.`);
         return;
       }
-
+      
       // If completed, cannot be activated
       if (electionDetails.status === ElectionStatus.Completed || electionDetails.status === ElectionStatus.Cancelled) {
         throw new Error(`Cannot activate election ${electionId} because it is already in ${electionDetails.status === ElectionStatus.Completed ? 'completed' : 'cancelled'} state.`);
       }
-
+      
       // Get nonce directly from the provider for this transaction
       const nonce = await provider.getTransactionCount(walletAddress);
       console.log(`Retrieved nonce ${nonce} for wallet ${walletAddress} directly from provider`);
-
+      
       console.log(`Starting election ${electionId} with custom gas settings and nonce ${nonce}`);
 
       // Use populateTransaction to separate contract parameters from transaction options
@@ -1028,31 +834,31 @@ Technical error: ${gasError.message}`);
         electionId, 
         ElectionStatus.Active
       );
-
+      
       // Combine the function call with custom gas options and nonce
       const transaction = {
         ...tx,
         ...customGasOptions,
         nonce
       };
-
+      
       console.log(`Sending activation transaction with custom gas options:`, customGasOptions);
-
+      
       // Send the transaction with the fresh signer (using non-null assertion since we've validated signer)
       const txResponse = await signer!.sendTransaction(transaction);
-
+      
       console.log(`Election activation transaction sent: ${txResponse.hash}`);
-
+      
       // Wait for the transaction to be mined with a longer timeout
       const receipt = await txResponse.wait(3); // Wait for 3 confirmations for better reliability
-
+      
       // Add null check to satisfy TypeScript
       if (!receipt) {
         throw new Error("Transaction was sent but no receipt was returned");
       }
-
+      
       console.log(`Election activation confirmed in block ${receipt.blockNumber}`);
-
+      
       // Verify the status was updated correctly
       const updatedDetails = await this.getElectionDetails(electionId);
       if (updatedDetails.status === ElectionStatus.Active) {
@@ -1062,7 +868,7 @@ Technical error: ${gasError.message}`);
       }
     } catch (error: any) {
       console.error(`Failed to start election ${electionId} with custom gas:`, error);
-
+      
       // Enhanced error handling for different error cases
       if (error.message?.includes("Internal JSON-RPC error") || error.message?.includes("insufficient funds")) {
         throw new Error("Transaction failed due to network congestion or insufficient funds. Please ensure you have enough testnet MATIC and try these ultra-high settings in MetaMask: Gas limit=3000000, Max priority fee=50 gwei, Max fee=100 gwei.");
@@ -1090,20 +896,20 @@ Technical error: ${gasError.message}`);
           const signer = await ethersProvider.getSigner();
           this.signer = signer;
           this.walletAddress = await signer.getAddress();
-
+          
           this.contract = new ethers.Contract(
             CONTRACT_ADDRESS,
             IMPROVED_CONTRACT_ABI,
             signer
           );
-
+          
           console.log('Contract initialized on-demand for stopping election');
         } catch (initError) {
           console.error('Failed to initialize contract on-demand for stopping election:', initError);
           throw new Error('Failed to connect to blockchain. Please make sure MetaMask is installed and connected.');
         }
       }
-
+      
       // If still no contract, we can't proceed
       if (!this.contract || !this.signer) {
         throw new Error('Contract could not be initialized. Please make sure MetaMask is installed and connected.');
@@ -1114,47 +920,47 @@ Technical error: ${gasError.message}`);
         throw new Error('Wallet not connected. Please connect your MetaMask wallet first.');
       }
 
-      // Use optimized gas settings for stopping an election on Polygon Amoy
+      // Use ultra-high gas settings to ensure transaction success on Polygon Amoy
       const options = {
-        gasLimit: 600000, // Moderate gas limit optimized for operations
-        maxPriorityFeePerGas: ethers.parseUnits("4.0", "gwei"), // Moderate priority fee for important operations
-        maxFeePerGas: ethers.parseUnits("15.0", "gwei"), // Reasonable max fee for important operations
+        gasLimit: 2000000, // Ultra high gas limit for better success chance
+        maxPriorityFeePerGas: ethers.parseUnits("30.0", "gwei"), // Very high priority fee
+        maxFeePerGas: ethers.parseUnits("70.0", "gwei"), // Very high max fee
         type: 2, // Use EIP-1559 transaction type
       };
 
       // Get nonce before transaction to ensure proper sequencing
       const nonce = await this.getNextNonce();
-
+      
       // Use populateTransaction pattern for better transaction handling
       const tx = await this.contract.updateElectionStatus.populateTransaction(
         electionId,
         ElectionStatus.Completed
       );
-
+      
       // Combine the function call with our transaction options
       const transaction = {
         ...tx,
         ...options,
         nonce
       };
-
+      
       console.log(`Sending stop election transaction with options:`, options);
-
+      
       // Send the transaction with the signer
       const txResponse = await this.signer.sendTransaction(transaction);
-
+      
       console.log(`Stop election transaction sent: ${txResponse.hash}`);
-
+      
       // Wait for the transaction to be mined with a longer timeout
       const receipt = await txResponse.wait(3); // Wait for 3 confirmations for better reliability
-
+      
       // Add null check to satisfy TypeScript
       if (!receipt) {
         throw new Error("Transaction was sent but no receipt was returned");
       }
-
+      
       console.log(`Stop election confirmed in block ${receipt.blockNumber}`);
-
+      
       // Verify the status was updated correctly
       const updatedDetails = await this.getElectionDetails(electionId);
       if (updatedDetails.status === ElectionStatus.Completed) {
@@ -1164,7 +970,7 @@ Technical error: ${gasError.message}`);
       }
     } catch (error: any) {
       console.error(`Failed to stop election ${electionId}:`, error);
-
+      
       // Enhanced error handling for different error cases
       if (error.message?.includes("Internal JSON-RPC error") || error.message?.includes("insufficient funds")) {
         throw new Error("Transaction failed due to network congestion or insufficient funds. Please ensure you have enough testnet MATIC and try again with higher gas settings in MetaMask.");
@@ -1192,20 +998,20 @@ Technical error: ${gasError.message}`);
           const signer = await ethersProvider.getSigner();
           this.signer = signer;
           this.walletAddress = await signer.getAddress();
-
+          
           this.contract = new ethers.Contract(
             CONTRACT_ADDRESS,
             IMPROVED_CONTRACT_ABI,
             signer
           );
-
+          
           console.log('Contract initialized on-demand for auto-updating election status');
         } catch (initError) {
           console.error('Failed to initialize contract on-demand for auto-updating election:', initError);
           throw new Error('Failed to connect to blockchain. Please make sure MetaMask is installed and connected.');
         }
       }
-
+      
       // If still no contract, we can't proceed
       if (!this.contract || !this.signer) {
         throw new Error('Contract could not be initialized. Please make sure MetaMask is installed and connected.');
@@ -1215,13 +1021,13 @@ Technical error: ${gasError.message}`);
       if (!this.walletAddress) {
         throw new Error('Wallet not connected. Please connect your MetaMask wallet first.');
       }
-
+      
       // First, check the current election details to know what we're working with
       const electionDetails = await this.getElectionDetails(electionId);
       const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
-
+      
       console.log(`Auto-update check for election ${electionId}: Current status=${electionDetails.status}, Start=${new Date(electionDetails.startTime * 1000).toLocaleString()}, End=${new Date(electionDetails.endTime * 1000).toLocaleString()}, Current time=${new Date(currentTime * 1000).toLocaleString()}`);
-
+      
       // Only proceed if the election needs a status update
       const needsUpdate = 
         // If pending but should be active
@@ -1231,7 +1037,7 @@ Technical error: ${gasError.message}`);
         // If active but should be completed
         (electionDetails.status === 1 && 
          currentTime > electionDetails.endTime);
-
+      
       if (!needsUpdate) {
         console.log(`Election ${electionId} status (${electionDetails.status}) is already correct based on time.`);
         return;
@@ -1255,7 +1061,7 @@ Technical error: ${gasError.message}`);
 
       // Use ultra-high gas settings to ensure transaction success on Polygon Amoy
       const options = {
-        gasLimit: 600000, // Moderate gas limit optimized for operations
+        gasLimit: 2000000, // Ultra high gas limit for better success chance
         maxPriorityFeePerGas: ethers.parseUnits("30.0", "gwei"), // Very high priority fee
         maxFeePerGas: ethers.parseUnits("70.0", "gwei"), // Very high max fee
         type: 2, // Use EIP-1559 transaction type
@@ -1263,57 +1069,57 @@ Technical error: ${gasError.message}`);
 
       // Get nonce before transaction to ensure proper sequencing
       const nonce = await this.getNextNonce();
-
+      
       // Use populateTransaction pattern for better transaction handling
       const tx = await this.contract.updateElectionStatus.populateTransaction(
         electionId,
         targetStatus
       );
-
+      
       // Combine the function call with our transaction options
       const transaction = {
         ...tx,
         ...options,
         nonce
       };
-
+      
       console.log(`Sending status update transaction with options:`, options);
-
+      
       // Send the transaction with the signer
       const txResponse = await this.signer.sendTransaction(transaction);
-
+      
       console.log(`Election status update transaction sent: ${txResponse.hash}`);
-
+      
       // Wait for the transaction to be mined with a longer timeout
       const receipt = await txResponse.wait(3); // Wait for 3 confirmations for better reliability
-
+      
       // Add null check to satisfy TypeScript
       if (!receipt) {
         throw new Error("Transaction was sent but no receipt was returned");
       }
-
+      
       console.log(`Election status update confirmed in block ${receipt.blockNumber}`);
-
+      
       // Check the updated status to verify it was correctly updated
       const updatedDetails = await this.getElectionDetails(electionId);
-
+      
       if (updatedDetails.status === targetStatus) {
         console.log(`Election ${electionId} successfully updated to target status ${targetStatus}`);
       } else {
         console.warn(`Election ${electionId} status updated from ${electionDetails.status} to ${updatedDetails.status}, but target was ${targetStatus}`);
-
+        
         // If still not at target status, this might indicate an issue with the contract's internal logic
         // We'll log this but not throw an error as the transaction was successful
         if (updatedDetails.status !== targetStatus) {
           console.warn(`Election ${electionId} did not reach target status ${targetStatus} after update transaction. Current status: ${updatedDetails.status}`);
         }
       }
-
+      
       return;
     } catch (error: any) {
       // Log detailed error for debugging
       console.error(`Failed to auto-update election status for ${electionId}:`, error);
-
+      
       // Enhanced error handling for different error cases
       if (error.message?.includes("Internal JSON-RPC error") || error.message?.includes("insufficient funds")) {
         throw new Error("Transaction failed due to network congestion or insufficient funds. Please ensure you have enough testnet MATIC and try again with higher gas settings in MetaMask: Gas limit=2000000, Max priority fee=30 gwei, Max fee=70 gwei.");
@@ -1343,20 +1149,20 @@ Technical error: ${gasError.message}`);
           const signer = await ethersProvider.getSigner();
           this.signer = signer;
           this.walletAddress = await signer.getAddress();
-
+          
           this.contract = new ethers.Contract(
             CONTRACT_ADDRESS,
             IMPROVED_CONTRACT_ABI,
             signer
           );
-
+          
           console.log('Contract initialized on-demand for finalizing election results');
         } catch (initError) {
           console.error('Failed to initialize contract on-demand for finalizing results:', initError);
           throw new Error('Failed to connect to blockchain. Please make sure MetaMask is installed and connected.');
         }
       }
-
+      
       // If still no contract, we can't proceed
       if (!this.contract || !this.signer) {
         throw new Error('Contract could not be initialized. Please make sure MetaMask is installed and connected.');
@@ -1369,7 +1175,7 @@ Technical error: ${gasError.message}`);
 
       // Use ultra-high gas settings to ensure transaction success on Polygon Amoy
       const options = {
-        gasLimit: 600000, // Moderate gas limit optimized for operations
+        gasLimit: 2000000, // Ultra high gas limit for better success chance
         maxPriorityFeePerGas: ethers.parseUnits("30.0", "gwei"), // Very high priority fee
         maxFeePerGas: ethers.parseUnits("70.0", "gwei"), // Very high max fee
         type: 2, // Use EIP-1559 transaction type
@@ -1377,36 +1183,36 @@ Technical error: ${gasError.message}`);
 
       // Get nonce before transaction to ensure proper sequencing
       const nonce = await this.getNextNonce();
-
+      
       // Use populateTransaction pattern for better transaction handling
       const tx = await this.contract.finalizeResults.populateTransaction(
         electionId
       );
-
+      
       // Combine the function call with our transaction options
       const transaction = {
         ...tx,
         ...options,
         nonce
       };
-
+      
       console.log(`Sending finalize results transaction with options:`, options);
-
+      
       // Send the transaction with the signer
       const txResponse = await this.signer.sendTransaction(transaction);
-
+      
       console.log(`Finalize results transaction sent: ${txResponse.hash}`);
-
+      
       // Wait for the transaction to be mined with a longer timeout
       const receipt = await txResponse.wait(3); // Wait for 3 confirmations for better reliability
-
+      
       // Add null check to satisfy TypeScript
       if (!receipt) {
         throw new Error("Transaction was sent but no receipt was returned");
       }
-
+      
       console.log(`Finalize results confirmed in block ${receipt.blockNumber}`);
-
+      
       // Verify the results were finalized
       const updatedDetails = await this.getElectionDetails(electionId);
       if (updatedDetails.resultsFinalized) {
@@ -1416,7 +1222,7 @@ Technical error: ${gasError.message}`);
       }
     } catch (error: any) {
       console.error(`Failed to finalize results for election ${electionId}:`, error);
-
+      
       // Enhanced error handling for different error cases
       if (error.message?.includes("Internal JSON-RPC error") || error.message?.includes("insufficient funds")) {
         throw new Error("Transaction failed due to network congestion or insufficient funds. Please ensure you have enough testnet MATIC and try again with higher gas settings in MetaMask.");
@@ -1439,7 +1245,7 @@ Technical error: ${gasError.message}`);
       if (!window.ethereum) {
         throw new Error('MetaMask is not installed');
       }
-
+      
       // Check if already connected
       if (this.walletAddress && this.signer) {
         try {
@@ -1447,10 +1253,10 @@ Technical error: ${gasError.message}`);
           const accounts = await window.ethereum.request({ method: 'eth_accounts' });
           if (accounts.length > 0 && accounts[0].toLowerCase() === this.walletAddress.toLowerCase()) {
             console.log('Wallet already connected, using existing connection');
-
+            
             // Even if connected, ensure we're on the right network
             await this.ensurePolygonAmoyNetwork();
-
+            
             return this.walletAddress;
           }
         } catch (checkError) {
@@ -1467,12 +1273,12 @@ Technical error: ${gasError.message}`);
         // If we get the "already processing" error, wait and try to use eth_accounts instead
         if (error.code === -32002) {
           console.log('MetaMask connection already in progress, waiting for user...');
-
+          
           // Create a timeout promise
           const timeout = new Promise<string[]>((_, reject) => {
             setTimeout(() => reject(new Error('Connection timeout. Please complete the MetaMask connection request.')), 30000);
           });
-
+          
           // Check for accounts periodically
           const checkAccounts = new Promise<string[]>((resolve) => {
             const checkInterval = setInterval(async () => {
@@ -1487,7 +1293,7 @@ Technical error: ${gasError.message}`);
               }
             }, 1000);
           });
-
+          
           // Race between timeout and successful connection
           const accounts = await Promise.race([checkAccounts, timeout]);
           this.walletAddress = accounts[0];
@@ -1502,10 +1308,10 @@ Technical error: ${gasError.message}`);
 
       // Create Web3Provider using window.ethereum
       const ethersProvider = new ethers.BrowserProvider(window.ethereum);
-
+      
       // Get signer
       this.signer = await ethersProvider.getSigner();
-
+      
       // Connect contract with signer
       if (this.contract) {
         this.contract = this.contract.connect(this.signer);
@@ -1523,12 +1329,12 @@ Technical error: ${gasError.message}`);
       throw error;
     }
   }
-
+  
   // Verify and ensure connection to Polygon Amoy network
   private async ensurePolygonAmoyNetwork(): Promise<boolean> {
     try {
       if (!window.ethereum) return false;
-
+      
       // First check if we're already on Polygon Amoy
       try {
         const chainId = await window.ethereum.request({ method: 'eth_chainId' });
@@ -1540,7 +1346,7 @@ Technical error: ${gasError.message}`);
       } catch (error) {
         console.warn('Error checking chain ID:', error);
       }
-
+      
       // First try to switch to the network if it's already added
       try {
         console.log('Switching to Polygon Amoy network');
@@ -1614,13 +1420,13 @@ Technical error: ${gasError.message}`);
           const signer = await ethersProvider.getSigner();
           this.signer = signer;
           this.walletAddress = await signer.getAddress();
-
+          
           this.contract = new ethers.Contract(
             CONTRACT_ADDRESS,
             IMPROVED_CONTRACT_ABI,
             signer
           );
-
+          
           console.log('Contract initialized on-demand for getting election details');
         } catch (initError) {
           console.warn('Failed to initialize contract on-demand:', initError);
@@ -1636,7 +1442,7 @@ Technical error: ${gasError.message}`);
           };
         }
       }
-
+      
       // If still no contract, return default election rather than throwing
       if (!this.contract) {
         console.warn(`Cannot get election details: Contract not initialized and cannot connect to MetaMask`);
@@ -1656,11 +1462,11 @@ Technical error: ${gasError.message}`);
         // This is more reliable than getElectionDetails which might have encoding issues
         console.log(`Checking if election ${electionId} exists by accessing elections mapping`);
         const electionStruct = await this.contract.elections(electionId);
-
+        
         // If we get here without error, the election exists, so we can safely call getElectionDetails
         console.log(`Election ${electionId} exists in contract, fetching details`);
         const details = await this.contract.getElectionDetails(electionId);
-
+        
         return {
           id: Number(details[0]),
           electionType: Number(details[1]),
@@ -1673,12 +1479,12 @@ Technical error: ${gasError.message}`);
       } catch (contractError) {
         console.warn(`Error accessing election ${electionId} data:`, contractError);
         console.log(`Falling back to direct elections mapping`);
-
+        
         try {
           // Try to access the raw election struct directly
           const electionData = await this.contract.elections(electionId);
           console.log(`Raw election data from elections mapping:`, electionData);
-
+          
           // Parse the struct fields based on the ABI
           return {
             id: Number(electionData.id),
@@ -1692,7 +1498,7 @@ Technical error: ${gasError.message}`);
         } catch (fallbackError) {
           console.error(`Fallback also failed for election ${electionId}:`, fallbackError);
           console.warn(`Election ${electionId} likely doesn't exist on the blockchain`);
-
+          
           // Return a default election with error indicators
           return {
             id: electionId,
@@ -1731,13 +1537,13 @@ Technical error: ${gasError.message}`);
           const signer = await ethersProvider.getSigner();
           this.signer = signer;
           this.walletAddress = await signer.getAddress();
-
+          
           this.contract = new ethers.Contract(
             CONTRACT_ADDRESS,
             IMPROVED_CONTRACT_ABI,
             signer
           );
-
+          
           console.log('Contract initialized on-demand for getting election candidates');
         } catch (initError) {
           console.warn('Failed to initialize contract on-demand:', initError);
@@ -1745,7 +1551,7 @@ Technical error: ${gasError.message}`);
           return [];
         }
       }
-
+      
       // If still no contract, return empty array instead of throwing
       if (!this.contract) {
         console.warn(`Cannot get candidates for election ID ${electionId}: Contract not initialized and cannot connect to MetaMask`);
@@ -1760,7 +1566,7 @@ Technical error: ${gasError.message}`);
       return [];
     }
   }
-
+  
   /**
    * Checks if a candidate is registered for a specific election
    * This is a more reliable alternative method that checks directly
@@ -1771,7 +1577,7 @@ Technical error: ${gasError.message}`);
   async checkCandidateInElection(electionId: number, candidateId: number): Promise<boolean> {
     try {
       console.log(`Direct check if candidate ${candidateId} is registered for election ${electionId}...`);
-
+      
       // If no contract, try to initialize through MetaMask connection
       if (!this.contract && window.ethereum) {
         try {
@@ -1780,31 +1586,31 @@ Technical error: ${gasError.message}`);
           const signer = await ethersProvider.getSigner();
           this.signer = signer;
           this.walletAddress = await signer.getAddress();
-
+          
           this.contract = new ethers.Contract(
             CONTRACT_ADDRESS,
             IMPROVED_CONTRACT_ABI,
             signer
           );
-
+          
           console.log('Contract initialized on-demand for checking candidate registration');
         } catch (initError) {
           console.warn('Failed to initialize contract on-demand:', initError);
           throw new Error('Failed to initialize blockchain connection for verification');
         }
       }
-
+      
       if (!this.contract) {
         throw new Error('Contract not initialized and cannot connect to MetaMask');
       }
-
+      
       // First, try the getElectionCandidates approach
       try {
         const candidateList = await this.contract.getElectionCandidates(electionId);
         const candidateIds = candidateList.map((id: any) => Number(id));
         const isRegistered = candidateIds.includes(candidateId);
         console.log(`Candidate ${candidateId} registration check for election ${electionId} (method 1): ${isRegistered}`);
-
+        
         if (isRegistered) {
           return true;
         }
@@ -1812,14 +1618,14 @@ Technical error: ${gasError.message}`);
         console.warn('Failed to check using candidate list method:', listError);
         // Continue to alternative method if this fails
       }
-
+      
       // Alternative: Try to get the candidate's vote count for this election
       // If the candidate is not registered, this should fail or return 0
       try {
         const voteCount = await this.contract.getCandidateVoteCount(candidateId);
         const hasVotes = Number(voteCount) > 0;
         console.log(`Candidate ${candidateId} has ${voteCount} votes in election ${electionId}`);
-
+        
         // Having votes is a strong indicator that the candidate is registered
         if (hasVotes) {
           return true;
@@ -1828,7 +1634,7 @@ Technical error: ${gasError.message}`);
         console.warn('Failed to verify using vote count method:', voteError);
         // Continue to further methods
       }
-
+      
       // Final fallback: Try a direct approach by checking election registration
       // This depends on the contract implementation and may not always be available
       try {
@@ -1857,13 +1663,13 @@ Technical error: ${gasError.message}`);
           const signer = await ethersProvider.getSigner();
           this.signer = signer;
           this.walletAddress = await signer.getAddress();
-
+          
           this.contract = new ethers.Contract(
             CONTRACT_ADDRESS,
             IMPROVED_CONTRACT_ABI,
             signer
           );
-
+          
           console.log('Contract initialized on-demand for getting election tickets');
         } catch (initError) {
           console.warn('Failed to initialize contract on-demand:', initError);
@@ -1871,7 +1677,7 @@ Technical error: ${gasError.message}`);
           return [];
         }
       }
-
+      
       // If still no contract, return empty array instead of throwing
       if (!this.contract) {
         console.warn(`Cannot get tickets for election ID ${electionId}: Contract not initialized and cannot connect to MetaMask`);
@@ -1898,13 +1704,13 @@ Technical error: ${gasError.message}`);
           const signer = await ethersProvider.getSigner();
           this.signer = signer;
           this.walletAddress = await signer.getAddress();
-
+          
           this.contract = new ethers.Contract(
             CONTRACT_ADDRESS,
             IMPROVED_CONTRACT_ABI,
             signer
           );
-
+          
           console.log('Contract initialized on-demand for getting election winner');
         } catch (initError) {
           console.warn('Failed to initialize contract on-demand:', initError);
@@ -1915,7 +1721,7 @@ Technical error: ${gasError.message}`);
           };
         }
       }
-
+      
       // If still no contract, return default instead of throwing
       if (!this.contract) {
         console.warn(`Cannot get winner for election ID ${electionId}: Contract not initialized and cannot connect to MetaMask`);
@@ -1951,13 +1757,13 @@ Technical error: ${gasError.message}`);
           const signer = await ethersProvider.getSigner();
           this.signer = signer;
           this.walletAddress = await signer.getAddress();
-
+          
           this.contract = new ethers.Contract(
             CONTRACT_ADDRESS,
             IMPROVED_CONTRACT_ABI,
             signer
           );
-
+          
           console.log('Contract initialized on-demand for vote count');
         } catch (initError) {
           console.warn('Failed to initialize contract on-demand:', initError);
@@ -1966,7 +1772,7 @@ Technical error: ${gasError.message}`);
           return 0;
         }
       }
-
+      
       // If still no contract, return 0 instead of throwing error
       if (!this.contract) {
         console.warn(`Cannot get vote count for candidate ID ${candidateId}: Contract not initialized and cannot connect to MetaMask`);
@@ -1977,7 +1783,7 @@ Technical error: ${gasError.message}`);
       try {
         // Use a transaction-less view function to check if candidate exists
         await this.contract.getCandidateVoteCount.staticCall(candidateId);
-
+        
         // If we're here, the candidate exists, so we can get the vote count
         const voteCount = await this.contract.getCandidateVoteCount(candidateId);
         return Number(voteCount);
@@ -1987,7 +1793,7 @@ Technical error: ${gasError.message}`);
           console.warn(`Candidate with ID ${candidateId} does not exist in the blockchain yet. Returning 0 votes.`);
           return 0; // Return 0 for non-existent candidates
         }
-
+        
         // For other errors, log and return 0
         console.error(`Error checking vote count for candidate ID ${candidateId}:`, error);
         return 0;
@@ -2010,13 +1816,13 @@ Technical error: ${gasError.message}`);
           const signer = await ethersProvider.getSigner();
           this.signer = signer;
           this.walletAddress = await signer.getAddress();
-
+          
           this.contract = new ethers.Contract(
             CONTRACT_ADDRESS,
             IMPROVED_CONTRACT_ABI,
             signer
           );
-
+          
           console.log('Contract initialized on-demand for ticket vote count');
         } catch (initError) {
           console.warn('Failed to initialize contract on-demand:', initError);
@@ -2024,7 +1830,7 @@ Technical error: ${gasError.message}`);
           return 0;
         }
       }
-
+      
       // If still no contract, return 0 instead of throwing error
       if (!this.contract) {
         console.warn(`Cannot get vote count for ticket ID ${ticketId}: Contract not initialized and cannot connect to MetaMask`);
@@ -2050,11 +1856,11 @@ Technical error: ${gasError.message}`);
           console.log('Provider not initialized, trying to connect using MetaMask for getting nonce...');
           const ethersProvider = new ethers.BrowserProvider(window.ethereum);
           this.provider = ethersProvider;
-
+          
           const signer = await ethersProvider.getSigner();
           this.signer = signer;
           this.walletAddress = await signer.getAddress();
-
+          
           if (CONTRACT_ADDRESS) {
             this.contract = new ethers.Contract(
               CONTRACT_ADDRESS,
@@ -2062,14 +1868,14 @@ Technical error: ${gasError.message}`);
               signer
             );
           }
-
+          
           console.log('Provider initialized on-demand for getting transaction nonce');
         } catch (initError) {
           console.error('Failed to initialize provider on-demand for nonce:', initError);
           throw new Error('Failed to connect to blockchain. Please make sure MetaMask is installed and connected.');
         }
       }
-
+      
       // If still no provider or wallet, can't proceed
       if (!this.provider || !this.walletAddress) {
         throw new Error('Provider could not be initialized. Please make sure MetaMask is installed and connected.');
@@ -2096,13 +1902,13 @@ Technical error: ${gasError.message}`);
           const signer = await ethersProvider.getSigner();
           this.signer = signer;
           this.walletAddress = await signer.getAddress();
-
+          
           this.contract = new ethers.Contract(
             CONTRACT_ADDRESS,
             IMPROVED_CONTRACT_ABI,
             signer
           );
-
+          
           console.log('Contract initialized on-demand for vote check');
         } catch (initError) {
           console.warn('Failed to initialize contract on-demand:', initError);
@@ -2111,7 +1917,7 @@ Technical error: ${gasError.message}`);
           return false;
         }
       }
-
+      
       // If still no contract, return false instead of throwing error
       if (!this.contract) {
         console.warn(`Cannot check voted status: Contract not initialized and cannot connect to MetaMask`);
@@ -2156,7 +1962,7 @@ Technical error: ${gasError.message}`);
         maxFeePerGas: ethers.parseUnits("3.0", "gwei"), // Absolute minimum max fee
         type: 2, // Use EIP-1559 transaction type
       };
-
+      
       // If custom gas options were provided, log them
       if (customGasOptions) {
         console.log(`Using custom gas settings for vote transaction:`, customGasOptions);
@@ -2167,37 +1973,37 @@ Technical error: ${gasError.message}`);
       // Skip gas estimation and go straight to sending the transaction
       // This approach might help when the contract has issues with gas estimation but can still process transactions
       console.log("Sending transaction with moderate gas parameters suitable for student voting");
-
+      
       // Send the vote transaction with moderate gas settings
       // FIXED: Properly separate contract arguments from transaction options
       // The nonce is a function argument, options are transaction parameters
       const tx = await this.contract.voteForSenator.populateTransaction(electionId, candidateId, nonce);
-
+      
       // Use the populated transaction with our transaction options
       const transaction = {
         ...tx,
         ...options
       };
-
+      
       // Send the transaction with the signer
       const txResponse = await this.signer.sendTransaction(transaction);
-
+      
       console.log("Transaction sent, awaiting confirmation:", txResponse.hash);
-
+      
       // Wait for the transaction to be mined with a longer timeout
       const receipt = await txResponse.wait(2); // Wait for 2 confirmations (reduced from 3 for student voting)
-
+      
       // Add null check to satisfy TypeScript
       if (!receipt) {
         throw new Error("Transaction was sent but no receipt was returned");
       }
-
+      
       console.log("Transaction confirmed with receipt:", receipt);
-
+      
       return receipt.hash;
     } catch (error: any) {
       console.error(`Failed to vote for candidate ${candidateId} in election ${electionId}:`, error);
-
+      
       // Enhanced error handling for different error cases
       if (error.message?.includes("Internal JSON-RPC error") || error.message?.includes("insufficient funds")) {
         throw new Error("Transaction failed due to network congestion or insufficient funds. Please ensure you have enough testnet MATIC and try again later.");
@@ -2237,7 +2043,7 @@ Technical error: ${gasError.message}`);
         maxFeePerGas: ethers.parseUnits("3.0", "gwei"), // Absolute minimum max fee
         type: 2, // Use EIP-1559 transaction type
       };
-
+      
       // If custom gas options were provided, log them
       if (customGasOptions) {
         console.log(`Using custom gas settings for President/VP vote transaction:`, customGasOptions);
@@ -2248,36 +2054,36 @@ Technical error: ${gasError.message}`);
       // Skip gas estimation and go straight to sending the transaction
       // This approach might help when the contract has issues with gas estimation but can still process transactions
       console.log("Sending transaction with moderate gas parameters suitable for student voting");
-
+      
       // FIXED: Apply the same correct pattern for President/VP voting 
       // Properly separate contract arguments from transaction options
       const tx = await this.contract.voteForPresidentVP.populateTransaction(electionId, ticketId, nonce);
-
+      
       // Use the populated transaction with our transaction options
       const transaction = {
         ...tx,
         ...options
       };
-
+      
       // Send the transaction with the signer
       const txResponse = await this.signer.sendTransaction(transaction);
-
+      
       console.log("Transaction sent, awaiting confirmation:", txResponse.hash);
-
+      
       // Wait for the transaction to be mined with a longer timeout
       const receipt = await txResponse.wait(2); // Wait for 2 confirmations (reduced from 3 for student voting)
-
+      
       // Add null check to satisfy TypeScript
       if (!receipt) {
         throw new Error("Transaction was sent but no receipt was returned");
       }
-
+      
       console.log("Transaction confirmed with receipt:", receipt);
-
+      
       return receipt.hash;
     } catch (error: any) {
       console.error(`Failed to vote for ticket ${ticketId} in election ${electionId}:`, error);
-
+      
       // Enhanced error handling for different error cases
       if (error.message?.includes("Internal JSON-RPC error") || error.message?.includes("insufficient funds")) {
         throw new Error("Transaction failed due to network congestion or insufficient funds. Please ensure you have enough testnet MATIC and try again later.");
@@ -2305,13 +2111,13 @@ Technical error: ${gasError.message}`);
           const signer = await ethersProvider.getSigner();
           this.signer = signer;
           this.walletAddress = await signer.getAddress();
-
+          
           this.contract = new ethers.Contract(
             CONTRACT_ADDRESS,
             IMPROVED_CONTRACT_ABI,
             signer
           );
-
+          
           console.log('Contract initialized on-demand for voter check');
         } catch (initError) {
           console.warn('Failed to initialize contract on-demand:', initError);
@@ -2319,7 +2125,7 @@ Technical error: ${gasError.message}`);
           return false;
         }
       }
-
+      
       // If still no contract, return false instead of throwing error
       if (!this.contract) {
         console.warn(`Cannot check voter status: Contract not initialized and cannot connect to MetaMask`);

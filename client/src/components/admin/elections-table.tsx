@@ -117,36 +117,10 @@ export function ElectionsTable({ elections, onEdit, onDelete, onAddCandidates, o
                 <td className="px-6 py-4 text-sm text-gray-500">
                   <div className="flex flex-col space-y-1">
                     <div>
-                      <span className="font-medium">Start:</span> {
-                        (() => {
-                          try {
-                            // Make sure startTime exists and is not null
-                            if (!election.startTime) {
-                              return "Invalid date";
-                            }
-                            return format(new Date(election.startTime), "MMM d, yyyy - HH:mm");
-                          } catch (error) {
-                            console.error("Error formatting startTime:", error, election.startTime);
-                            return "Invalid date";
-                          }
-                        })()
-                      }
+                      <span className="font-medium">Start:</span> {format(new Date(election.startDate), "MMM d, yyyy - HH:mm")}
                     </div>
                     <div>
-                      <span className="font-medium">End:</span> {
-                        (() => {
-                          try {
-                            // Make sure endTime exists and is not null
-                            if (!election.endTime) {
-                              return "Invalid date";
-                            }
-                            return format(new Date(election.endTime), "MMM d, yyyy - HH:mm");
-                          } catch (error) {
-                            console.error("Error formatting endTime:", error, election.endTime);
-                            return "Invalid date";
-                          }
-                        })()
-                      }
+                      <span className="font-medium">End:</span> {format(new Date(election.endDate), "MMM d, yyyy - HH:mm")}
                     </div>
                   </div>
                 </td>
@@ -163,12 +137,12 @@ export function ElectionsTable({ elections, onEdit, onDelete, onAddCandidates, o
                   <div className="flex flex-col space-y-2">
                     <BlockchainDeploymentStatus election={election} />
                     
-                    {(election as any).blockchainId && 
-                     (election as any).blockchainId > 0 && 
+                    {election.blockchainId && 
+                     election.blockchainId > 0 && 
                      election.status !== "completed" && (
                       <ActivateElectionButton 
                         electionId={election.id}
-                        blockchainId={(election as any).blockchainId as number}
+                        blockchainId={election.blockchainId as number}
                         size="sm"
                         variant="outline"
                         className="mt-2"

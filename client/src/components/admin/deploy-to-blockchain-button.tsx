@@ -15,7 +15,6 @@ import {
   TooltipProvider,
   TooltipTrigger
 } from "@/components/ui/tooltip";
-import { BlockchainWrapper } from '../blockchain/BlockchainWrapper';
 
 // Convert database election to blockchain election type
 function mapElectionTypeToBlockchain(dbPosition: string): ElectionType {
@@ -29,45 +28,16 @@ function mapElectionTypeToBlockchain(dbPosition: string): ElectionType {
 // Modified to ensure dates work with blockchain contract requirements
 // - Start time must be in future when deploying 
 // - Start time must be "now" when activating
-function dateToTimestamp(date: Date | string, isEndTime: boolean = false): number {
+function dateToTimestamp(date: Date): number {
   const now = Math.floor(Date.now() / 1000); // Current time in seconds
-
-  // Handle null, undefined or invalid date inputs
-  if (!date) {
-    console.warn("Invalid date input to dateToTimestamp, using current time + offset");
-    return isEndTime ? now + 3600 : now + 60; // End time gets +1 hour, start time gets +1 minute
-  }
-
-  // Convert string to Date if needed
-  let dateObj: Date;
-  if (typeof date === 'string') {
-    // Ensure string is in ISO format with timezone
-    if (!date.includes('Z') && !date.includes('+')) {
-      date = date + 'Z'; // Add UTC indicator to avoid browser locale issues
-    }
-    dateObj = new Date(date);
-  } else {
-    dateObj = date;
-  }
-
-  // Ensure it's a valid date
-  if (isNaN(dateObj.getTime())) {
-    console.warn("Invalid date object in dateToTimestamp, using current time + offset");
-    return isEndTime ? now + 3600 : now + 60; // End time gets +1 hour, start time gets +1 minute
-  }
-
-  const dateTimestamp = Math.floor(dateObj.getTime() / 1000);
-
-  // Log for debugging
-  console.log(`Converting ${isEndTime ? 'end' : 'start'} date ${dateObj.toISOString()} to timestamp ${dateTimestamp} seconds`);
-
-  // If the date is in the past, return future time
+  const dateTimestamp = Math.floor(date.getTime() / 1000);
+  
+  // If the date is in the past, return future time (now + 60 seconds)
+  // This ensures our deployment succeeds while still allowing immediate activation
   if (dateTimestamp <= now) {
-    const adjustedTime = isEndTime ? now + 3600 : now + 60; // End time gets +1 hour, start time gets +1 minute
-    console.log(`${isEndTime ? 'End' : 'Start'} date is in the past, using alternate time: ${adjustedTime}`);
-    return adjustedTime;
+    return now + 60; // 1 minute in the future
   }
-
+  
   return dateTimestamp;
 }
 
@@ -91,7 +61,7 @@ export function DeployToBlockchainButton({
   const [isDeploying, setIsDeploying] = useState(false);
   const [isDeployed, setIsDeployed] = useState(false);
   const [alreadyDeployedWarning, setAlreadyDeployedWarning] = useState(false);
-
+  
   // Fetch election candidates to verify minimum candidate count
   const { data: electionCandidates = [], isLoading: isLoadingCandidates } = useQuery({
     queryKey: [`/api/elections/${election.id}/candidates`],
@@ -101,9 +71,9 @@ export function DeployToBlockchainButton({
       return response.json();
     },
   });
-
+  
   const hasMinimumCandidates = electionCandidates.length >= 2;
-
+  
   // Set initial state based on whether the election already has a blockchain ID
   useEffect(() => {
     if (election.blockchainId) {
@@ -111,23 +81,23 @@ export function DeployToBlockchainButton({
       setAlreadyDeployedWarning(true);
     }
   }, [election.blockchainId]);
-
+  
   // Separate the wallet connection from deployment
   const connectMetamaskWallet = async (): Promise<boolean> => {
     if (isWalletConnected) return true;
-
+    
     try {
       toast({
         title: "Connecting Wallet",
         description: "Please approve the MetaMask connection request.",
         variant: "default",
       });
-
+      
       await connectWallet();
       return true;
     } catch (error: any) {
       console.error("Wallet connection error:", error);
-
+      
       // Handle the "already processing" error specially
       if (error.code === -32002) {
         toast({
@@ -162,23 +132,23 @@ export function DeployToBlockchainButton({
   const registerCandidateWithStudentId = async (candidate: any): Promise<number | null> => {
     try {
       console.log(`Registering candidate ${candidate.fullName} with student ID ${candidate.studentId}`);
-
+      
       // Make sure we have a valid student ID
       if (!candidate.studentId || candidate.studentId.trim() === '') {
         throw new Error(`Candidate ${candidate.fullName} has no valid student ID`);
       }
-
+      
       let blockchainId: number | null = null;
       let retryCount = 0;
       const maxRetries = 2;
-
+      
       // First check if this candidate is already registered on blockchain
       while (blockchainId === null && retryCount <= maxRetries) {
         try {
           if (retryCount > 0) {
             console.log(`Retry attempt ${retryCount} for candidate ${candidate.fullName}`);
           }
-
+          
           try {
             // Try to get existing ID first
             blockchainId = await studentIdWeb3Service.getCandidateIdByStudentId(candidate.studentId);
@@ -187,10 +157,10 @@ export function DeployToBlockchainButton({
           } catch (lookupError) {
             // If not found, proceed with registration
             console.log(`Candidate with student ID ${candidate.studentId} not found, registering now`);
-
+            
             // Initialize web3 service to ensure connection is fresh
             await studentIdWeb3Service.initialize();
-
+            
             // Register candidate on blockchain
             blockchainId = await studentIdWeb3Service.registerCandidate(candidate.studentId);
             console.log(`Successfully registered candidate with student ID ${candidate.studentId} as blockchain ID ${blockchainId}`);
@@ -207,11 +177,11 @@ export function DeployToBlockchainButton({
           await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
         }
       }
-
+      
       if (blockchainId === null) {
         throw new Error(`Failed to register or find candidate ${candidate.fullName} with student ID ${candidate.studentId}`);
       }
-
+      
       // Update candidate in database with blockchain ID
       try {
         const csrfToken = await getCsrfToken();
@@ -223,7 +193,7 @@ export function DeployToBlockchainButton({
           },
           body: JSON.stringify({ blockchainId }),
         });
-
+        
         if (!response.ok) {
           const errorText = await response.text();
           console.warn(`Failed to update candidate ${candidate.id} with blockchain ID ${blockchainId} in database: ${errorText}`);
@@ -234,7 +204,7 @@ export function DeployToBlockchainButton({
         // Don't let DB errors stop the process, just log them
         console.warn(`Database update failed for candidate ${candidate.id}, but blockchain registration was successful:`, dbError);
       }
-
+      
       return blockchainId;
     } catch (error: any) {
       console.error(`Failed to register candidate ${candidate.fullName} with student ID ${candidate.studentId}:`, error);
@@ -250,65 +220,65 @@ export function DeployToBlockchainButton({
       if (!candidate) {
         throw new Error(`Candidate ${candidateId} not found in election ${electionId}`);
       }
-
+      
       // Fetch full candidate details
       const candidateResponse = await fetch(`/api/candidates/${candidateId}`);
       if (!candidateResponse.ok) throw new Error(`Failed to fetch candidate ${candidateId} details`);
       const candidateDetails = await candidateResponse.json();
-
+      
       console.log(`Registering candidate ${candidateDetails.fullName} for election ${electionId}`);
-
+      
       // Get or register candidate on blockchain
       let blockchainCandidateId: number | null = null;
       let retryCount = 0;
       const maxRetries = 2;
-
+      
       while (blockchainCandidateId === null && retryCount <= maxRetries) {
         try {
           if (retryCount > 0) {
             console.log(`Retry attempt ${retryCount} for registering candidate ${candidateDetails.fullName}`);
           }
-
+          
           blockchainCandidateId = await registerCandidateWithStudentId(candidateDetails);
-
+          
           if (!blockchainCandidateId) {
             throw new Error(`Could not get blockchain ID for candidate ${candidateId}`);
           }
-
+          
           console.log(`Got blockchain ID ${blockchainCandidateId} for candidate ${candidateDetails.fullName}`);
-
+          
           // Initialize web3 service to ensure connection is fresh
           await studentIdWeb3Service.initialize();
-
+          
           // Register candidate for election on blockchain
           console.log(`Adding candidate ${blockchainCandidateId} to election ${blockchainElectionId} on blockchain`);
           await studentIdWeb3Service.registerCandidateForElection(
             blockchainElectionId, 
             blockchainCandidateId
           );
-
+          
           console.log(`Successfully registered candidate ${candidateDetails.fullName} for election ${electionId} on blockchain`);
           break; // Exit the loop if successful
         } catch (retryError: any) {
           retryCount++;
           console.error(`Attempt ${retryCount} failed:`, retryError);
-
+          
           if (retryCount > maxRetries) {
             console.error(`Failed after ${maxRetries} attempts to register candidate ${candidateDetails.fullName} for election`);
             throw retryError;
           }
-
+          
           console.log(`Waiting before retry ${retryCount}...`);
           // Wait a bit before retrying (exponential backoff)
           await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
         }
       }
-
+      
       // Final verification - check if candidate is correctly registered for the election
       try {
         const electionCandidates = await studentIdWeb3Service.getElectionCandidates(blockchainElectionId);
         const isRegistered = electionCandidates.includes(blockchainCandidateId);
-
+        
         if (!isRegistered) {
           console.warn(`Verification failed: Candidate ${candidateDetails.fullName} (ID: ${blockchainCandidateId}) is not listed in election ${blockchainElectionId} candidates`);
           // If we're on the last retry and still not registered, try one more time specifically for the election link
@@ -323,7 +293,7 @@ export function DeployToBlockchainButton({
         console.warn(`Could not verify candidate registration for election:`, verifyError);
         // Don't fail the process for verification errors
       }
-
+      
     } catch (error: any) {
       console.error(`Failed to register candidate ${candidateId} for election ${electionId}:`, error);
       throw error;
@@ -337,104 +307,51 @@ export function DeployToBlockchainButton({
       if (!isWalletConnected) {
         await connectWallet();
       }
-
+      
       // Toast to indicate the process has started
       toast({
         title: "Deploying to Blockchain",
-        description: "Starting the unified deployment process. This will deploy the election and register all candidates in a single transaction.",
+        description: "Starting the deployment and registration process. This will deploy the election and register all candidates automatically.",
         duration: 5000,
       });
-
+      
       // Ensure both services are initialized
       await Promise.all([
         web3Service.initialize(),
         studentIdWeb3Service.initialize()
       ]);
-
+      
       // Convert database election to blockchain parameters
       const electionType = mapElectionTypeToBlockchain(election.position);
-      // Use startTime or startDate field, with proper fallback
-      const startTimestamp = dateToTimestamp(election.startDate || election.startTime, false);
-      let endTimestamp = dateToTimestamp(election.endDate || election.endTime, true);
-
-      // Validate that end time is after start time
-      if (endTimestamp <= startTimestamp) {
-        console.warn("End time must be after start time, adjusting end time");
-        // Set end time to start time + 30 minutes
-        endTimestamp = startTimestamp + 1800;
-        console.log(`Adjusted end time to ${endTimestamp} (30 minutes after start time)`);
-      }
-
+      const startTimestamp = dateToTimestamp(new Date(election.startDate));
+      const endTimestamp = dateToTimestamp(new Date(election.endDate));
+      
       // Create election on blockchain
       console.log(`Deploying ${election.name} to blockchain...`);
       console.log(`Election type: ${electionType}, Start: ${startTimestamp}, End: ${endTimestamp}`);
-
-      // Show more detailed toast for user with manual gas configuration instructions for the bundled tx
+      
+      // Show more detailed toast for user with manual gas configuration instructions
       toast({
-        title: "Creating Election with Candidates",
-        description: "Please approve the transaction in MetaMask. This is a unified transaction that deploys everything at once. We've optimized the gas settings to be more affordable while ensuring successful deployment.",
-        duration: 8000,
+        title: "Creating Election on Blockchain",
+        description: "Please approve the transaction in MetaMask. For best results, click the Edit button in MetaMask and manually set: Gas limit to at least 2000000, Max priority fee to 25 gwei, and Max fee to 60 gwei.",
+        duration: 10000,
       });
-
-      // Prepare the candidate data for the bundled election creation
-      // We need to collect either candidateIds (for senator elections) or ticketPairs (for president/VP elections)
-      const isPresidentElection = electionType === ElectionType.PresidentVP;
-      const candidateIds: string[] = [];
-      const ticketPairs: string[][] = [];
-
-      if (electionCandidates && electionCandidates.length > 0) {
-        // Log candidates for debugging
-        console.log("Candidates for election:", electionCandidates);
-        
-        if (isPresidentElection) {
-          // For President elections, we need to organize candidates into president/VP pairs
-          // Each ticket needs a president and a running mate
-          for (const candidate of electionCandidates) {
-            if (candidate.runningMateStudentId) {
-              // Add [president, vp] pair
-              ticketPairs.push([candidate.candidateStudentId, candidate.runningMateStudentId]);
-              console.log(`Added ticket: [${candidate.candidateStudentId}, ${candidate.runningMateStudentId}]`);
-            } else {
-              console.warn(`President candidate without running mate: ${candidate.candidateStudentId}`);
-              // We'll still add them as individual candidates
-              candidateIds.push(candidate.candidateStudentId);
-            }
-          }
-        } else {
-          // For Senator elections, simply collect all candidate IDs
-          for (const candidate of electionCandidates) {
-            candidateIds.push(candidate.candidateStudentId);
-            console.log(`Added senator candidate: ${candidate.candidateStudentId}`);
-          }
-        }
-      }
-
-      // Log the data we've prepared
-      console.log(`Prepared data for deployment:
-        Election Type: ${electionType} (${isPresidentElection ? 'President/VP' : 'Senator'})
-        Start Time: ${startTimestamp}
-        End Time: ${endTimestamp}
-        Senator Candidates: ${candidateIds.length}
-        President/VP Tickets: ${ticketPairs.length}
-      `);
-
-      // Call the web3 service to create the election with candidates in a single transaction
-      console.log("About to call createElectionWithCandidates on web3Service");
-
-      const blockchainElectionId = await web3Service.createElectionWithCandidates(
+      
+      // Call the web3 service to create the election with extra logging
+      console.log("About to call createElection on web3Service");
+      
+      const blockchainElectionId = await web3Service.createElection(
         electionType,
         startTimestamp,
-        endTimestamp,
-        candidateIds,
-        ticketPairs
+        endTimestamp
       );
-      console.log(`Successfully deployed election with candidates to blockchain with ID: ${blockchainElectionId}`);
-
+      console.log(`Successfully deployed election to blockchain with ID: ${blockchainElectionId}`);
+      
       // Update the election in the database with the blockchain ID
       try {
         console.log(`Saving blockchain ID ${blockchainElectionId} for election ${election.id} to database`);
         const csrfToken = await getCsrfToken();
-
+        
         const response = await fetch(`/api/elections/${election.id}/blockchain-id`, {
           method: 'PATCH',
           headers: {
@@ -443,7 +360,7 @@ export function DeployToBlockchainButton({
           },
           body: JSON.stringify({ blockchainId: blockchainElectionId }),
         });
-
+        
         if (!response.ok) {
           const errorText = await response.text();
           console.error('Failed to update election with blockchain ID:', errorText);
@@ -451,35 +368,73 @@ export function DeployToBlockchainButton({
         } else {
           const updatedElection = await response.json();
           console.log('Successfully updated election with blockchain ID in database:', updatedElection);
-
+          
           // Invalidate the elections cache to refresh all components that use election data
           queryClient.invalidateQueries({ queryKey: ["/api/elections"] });
-
+          
           // Also invalidate any specific election query if it exists
           queryClient.invalidateQueries({ queryKey: [`/api/elections/${election.id}`] });
         }
-
+        
+        // Now register all candidates for this election
+        if (electionCandidates && electionCandidates.length > 0) {
+          toast({
+            title: "Registering Candidates",
+            description: `Registering ${electionCandidates.length} candidates for the election. Please approve each transaction in MetaMask.`,
+            duration: 10000,
+          });
+          
+          // For each candidate in this election, register them on the blockchain
+          for (let i = 0; i < electionCandidates.length; i++) {
+            const ec = electionCandidates[i];
+            try {
+              toast({
+                title: "Registering Candidate",
+                description: `Registering candidate ${i+1} of ${electionCandidates.length}. Please approve the transaction in MetaMask.`,
+                duration: 5000,
+              });
+              
+              await registerCandidateForElection(ec.candidateId, election.id, blockchainElectionId);
+              
+              toast({
+                title: "Candidate Registered",
+                description: `Successfully registered candidate ${i+1} of ${electionCandidates.length}.`,
+                duration: 3000,
+              });
+            } catch (error: any) {
+              console.error(`Failed to register candidate ${ec.candidateId} for election ${election.id}:`, error);
+              
+              toast({
+                title: "Candidate Registration Failed",
+                description: `Failed to register candidate ${i+1} of ${electionCandidates.length}: ${error.message || "Unknown error"}`,
+                variant: "destructive",
+                duration: 5000,
+              });
+            }
+          }
+        }
+        
       } catch (error) {
         console.error('Error updating election with blockchain ID:', error);
         // Continue the flow even if database update fails, as the blockchain deployment was successful
       }
-
+      
       toast({
         title: "Election Deployed Successfully",
         description: `Election "${election.name}" has been deployed to blockchain with ID ${blockchainElectionId} and all candidates have been registered.`,
         variant: "default",
       });
-
+      
       setIsDeployed(true);
-
+      
       // Call the success callback if provided
       if (onSuccess) {
         onSuccess(blockchainElectionId);
       }
-
+      
     } catch (error: any) {
       console.error("Failed to deploy election to blockchain:", error);
-
+      
       // Check for specific error types
       if (error.message && error.message.includes("user rejected action")) {
         toast({
@@ -497,9 +452,9 @@ export function DeployToBlockchainButton({
       } else if (error.message && error.message.includes("Internal JSON-RPC error")) {
         toast({
           title: "Polygon Network Congestion",
-          description: "The Polygon Amoy testnet may be experiencing high congestion. Please try again in a few moments when network conditions improve.",
+          description: "The Polygon Amoy testnet is experiencing high congestion. Please try again with manual configuration in MetaMask: click Edit during transaction confirmation and set Gas limit to 2000000, Max priority fee to 25 gwei, and Max fee to 60 gwei.",
           variant: "destructive",
-          duration: 10000
+          duration: 20000
         });
       } else {
         toast({
@@ -512,10 +467,10 @@ export function DeployToBlockchainButton({
       setIsDeploying(false);
     }
   };
-
+  
   const handleDeploy = async () => {
     if (isDeployed || isDeploying) return;
-
+    
     // Check for minimum number of candidates first
     if (!hasMinimumCandidates) {
       toast({
@@ -525,11 +480,11 @@ export function DeployToBlockchainButton({
       });
       return;
     }
-
+    
     // First connect wallet if needed
     const connected = await connectMetamaskWallet();
     if (!connected) return;
-
+    
     // Now deploy to blockchain
     await deployToBlockchain();
   };
@@ -579,7 +534,7 @@ export function DeployToBlockchainButton({
         </TooltipProvider>
       );
     }
-
+    
     return (
       <Button
         variant="outline"
@@ -645,18 +600,9 @@ export function DeployToBlockchainButton({
       ) : (
         <>
           <ServerIcon className="mr-2 h-4 w-4" />
-          Deploy with Candidates
+          Deploy & Register Candidates
         </>
       )}
     </Button>
-  );
-}
-
-// Export the wrapped component with blockchain context
-export function DeployToBlockchainButtonWithWeb3(props: DeployToBlockchainButtonProps) {
-  return (
-    <BlockchainWrapper>
-      <DeployToBlockchainButton {...props} />
-    </BlockchainWrapper>
   );
 }

@@ -164,9 +164,6 @@ function isAdmin(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
-// Define OTP expiry time (3 minutes in milliseconds)
-const OTP_EXPIRY_TIME = 3 * 60 * 1000;
-
 // Password hashing function
 async function hashPassword(password: string): Promise<string> {
   const SALT_ROUNDS = 10;
@@ -339,11 +336,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/elections", isAdmin, async (req, res) => {
     try {
-      console.log("Received election data:", JSON.stringify(req.body, null, 2));
       const result = insertElectionSchema.safeParse(req.body);
       
       if (!result.success) {
-        console.log("Election validation failed:", JSON.stringify(result.error.format(), null, 2));
         return res.status(400).json({ 
           message: "Invalid election data", 
           errors: result.error.format() 
@@ -353,7 +348,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const election = await storage.createElection(result.data);
       res.status(201).json(election);
     } catch (error) {
-      console.error("Failed to create election:", error);
       res.status(500).json({ message: "Failed to create election" });
     }
   });
@@ -380,18 +374,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if start date is being changed - this affects the blockchain identifier mapping
-      // Handle the case where frontend sends startDate but database expects startTime
-      if (req.body.startDate) {
-        // Convert dates to ISO strings for consistent comparison
-        const frontendStartDate = new Date(req.body.startDate).toISOString();
-        const dbStartTime = election.startTime.toISOString();
-        
-        if (frontendStartDate !== dbStartTime) {
-          console.log(`Election ${id} start date changed from ${dbStartTime} to ${frontendStartDate}`);
-        }
+      if (req.body.startDate && election.startDate !== req.body.startDate) {
+        console.log(`Election ${id} start date changed from ${election.startDate} to ${req.body.startDate}`);
       }
       
-      // Forward to storage.updateElection which will handle the field name conversion
       const updatedElection = await storage.updateElection(id, req.body);
       res.json(updatedElection);
     } catch (error) {
@@ -429,13 +415,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       console.log(`Updating blockchain ID for election ${id} to ${blockchainId}`);
-      console.log(`Election start time: ${election.startTime} (used as stable identifier for blockchain mapping)`);
+      console.log(`Election start time: ${election.startDate} (used as stable identifier for blockchain mapping)`);
       
       // Use the simplified updateElection method which handles blockchainId updates specially
       const updatedElection = await storage.updateElection(id, { blockchainId });
       
       // Store the start timestamp as the stable identifier
-      const startTimestamp = new Date(election.startTime).getTime() / 1000;
+      const startTimestamp = new Date(election.startDate).getTime() / 1000;
       console.log(`Election ${id} start timestamp (seconds): ${startTimestamp} - This is the stable identifier used for blockchain mapping`);
       
       // After updating the blockchain ID, immediately check if the election should be active based on dates
@@ -496,18 +482,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Election not found" });
       }
       
-      // Check if this election has blockchain data 
-      // In the schema we don't have blockchainId field directly on the election table
-      // This check is temporarily disabled - if blockchain protection is needed,
-      // we would need to add a blockchainDeploymentStatus field to the schema
-      /* 
+      // Prevent deleting elections that are already deployed to blockchain
       if (election.blockchainId) {
         return res.status(403).json({ 
           message: "Cannot delete election after blockchain deployment",
           detail: "This election has already been deployed to the blockchain and cannot be deleted. The data must remain available for verification purposes."
         });
       }
-      */
 
       await storage.deleteElection(id);
       res.status(200).json({ message: "Election deleted successfully" });
@@ -877,20 +858,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Direct endpoint for election candidates
   app.post("/api/election-candidates", isAdmin, async (req, res) => {
     try {
-      // We need to allow the frontend to send electionId, candidateId, runningMateId
-      // while our database expects different fields, so we'll use a custom validation schema
-      const formSchema = z.object({
-        electionId: z.number({
-          required_error: "Election ID is required",
-        }),
-        candidateId: z.number({
-          required_error: "Candidate ID is required",
-        }),
-        runningMateId: z.number().optional(),
-        _csrf: z.string().optional(),
-      });
-      
-      const result = formSchema.safeParse(req.body);
+      const result = insertElectionCandidateSchema.safeParse(req.body);
       if (!result.success) {
         return res.status(400).json({ 
           message: "Invalid election candidate data", 
@@ -898,17 +866,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      console.log("Processing add candidate to election request:", result.data);
-      
-      try {
-        const electionCandidate = await storage.addCandidateToElection(result.data);
-        return res.status(201).json(electionCandidate);
-      } catch (error) {
-        console.error("Error adding candidate to election:", error);
-        return res.status(400).json({ message: error.message || "Failed to add candidate to election" });
+      // Verify election exists
+      const election = await storage.getElection(result.data.electionId);
+      if (!election) {
+        return res.status(404).json({ message: "Election not found" });
       }
+      
+      // Prevent adding candidates to elections that are already deployed to blockchain
+      if (election.blockchainId) {
+        return res.status(403).json({ 
+          message: "Cannot modify election after blockchain deployment",
+          detail: "This election has already been deployed to the blockchain. Candidates cannot be added or removed."
+        });
+      }
+      
+      // For president/VP elections, require a running mate
+      if ((election.position === "President/VP" || election.position === "President/Vice President") && !result.data.runningMateId) {
+        return res.status(400).json({ 
+          message: "Running mate is required for President/VP elections" 
+        });
+      }
+      
+      // Check if candidate exists
+      const candidate = await storage.getCandidate(result.data.candidateId);
+      if (!candidate) {
+        return res.status(404).json({ message: "Candidate not found" });
+      }
+      
+      // Check if candidate position matches election type
+      if ((election.position === "President/VP" || election.position === "President/Vice President") && 
+          candidate.position === "Senator") {
+        return res.status(400).json({ 
+          message: "This candidate is running as a Senator and cannot be added to a President/Vice President election" 
+        });
+      }
+      
+      if (election.position === "Senator" && 
+          (candidate.position === "President" || candidate.position === "Vice President")) {
+        return res.status(400).json({ 
+          message: "This candidate is running as " + candidate.position + " and cannot be added to a Senator election" 
+        });
+      }
+      
+      // Check if running mate exists
+      if (result.data.runningMateId) {
+        const runningMate = await storage.getCandidate(result.data.runningMateId);
+        if (!runningMate) {
+          return res.status(404).json({ message: "Running mate not found" });
+        }
+        
+        // Check if running mate position matches election type
+        if ((election.position === "President/VP" || election.position === "President/Vice President") && 
+            runningMate.position === "Senator") {
+          return res.status(400).json({ 
+            message: "The running mate is registered as a Senator and cannot be added to a President/Vice President election" 
+          });
+        }
+      }
+      
+      // Check if candidate already in this election
+      const existingCandidates = await storage.getElectionCandidates(result.data.electionId);
+      const alreadyAdded = existingCandidates.some(
+        ec => ec.candidateId === result.data.candidateId
+      );
+      
+      if (alreadyAdded) {
+        return res.status(400).json({ message: "Candidate already added to this election" });
+      }
+      
+      // Check if running mate already in this election
+      if (result.data.runningMateId) {
+        const runningMateAlreadyAdded = existingCandidates.some(
+          ec => ec.candidateId === result.data.runningMateId || ec.runningMateId === result.data.runningMateId
+        );
+        
+        if (runningMateAlreadyAdded) {
+          return res.status(400).json({ message: "Running mate already added to this election" });
+        }
+      }
+      
+      const electionCandidate = await storage.addCandidateToElection(result.data);
+      res.status(201).json(electionCandidate);
     } catch (error) {
-      console.error("Unexpected error in route handler:", error);
       res.status(500).json({ message: "Failed to add candidate to election" });
     }
   });
@@ -1053,59 +1092,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Email is required" });
       }
       
-      // Normalize email
-      const normalizedEmail = email.toLowerCase();
-      
-      // Check if email matches ADA University domain
-      if (!normalizedEmail.endsWith('@ada.edu.az')) {
-        return res.status(400).json({ message: "Only ADA University email addresses are allowed" });
-      }
-      
       // Check if a real user exists with this email
-      const user = await storage.getUserByEmail(normalizedEmail);
+      const user = await storage.getUserByEmail(email);
       
       // Only proceed with the actual reset if the user exists
       if (user) {
         // Generate OTP
-        const otp = crypto.randomInt(100000, 1000000).toString();
-        console.log(`Generated reset password OTP for ${normalizedEmail}: ${otp}`);
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
         
         // Check if pending user exists
-        const pendingUser = await storage.getPendingUserByEmail(normalizedEmail);
+        const pendingUser = await storage.getPendingUserByEmail(email);
         if (pendingUser) {
           // Update existing pending user with new OTP
-          await storage.updatePendingUserOtp(normalizedEmail, otp);
-          console.log(`Updated existing pending user with new OTP for ${normalizedEmail}`);
+          await storage.updatePendingUserOtp(email, otp);
         } else {
           // Create a new pending user for password reset with minimum required fields
           await storage.createPendingUser({
-            email: normalizedEmail,
+            email,
             otp,
             type: "reset",
             password: "temporary", // This will be replaced when reset is complete
             faculty: "none", // Not relevant for password reset
             createdAt: new Date()
           });
-          console.log(`Created new pending user for password reset: ${normalizedEmail}`);
         }
         
-        // Send verification email - no try/catch since our mailer handles errors internally
-        const emailResult = await mailer.sendOtp(normalizedEmail, otp);
-        
-        // Check if email might have failed
-        if (emailResult.error) {
-          console.log(`Note: Reset password email might have failed, but OTP has been updated. Error: ${emailResult.error}`);
-          console.log(`IMPORTANT - Reset password OTP for ${normalizedEmail}: ${otp}`);
-        }
-      } else {
-        console.log(`Password reset requested for non-existent email: ${normalizedEmail}`);
+        // Send OTP to email
+        await mailer.sendOtp(email, otp);
       }
       
       // Always return the same success message, whether the user exists or not
       // This prevents user enumeration attacks
-      res.status(200).json({ 
-        message: "If the email exists in our system, a verification code has been sent. Please check your inbox or console for the code." 
-      });
+      res.status(200).json({ message: "If the email exists in our system, a verification code has been sent. Please check your inbox." });
     } catch (error) {
       console.error("Password reset error:", error);
       res.status(500).json({ message: "Failed to initiate password reset" });
@@ -1125,52 +1143,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const { email, otp, newPassword } = result.data;
       
-      // Normalize email
-      const normalizedEmail = email.toLowerCase();
-      
       // Verify OTP
-      const pendingUser = await storage.getPendingUserByEmail(normalizedEmail);
+      const pendingUser = await storage.getPendingUserByEmail(email);
       
-      // Check OTP expiry if we have a pending user
-      if (pendingUser && Date.now() - pendingUser.createdAt.getTime() > OTP_EXPIRY_TIME) {
-        console.log(`Reset password OTP expired for ${normalizedEmail}`);
-        await storage.deletePendingUser(normalizedEmail);
-        return res.status(401).json({ message: "Verification code has expired. Please request a new code." });
-      }
-      
-      if (!pendingUser || pendingUser.otp !== otp || pendingUser.type !== 'reset') {
+      if (!pendingUser || pendingUser.otp !== otp) {
         // Security best practice: Use a generic error message to prevent user enumeration
-        console.log(`Invalid reset password attempt: ${!pendingUser ? 'No pending user' : (pendingUser.otp !== otp ? 'Invalid OTP' : 'Wrong type')}`);
+        // This message does not reveal if the email exists or if just the OTP is wrong
         return res.status(400).json({ 
           message: "Verification failed. Please ensure your email and verification code are correct."
         });
       }
       
       // Verify user actually exists before updating password
-      const user = await storage.getUserByEmail(normalizedEmail);
+      const user = await storage.getUserByEmail(email);
       if (!user) {
         // This should rarely happen (only if user was deleted between reset request and verification)
-        console.log(`Reset attempted for non-existent user: ${normalizedEmail}`);
+        // Still using generic message to avoid leaking information
         return res.status(400).json({ 
           message: "Verification failed. Please ensure your email and verification code are correct."
         });
       }
       
-      // Password validation
-      if (newPassword.length < 8) {
-        return res.status(400).json({ message: "New password must be at least 8 characters" });
-      }
-      
       // Hash the new password 
       const hashedPassword = await hashPassword(newPassword);
-      console.log(`Reset password: Generated hash for user ${normalizedEmail}`);
+      console.log(`Reset password: Generated hash for password (length ${hashedPassword.length})`);
       
       // Update password with the hashed version
-      await storage.updateUserPassword(normalizedEmail, hashedPassword);
-      console.log(`Password successfully reset for ${normalizedEmail}`);
+      await storage.updateUserPassword(email, hashedPassword);
       
       // Remove pending user
-      await storage.deletePendingUser(normalizedEmail);
+      await storage.deletePendingUser(email);
       
       res.status(200).json({ message: "Password reset successful" });
     } catch (error) {

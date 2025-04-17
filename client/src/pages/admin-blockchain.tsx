@@ -5,26 +5,20 @@ import { useLocation } from "wouter";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { ImprovedBlockchainSyncButton } from "@/components/admin/ImprovedBlockchainSyncButton";
 import { useStudentIdWeb3 } from '@/hooks/use-student-id-web3';
-import { useUniversityVoting } from '@/hooks/use-university-voting';
 import { BlockchainRoleManager } from '@/components/admin/blockchain-role-manager';
 import { BlockchainVerificationPanel } from '@/components/admin/blockchain-verification-panel';
+import { BlockchainIdScanner } from '@/components/admin/blockchain-id-scanner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EnhancedBlockchainDeploymentStatus } from "@/components/admin/enhanced-blockchain-deployment-status";
 import { Separator } from "@/components/ui/separator";
 import { Loader2, Shield, ShieldCheck, ShieldAlert } from "lucide-react";
-import UniversityVotingSyncButton from "@/components/admin/university-voting-sync-button";
 
 export default function AdminBlockchain() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [, navigate] = useLocation();
-  const { isInitialized: isOldInitialized, walletAddress: oldWalletAddress, connectWallet: oldConnectWallet } = useStudentIdWeb3();
-  const { isInitialized: isNewInitialized, walletAddress: newWalletAddress, connectWallet: newConnectWallet } = useUniversityVoting();
-  
-  // Use the newest contract wallet when available
-  const walletAddress = newWalletAddress || oldWalletAddress;
-  const connectWallet = newConnectWallet || oldConnectWallet;
+  const { isInitialized, walletAddress, connectWallet } = useStudentIdWeb3();
   
   if (!user) {
     return (
@@ -99,7 +93,7 @@ export default function AdminBlockchain() {
                       </CardHeader>
                       <CardContent className="p-4 pt-0">
                         <p className="font-mono text-sm break-all">
-                          0x64c0f44Adf0a88760DAD24747653e640551b893b
+                          0x903389c84cDd36beC37373300cF7546dbB9d4Ee2
                         </p>
                         <p className="text-xs text-muted-foreground mt-2">
                           Deployed on Polygon Amoy Testnet
@@ -158,27 +152,8 @@ export default function AdminBlockchain() {
                     </p>
                   </div>
                   
-                  <div className="flex flex-col gap-4 justify-center pt-4">
-                    <div className="relative">
-                      <div className="w-full p-4 border rounded-md bg-purple-50 dark:bg-purple-950">
-                        <h3 className="font-medium text-purple-800 dark:text-purple-300 mb-2 flex items-center">
-                          <ShieldCheck className="h-4 w-4 mr-2 text-purple-500" />
-                          New Contract Available
-                        </h3>
-                        <p className="text-sm text-purple-700 dark:text-purple-400 mb-4">
-                          The new UniversityVoting contract with improved features is now available for synchronization.
-                          This contract uses timestamp-based election identifiers and supports both individual senator
-                          candidates and president/VP tickets.
-                        </p>
-                        <div className="flex justify-end">
-                          <UniversityVotingSyncButton />
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex justify-center">
-                      <ImprovedBlockchainSyncButton className="w-full md:w-auto" />
-                    </div>
+                  <div className="flex justify-center pt-4">
+                    <ImprovedBlockchainSyncButton className="w-full md:w-auto" />
                   </div>
                 </CardContent>
               </Card>

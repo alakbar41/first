@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Election, getFacultyName } from "@shared/schema";
 import { User, CalendarIcon, Clock, Users, ServerIcon } from "lucide-react";
 import { format } from "date-fns";
-import { DeployToBlockchainButton, DeployToBlockchainButtonWithWeb3 } from "./deploy-to-blockchain-button";
+import { DeployToBlockchainButton } from "./deploy-to-blockchain-button";
 import { queryClient } from "@/lib/queryClient";
 
 interface ElectionDetailViewProps {
@@ -15,59 +15,24 @@ interface ElectionDetailViewProps {
 export function AdminElectionDetailView({ election, className = "" }: ElectionDetailViewProps) {
   const [blockchainId, setBlockchainId] = useState<number | null>(election.blockchainId || null);
   
-  // Helper function to format dates with validation
+  // Helper function to format dates
   function formatDate(dateString: string | Date) {
-    try {
-      const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
-      
-      // Validate the date is a valid Date object
-      if (date instanceof Date && !isNaN(date.getTime())) {
-        return format(date, "MMM d, yyyy - HH:mm");
-      }
-      
-      // Return a fallback for invalid dates
-      return "Date not available";
-    } catch (error) {
-      console.error("Error formatting date:", error);
-      return "Date not available";
-    }
+    const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+    return format(date, "MMM d, yyyy - HH:mm");
   }
 
-  // Get status badge for election with validation
+  // Get status badge for election
   const getStatusBadge = () => {
-    try {
-      const now = new Date();
-      // Use startTime and endTime from the schema fields
-      // Handle both the case where election has startDate or startTime
-      const startTimeStr = election.startDate || election.startTime;
-      const endTimeStr = election.endDate || election.endTime;
-      
-      // Validate dates
-      const startDate = new Date(startTimeStr);
-      const endDate = new Date(endTimeStr);
-      
-      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-        // If dates are invalid, just return the status from the database
-        switch (election.status) {
-          case 'upcoming': 
-            return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Upcoming</Badge>;
-          case 'completed': 
-            return <Badge className="bg-gray-100 text-gray-800 border-gray-200">Completed</Badge>;
-          default: 
-            return <Badge className="bg-green-100 text-green-800 border-green-200">Active</Badge>;
-        }
-      }
-      
-      if (now < startDate) {
-        return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Upcoming</Badge>;
-      } else if (now > endDate) {
-        return <Badge className="bg-gray-100 text-gray-800 border-gray-200">Completed</Badge>;
-      } else {
-        return <Badge className="bg-green-100 text-green-800 border-green-200">Active</Badge>;
-      }
-    } catch (error) {
-      console.error("Error determining election status:", error);
-      return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Unknown</Badge>;
+    const now = new Date();
+    const startDate = new Date(election.startDate);
+    const endDate = new Date(election.endDate);
+
+    if (now < startDate) {
+      return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Upcoming</Badge>;
+    } else if (now > endDate) {
+      return <Badge className="bg-gray-100 text-gray-800 border-gray-200">Completed</Badge>;
+    } else {
+      return <Badge className="bg-green-100 text-green-800 border-green-200">Active</Badge>;
     }
   };
 
@@ -190,7 +155,7 @@ export function AdminElectionDetailView({ election, className = "" }: ElectionDe
                 Deploy this election to the blockchain to enable secure, immutable voting. Elections must be deployed before students can vote.
               </p>
               
-              <DeployToBlockchainButtonWithWeb3 
+              <DeployToBlockchainButton 
                 election={election}
                 onSuccess={handleDeploySuccess}
                 className="w-full sm:w-auto"

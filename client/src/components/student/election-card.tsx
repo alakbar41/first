@@ -23,17 +23,18 @@ export function ElectionCard({ election, onClick, isSelected }: ElectionCardProp
     });
   }
 
-  // Get status badge for election based on database status
+  // Get status badge for election
   const getStatusBadge = () => {
-    switch (election.status) {
-      case "upcoming":
-        return <Badge className="absolute top-3 right-3 bg-blue-100 text-blue-800 border-blue-200">Upcoming</Badge>;
-      case "completed":
-        return <Badge className="absolute top-3 right-3 bg-gray-100 text-gray-800 border-gray-200">Completed</Badge>;
-      case "active":
-        return <Badge className="absolute top-3 right-3 bg-green-100 text-green-800 border-green-200">Active</Badge>;
-      default:
-        return <Badge className="absolute top-3 right-3 bg-yellow-100 text-yellow-800 border-yellow-200">Unknown</Badge>;
+    const now = new Date();
+    const startDate = new Date(election.startDate);
+    const endDate = new Date(election.endDate);
+
+    if (now < startDate) {
+      return <Badge className="absolute top-3 right-3 bg-blue-100 text-blue-800 border-blue-200">Upcoming</Badge>;
+    } else if (now > endDate) {
+      return <Badge className="absolute top-3 right-3 bg-gray-100 text-gray-800 border-gray-200">Completed</Badge>;
+    } else {
+      return <Badge className="absolute top-3 right-3 bg-green-100 text-green-800 border-green-200">Active</Badge>;
     }
   };
 
