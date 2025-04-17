@@ -177,14 +177,19 @@ export function setupAuth(app) {
       await storage.createPendingUser(pendingUser);
       console.log(`Stored pending user for ${normalizedEmail} with OTP: ${otp}`);
       
-      // Send verification email - no try/catch to simplify logic
-      // Our mailer function will handle errors internally
-      const emailResult = await mailer.sendOtp(normalizedEmail, otp);
-      
-      // Check if email might have failed
-      if (emailResult.error) {
-        console.log(`Note: Email might have failed, but registration can continue. Error: ${emailResult.error}`);
-        console.log(`IMPORTANT - OTP for ${normalizedEmail}: ${otp}`);
+      // Send verification email with proper error handling
+      try {
+        const emailResult = await mailer.sendOtp(normalizedEmail, otp);
+        
+        if (!emailResult.success) {
+          console.log(`⚠️ Email delivery failed, but registration can continue. Error: ${emailResult.error}`);
+          console.log(`📌 IMPORTANT - OTP for ${normalizedEmail}: ${otp}`);
+        } else {
+          console.log(`✅ Email delivered successfully to ${normalizedEmail}`);
+        }
+      } catch (emailError) {
+        console.error(`❌ Email sending error: ${emailError.message}`);
+        console.log(`📌 IMPORTANT - Use this OTP for ${normalizedEmail}: ${otp}`);
       }
       
       // Always return success to the client
@@ -247,13 +252,19 @@ export function setupAuth(app) {
       await storage.updatePendingUserOtp(normalizedEmail, newOtp);
       console.log(`Updated pending user with new OTP for ${normalizedEmail}`);
       
-      // Send verification email - no try/catch since our mailer handles errors internally
-      const emailResult = await mailer.sendOtp(normalizedEmail, newOtp);
-      
-      // Check if email might have failed
-      if (emailResult.error) {
-        console.log(`Note: Email might have failed, but OTP has been updated. Error: ${emailResult.error}`);
-        console.log(`IMPORTANT - New OTP for ${normalizedEmail}: ${newOtp}`);
+      // Send verification email with proper error handling
+      try {
+        const emailResult = await mailer.sendOtp(normalizedEmail, newOtp);
+        
+        if (!emailResult.success) {
+          console.log(`⚠️ Email delivery failed, but OTP has been updated. Error: ${emailResult.error}`);
+          console.log(`📌 IMPORTANT - New OTP for ${normalizedEmail}: ${newOtp}`);
+        } else {
+          console.log(`✅ Email delivered successfully to ${normalizedEmail}`);
+        }
+      } catch (emailError) {
+        console.error(`❌ Email sending error: ${emailError.message}`);
+        console.log(`📌 IMPORTANT - Use this new OTP for ${normalizedEmail}: ${newOtp}`);
       }
       
       // Always return success
