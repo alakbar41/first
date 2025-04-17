@@ -2,29 +2,56 @@
 import nodemailer from "nodemailer";
 import crypto from 'crypto';
 
-// Simple Gmail transport configuration
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
+// MOST BASIC: Console-only OTP logger
+// This is a fallback that guarantees OTPs are always accessible
+const consoleLogger = (to, otp) => {
+  console.log("\n========================================");
+  console.log(`🚨 VERIFICATION CODE: ${otp} 🚨`);
+  console.log(`📧 EMAIL: ${to}`);
+  console.log(`⏱️ EXPIRES: 3 minutes from now`);
+  console.log("========================================\n");
+  return { success: true };
+};
+
+// Create a reusable transporter object using SMTP transport
+let transporter = null;
+
+// Setup transporter only if credentials are available
+if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+  try {
+    transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      }
+    });
+    console.log(`Email configured with: ${process.env.EMAIL_USER}`);
+  } catch (err) {
+    console.error("Failed to create email transporter:", err.message);
   }
-});
+} else {
+  console.log("No email credentials found - will use console logging for OTPs");
+}
 
-// Log configuration when started
-console.log(`Email configured with: ${process.env.EMAIL_USER}`);
-
-// Export the mailer object with a simplified implementation
+// Export the mailer object with guaranteed fallback
 export const mailer = {
   async sendOtp(to, otp) {
-    console.log(`Sending OTP ${otp} to ${to}...`);
+    // Always log to console first for guaranteed access to OTP
+    consoleLogger(to, otp);
+    
+    // Skip email sending if no transporter
+    if (!transporter) {
+      console.log("Email transport not available - OTP displayed in console only");
+      return { success: false, error: "Email transport not configured" };
+    }
     
     try {
-      // Create mail options
+      // Format email with OTP code
       const mailOptions = {
         from: `"ADA University Voting" <${process.env.EMAIL_USER}>`,
-        to,
-        subject: "Your Verification Code",
+        to: to,
+        subject: "Your ADA University Voting Verification Code",
         text: `Your verification code is: ${otp}. This code will expire in 3 minutes.`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 5px;">
@@ -38,23 +65,18 @@ export const mailer = {
         `
       };
       
-      // Send the email
+      // Send mail with defined transport object
       const info = await transporter.sendMail(mailOptions);
-      console.log(`✅ Email sent successfully to ${to}`);
+      console.log(`✅ Email sent successfully to ${to} (${info.messageId})`);
       return { success: true, messageId: info.messageId };
     } catch (error) {
-      // Log error details
-      console.error(`❌ Email sending failed: ${error.message}`);
+      console.error(`⚠️ Email delivery error: ${error.message}`);
       
-      // Log authentication errors clearly
       if (error.code === 'EAUTH') {
-        console.error('AUTHENTICATION ERROR: Check EMAIL_USER and EMAIL_PASS environment variables.');
+        console.error("🔑 Authentication failed - check EMAIL_USER and EMAIL_PASS");
       }
       
-      // Always log the OTP for testing
-      console.log(`OTP for ${to}: ${otp} (Email delivery failed, use this code for testing)`);
-      
-      // Return error info but don't throw
+      // Already logged OTP to console, so we're covered
       return { success: false, error: error.message };
     }
   }

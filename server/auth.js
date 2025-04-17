@@ -151,13 +151,6 @@ export function setupAuth(app) {
       
       // Generate 6-digit OTP
       const otp = crypto.randomInt(100000, 1000000).toString();
-      // Enhanced logging for OTP
-      console.log(`=====================================`);
-      console.log(`📱 OTP CODE GENERATED 📱`);
-      console.log(`📧 EMAIL: ${normalizedEmail}`);
-      console.log(`🔑 CODE: ${otp}`);
-      console.log(`⏱️ EXPIRES: In 3 minutes`);
-      console.log(`=====================================`);
       
       // Hash the password
       const hashedPassword = await hashPassword(password);
@@ -240,13 +233,6 @@ export function setupAuth(app) {
       
       // Generate new OTP
       const newOtp = crypto.randomInt(100000, 1000000).toString();
-      // Enhanced logging for OTP
-      console.log(`=====================================`);
-      console.log(`📱 NEW OTP CODE GENERATED 📱`);
-      console.log(`📧 EMAIL: ${normalizedEmail}`);
-      console.log(`🔑 CODE: ${newOtp}`);
-      console.log(`⏱️ EXPIRES: In 3 minutes`);
-      console.log(`=====================================`);
       
       // Update pending user record with new OTP
       await storage.updatePendingUserOtp(normalizedEmail, newOtp);
