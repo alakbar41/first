@@ -49,11 +49,20 @@ export function setupAuth(app) {
     
     if (!isBcryptHash) {
       console.log('WARNING: Stored password is not a bcrypt hash!');
+      console.log(`Password hash starts with "${hashedPassword.substring(0, 7)}..." - this is not a valid bcrypt hash`);
       return false;
     }
     
-    const result = await bcrypt.compare(plainPassword, hashedPassword);
-    return result;
+    console.log(`comparePasswords: Comparing plain password against hash starting with "${hashedPassword.substring(0, 7)}..."`);
+    
+    try {
+      const result = await bcrypt.compare(plainPassword, hashedPassword);
+      console.log(`comparePasswords: Comparison result = ${result}`);
+      return result;
+    } catch (error) {
+      console.error('Error during password comparison:', error.message);
+      return false;
+    }
   }
 
   // Set up Passport strategy
@@ -64,17 +73,25 @@ export function setupAuth(app) {
         const user = await storage.getUserByEmail(email);
 
         if (!user) {
+          console.log(`Login failed: User with email ${email} not found`);
           return done(null, false, { message: "Invalid login credentials" });
         }
 
+        console.log(`Login attempt: Found user with email ${email}`);
+        console.log(`Login attempt: Password hash starts with "${user.password.substring(0, 7)}..."`);
+        
         const isValidPassword = await comparePasswords(password, user.password);
+        console.log(`Login attempt: Password validation result = ${isValidPassword}`);
 
         if (!isValidPassword) {
+          console.log(`Login failed: Invalid password for user ${email}`);
           return done(null, false, { message: "Invalid login credentials" });
         }
 
+        console.log(`Login successful for user ${email}`);
         return done(null, user);
       } catch (error) {
+        console.error(`Login error for ${email}:`, error);
         return done(error);
       }
     }

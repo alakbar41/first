@@ -1167,9 +1167,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Hash the new password 
       const hashedPassword = await hashPassword(newPassword);
       console.log(`Reset password: Generated hash for password (length ${hashedPassword.length})`);
+      console.log(`Reset password: Hash starts with "${hashedPassword.substring(0, 7)}..." for email ${email}`);
       
       // Update password with the hashed version
       await storage.updateUserPassword(email, hashedPassword);
+      console.log(`Reset password: Password update completed successfully for ${email}`);
       
       // Remove pending user
       await storage.deletePendingUser(email);

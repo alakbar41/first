@@ -826,9 +826,19 @@ export class DatabaseStorage implements IStorage {
       throw new Error("Password update failed - account verification error");
     }
     
+    // Verify that the password is a properly formatted bcrypt hash
+    if (!newPassword.startsWith('$2b$') && !newPassword.startsWith('$2a$')) {
+      console.error("Attempted to store an invalid password hash format");
+      throw new Error("Password update failed - invalid hash format");
+    }
+    
+    console.log(`Updating password for ${email} with hash starting with "${newPassword.substring(0, 7)}..."`);
+    
     await db.update(users)
       .set({ password: newPassword })
       .where(eq(users.email, email));
+      
+    console.log(`Password update successful for ${email}`);
   }
 
   // Pending user methods
