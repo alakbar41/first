@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { useTheme } from "@/hooks/use-theme";
 import { 
   SunIcon, 
   MoonIcon, 
@@ -24,7 +25,7 @@ interface AppearanceSettingsProps {
 
 export function AppearanceSettings({ user }: AppearanceSettingsProps) {
   const { toast } = useToast();
-  const [theme, setTheme] = useState("light");
+  const { theme, setTheme, resolvedTheme } = useTheme();
   const [colorScheme, setColorScheme] = useState("purple");
   const [fontSize, setFontSize] = useState(16);
   const [animationsEnabled, setAnimationsEnabled] = useState(true);

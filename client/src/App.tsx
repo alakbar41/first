@@ -22,6 +22,7 @@ import { AuthProvider } from "./hooks/use-auth";
 import { Web3Provider } from "./hooks/use-web3";
 import { StudentIdWeb3Provider } from "./hooks/use-student-id-web3";
 import { CSRFProvider } from "./hooks/use-csrf";
+import { ThemeProvider } from "./hooks/use-theme";
 
 function Router() {
   return (
@@ -59,12 +60,14 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <CSRFProvider>
         <AuthProvider>
-          <Web3Provider>
-            <StudentIdWeb3Provider>
-              <Router />
-              <Toaster />
-            </StudentIdWeb3Provider>
-          </Web3Provider>
+          <ThemeProvider>
+            <Web3Provider>
+              <StudentIdWeb3Provider>
+                <Router />
+                <Toaster />
+              </StudentIdWeb3Provider>
+            </Web3Provider>
+          </ThemeProvider>
         </AuthProvider>
       </CSRFProvider>
     </QueryClientProvider>

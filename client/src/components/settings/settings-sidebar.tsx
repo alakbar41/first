@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { getFacultyName } from "@shared/schema";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useTheme } from "@/hooks/use-theme";
 
 interface SettingsSidebarProps {
   user: User | null;
@@ -24,6 +25,7 @@ interface SettingsSidebarProps {
 
 export function SettingsSidebar({ user, activeSetting, setActiveSetting }: SettingsSidebarProps) {
   const [, navigate] = useLocation();
+  const { theme, setTheme, resolvedTheme } = useTheme();
   
   const getInitials = (email?: string) => {
     if (!email) return 'U';
@@ -151,18 +153,27 @@ export function SettingsSidebar({ user, activeSetting, setActiveSetting }: Setti
       <div className="p-4 border-t border-gray-200">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
-            <SunIcon className="w-4 h-4 text-amber-500 mr-2" />
-            <span className="text-sm text-gray-600">Light</span>
+            <SunIcon className={`w-4 h-4 mr-2 ${resolvedTheme === 'light' ? 'text-amber-500' : 'text-gray-400'}`} />
+            <span className={`text-sm ${resolvedTheme === 'light' ? 'text-gray-800 font-medium' : 'text-gray-500'}`}>Light</span>
           </div>
-          <Button variant="outline" size="sm" className="bg-gray-100">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="bg-gray-100"
+            onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+          >
             <span className="sr-only">Toggle theme</span>
             <div className="h-4 w-8 rounded-full bg-purple-600 relative">
-              <div className="h-3 w-3 rounded-full bg-white absolute top-0.5 left-0.5" />
+              <div 
+                className={`h-3 w-3 rounded-full bg-white absolute top-0.5 transition-all ${
+                  resolvedTheme === 'dark' ? 'left-[calc(100%-14px)]' : 'left-0.5'
+                }`} 
+              />
             </div>
           </Button>
           <div className="flex items-center">
-            <span className="text-sm text-gray-600 mr-2">Dark</span>
-            <MoonIcon className="w-4 h-4 text-gray-400" />
+            <span className={`text-sm ${resolvedTheme === 'dark' ? 'text-gray-800 font-medium' : 'text-gray-500'} mr-2`}>Dark</span>
+            <MoonIcon className={`w-4 h-4 ${resolvedTheme === 'dark' ? 'text-indigo-400' : 'text-gray-400'}`} />
           </div>
         </div>
       </div>
