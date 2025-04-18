@@ -4,9 +4,57 @@ import nodemailer from "nodemailer";
 let transporter;
 let testAccount = null;
 
-// Skip Gmail authentication attempts completely and use Ethereal for development
+// Create our transporter based on configuration
 async function createTransporter() {
   console.log("Setting up email transport...");
+  
+  // Check for required email credentials
+  if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+    try {
+      // First, try to log credentials format (without showing full password)
+      const emailUser = process.env.EMAIL_USER;
+      const emailPassLength = process.env.EMAIL_PASS.length;
+      console.log(`Email credentials found: User=${emailUser}, Password length=${emailPassLength}`);
+      
+      // Try Gmail with app password
+      transporter = nodemailer.createTransport({
+        host: 'smtp.gmail.com',
+        port: 465,
+        secure: true, // true for 465, false for other ports
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS
+        },
+        tls: {
+          // Do not fail on invalid certs
+          rejectUnauthorized: false
+        }
+      });
+      
+      console.log("Attempting to verify Gmail configuration...");
+      
+      // Verify connection
+      transporter.verify(function(error, success) {
+        if (error) {
+          console.error("Gmail verification error:", error);
+          console.log("Falling back to Ethereal for development...");
+          createTestAccount();
+        } else {
+          console.log("Gmail SMTP is ready to send messages");
+        }
+      });
+    } catch (error) {
+      console.error("Error setting up Gmail:", error);
+      createTestAccount();
+    }
+  } else {
+    console.log("EMAIL_USER and EMAIL_PASS environment variables not found");
+    createTestAccount();
+  }
+}
+
+// Fallback to Ethereal for development
+async function createTestAccount() {
   try {
     // Generate Ethereal test account
     testAccount = await nodemailer.createTestAccount();
