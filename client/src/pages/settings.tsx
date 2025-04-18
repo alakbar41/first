@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { SettingsSidebar } from "@/components/settings/settings-sidebar";
@@ -8,13 +8,20 @@ import { NotificationsSettings } from "@/components/settings/notifications-setti
 import { AppearanceSettings } from "@/components/settings/appearance-settings";
 import { PrivacySettings } from "@/components/settings/privacy-settings";
 import { LanguageSettings } from "@/components/settings/language-settings";
-import { useRedirectUnauthenticated } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/use-auth";
+import { Redirect } from "wouter";
+import { User } from "@shared/schema";
 
 export function SettingsPage() {
-  useRedirectUnauthenticated();
+  const { user: authUser, isLoading: authLoading } = useAuth();
   const [activeSetting, setActiveSetting] = useState("profile");
   
-  const { data: user, isLoading } = useQuery({
+  // Redirect if not authenticated
+  if (!authLoading && !authUser) {
+    return <Redirect to="/auth" />;
+  }
+  
+  const { data: user, isLoading } = useQuery<User>({
     queryKey: ["/api/user"],
   });
   
@@ -22,19 +29,19 @@ export function SettingsPage() {
   const renderSettingsContent = () => {
     switch (activeSetting) {
       case "profile":
-        return <ProfileSettings user={user} />;
+        return <ProfileSettings user={user as User | null} />;
       case "security":
-        return <SecuritySettings user={user} />;
+        return <SecuritySettings user={user as User | null} />;
       case "notifications":
-        return <NotificationsSettings user={user} />;
+        return <NotificationsSettings user={user as User | null} />;
       case "appearance":
-        return <AppearanceSettings user={user} />;
+        return <AppearanceSettings user={user as User | null} />;
       case "privacy":
-        return <PrivacySettings user={user} />;
+        return <PrivacySettings user={user as User | null} />;
       case "language":
-        return <LanguageSettings user={user} />;
+        return <LanguageSettings user={user as User | null} />;
       default:
-        return <ProfileSettings user={user} />;
+        return <ProfileSettings user={user as User | null} />;
     }
   };
   
@@ -49,7 +56,7 @@ export function SettingsPage() {
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
       <SettingsSidebar
-        user={user}
+        user={user || null}
         activeSetting={activeSetting}
         setActiveSetting={setActiveSetting}
       />

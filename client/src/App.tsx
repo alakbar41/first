@@ -15,6 +15,7 @@ import TicketsPage from "@/pages/tickets-page";
 import AdminTickets from "@/pages/admin-tickets";
 import AdminArchitecture from "@/pages/admin-architecture";
 import AdminBlockchain from "@/pages/admin-blockchain";
+import { SettingsPage } from "@/pages/settings";
 import { ProtectedRoute, AdminProtectedRoute } from "./lib/protected-route";
 import { FC, ReactNode } from 'react';
 import { AuthProvider } from "./hooks/use-auth";
@@ -31,6 +32,7 @@ function Router() {
       <ProtectedRoute path="/guidelines" component={Guidelines} />
       <ProtectedRoute path="/verify-vote" component={VerifyVote} />
       <ProtectedRoute path="/tickets" component={TicketsPage} />
+      <ProtectedRoute path="/settings" component={SettingsPage} />
       
       {/* Admin routes - using AdminProtectedRoute to ensure admin validation */}
       <AdminProtectedRoute path="/admin" component={AdminDashboard} />

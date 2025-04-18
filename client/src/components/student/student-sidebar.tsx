@@ -153,6 +153,20 @@ export function StudentSidebar({ user }: SidebarProps) {
                 )}
               </span>
             </Link>
+            
+            <Link to="/settings">
+              <span className={`flex items-center px-4 py-2.5 rounded-lg cursor-pointer ${
+                isActive('/settings') 
+                  ? 'bg-purple-100 text-purple-800 font-medium shadow-sm' 
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}>
+                <UserIcon className="w-5 h-5 mr-3" />
+                <span>Settings</span>
+                {isActive('/settings') && (
+                  <div className="ml-auto w-1.5 h-6 rounded-full bg-purple-600" />
+                )}
+              </span>
+            </Link>
           </nav>
           
           <p className="text-xs font-medium text-gray-400 uppercase tracking-wider px-4 mt-6 mb-2">
