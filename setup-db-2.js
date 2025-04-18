@@ -1,4 +1,4 @@
-import { db } from "./server/db.ts";
+import { pool } from "./server/db.ts";
 import bcrypt from "bcrypt";
 
 async function hashPassword(password) {
@@ -12,17 +12,17 @@ async function setupDatabase() {
     
     // Drop existing tables in the correct order to avoid foreign key constraints
     console.log("Dropping existing tables if they exist...");
-    await db.execute`DROP TABLE IF EXISTS voting_tokens CASCADE`;
-    await db.execute`DROP TABLE IF EXISTS election_candidates CASCADE`;
-    await db.execute`DROP TABLE IF EXISTS tickets CASCADE`;
-    await db.execute`DROP TABLE IF EXISTS candidates CASCADE`;
-    await db.execute`DROP TABLE IF EXISTS elections CASCADE`;
-    await db.execute`DROP TABLE IF EXISTS pending_users CASCADE`;
-    await db.execute`DROP TABLE IF EXISTS users CASCADE`;
+    await pool.query('DROP TABLE IF EXISTS voting_tokens CASCADE');
+    await pool.query('DROP TABLE IF EXISTS election_candidates CASCADE');
+    await pool.query('DROP TABLE IF EXISTS tickets CASCADE');
+    await pool.query('DROP TABLE IF EXISTS candidates CASCADE');
+    await pool.query('DROP TABLE IF EXISTS elections CASCADE');
+    await pool.query('DROP TABLE IF EXISTS pending_users CASCADE');
+    await pool.query('DROP TABLE IF EXISTS users CASCADE');
     
     // Create tables from schema
     console.log("Creating users table...");
-    await db.execute`
+    await pool.query(`
       CREATE TABLE users (
         id SERIAL PRIMARY KEY,
         email TEXT NOT NULL UNIQUE,
@@ -30,10 +30,10 @@ async function setupDatabase() {
         faculty TEXT NOT NULL,
         is_admin BOOLEAN NOT NULL DEFAULT false
       )
-    `;
+    `);
     
     console.log("Creating pending_users table...");
-    await db.execute`
+    await pool.query(`
       CREATE TABLE pending_users (
         email TEXT PRIMARY KEY,
         password TEXT NOT NULL,
@@ -43,10 +43,10 @@ async function setupDatabase() {
         is_admin BOOLEAN NOT NULL DEFAULT false,
         type TEXT NOT NULL DEFAULT 'registration'
       )
-    `;
+    `);
     
     console.log("Creating elections table...");
-    await db.execute`
+    await pool.query(`
       CREATE TABLE elections (
         id SERIAL PRIMARY KEY,
         name TEXT NOT NULL,
@@ -60,10 +60,10 @@ async function setupDatabase() {
         created_at TIMESTAMP NOT NULL DEFAULT NOW(),
         blockchain_id INTEGER
       )
-    `;
+    `);
     
     console.log("Creating candidates table...");
-    await db.execute`
+    await pool.query(`
       CREATE TABLE candidates (
         id SERIAL PRIMARY KEY,
         full_name TEXT NOT NULL,
@@ -75,10 +75,10 @@ async function setupDatabase() {
         created_at TIMESTAMP NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMP NOT NULL DEFAULT NOW()
       )
-    `;
+    `);
     
     console.log("Creating election_candidates table...");
-    await db.execute`
+    await pool.query(`
       CREATE TABLE election_candidates (
         id SERIAL PRIMARY KEY,
         election_id INTEGER NOT NULL,
@@ -86,10 +86,10 @@ async function setupDatabase() {
         running_mate_id INTEGER NOT NULL DEFAULT 0,
         created_at TIMESTAMP NOT NULL DEFAULT NOW()
       )
-    `;
+    `);
     
     console.log("Creating voting_tokens table...");
-    await db.execute`
+    await pool.query(`
       CREATE TABLE voting_tokens (
         id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL,
@@ -99,10 +99,10 @@ async function setupDatabase() {
         expires_at TIMESTAMP NOT NULL,
         created_at TIMESTAMP NOT NULL DEFAULT NOW()
       )
-    `;
+    `);
     
     console.log("Creating tickets table...");
-    await db.execute`
+    await pool.query(`
       CREATE TABLE tickets (
         id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL,
@@ -113,15 +113,15 @@ async function setupDatabase() {
         created_at TIMESTAMP NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMP NOT NULL DEFAULT NOW()
       )
-    `;
+    `);
     
     // Create the admin account
     console.log("Creating admin account...");
     const hashedPassword = await hashPassword("Admin123@");
-    await db.execute`
+    await pool.query(`
       INSERT INTO users (email, password, faculty, is_admin)
-      VALUES ('admin@ada.edu.az', ${hashedPassword}, 'Administration', true)
-    `;
+      VALUES ('admin@ada.edu.az', $1, 'Administration', true)
+    `, [hashedPassword]);
     
     console.log("Database setup completed successfully!");
     
@@ -130,7 +130,8 @@ async function setupDatabase() {
     throw error;
   } finally {
     // Close the database connection
-    await db.end();
+    await pool.end();
+    console.log("Database connection closed");
   }
 }
 
