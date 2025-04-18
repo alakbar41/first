@@ -87,9 +87,9 @@ export function SettingsSidebar({ user, activeSetting, setActiveSetting }: Setti
   ];
 
   return (
-    <div className="w-64 bg-white border-r border-gray-200 h-full flex flex-col shadow-sm">
+    <div className="w-64 bg-card border-r border-border h-full flex flex-col shadow-sm">
       {/* Header */}
-      <div className="p-6 border-b border-gray-200">
+      <div className="p-6 border-b border-border">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-bold bg-gradient-to-r from-purple-800 to-purple-600 bg-clip-text text-transparent">
             Settings
@@ -106,18 +106,18 @@ export function SettingsSidebar({ user, activeSetting, setActiveSetting }: Setti
       </div>
       
       {/* User info */}
-      <div className="p-6 border-b border-gray-200">
+      <div className="p-6 border-b border-border">
         <div className="flex items-center space-x-3">
-          <Avatar className="bg-purple-100 shadow-sm border border-purple-200">
-            <AvatarFallback className="text-purple-700 font-semibold">
+          <Avatar className="bg-primary/10 shadow-sm border border-border">
+            <AvatarFallback className="text-primary font-semibold">
               {getInitials(user?.email)}
             </AvatarFallback>
           </Avatar>
           <div>
-            <p className="font-medium text-gray-800 truncate max-w-[160px]">
+            <p className="font-medium text-foreground truncate max-w-[160px]">
               {user?.email?.split('@')[0]}
             </p>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-muted-foreground">
               {user?.email}
             </p>
           </div>
@@ -134,8 +134,8 @@ export function SettingsSidebar({ user, activeSetting, setActiveSetting }: Setti
                 onClick={() => setActiveSetting(setting.id)}
                 className={`flex items-center px-4 py-2.5 rounded-lg cursor-pointer ${
                   isActive(setting.id) 
-                    ? 'bg-purple-100 text-purple-800 font-medium shadow-sm' 
-                    : 'text-gray-700 hover:bg-gray-100'
+                    ? 'bg-primary/10 text-primary font-medium shadow-sm' 
+                    : 'text-foreground hover:bg-accent'
                 }`}
               >
                 {setting.icon}
@@ -150,20 +150,19 @@ export function SettingsSidebar({ user, activeSetting, setActiveSetting }: Setti
       </ScrollArea>
       
       {/* Theme Toggle */}
-      <div className="p-4 border-t border-gray-200">
+      <div className="p-4 border-t border-border">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
-            <SunIcon className={`w-4 h-4 mr-2 ${resolvedTheme === 'light' ? 'text-amber-500' : 'text-gray-400'}`} />
-            <span className={`text-sm ${resolvedTheme === 'light' ? 'text-gray-800 font-medium' : 'text-gray-500'}`}>Light</span>
+            <SunIcon className={`w-4 h-4 mr-2 ${resolvedTheme === 'light' ? 'text-amber-500' : 'text-muted-foreground'}`} />
+            <span className={`text-sm ${resolvedTheme === 'light' ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>Light</span>
           </div>
           <Button 
             variant="outline" 
-            size="sm" 
-            className="bg-gray-100"
+            size="sm"
             onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
           >
             <span className="sr-only">Toggle theme</span>
-            <div className="h-4 w-8 rounded-full bg-purple-600 relative">
+            <div className="h-4 w-8 rounded-full bg-primary relative">
               <div 
                 className={`h-3 w-3 rounded-full bg-white absolute top-0.5 transition-all ${
                   resolvedTheme === 'dark' ? 'left-[calc(100%-14px)]' : 'left-0.5'
@@ -172,8 +171,8 @@ export function SettingsSidebar({ user, activeSetting, setActiveSetting }: Setti
             </div>
           </Button>
           <div className="flex items-center">
-            <span className={`text-sm ${resolvedTheme === 'dark' ? 'text-gray-800 font-medium' : 'text-gray-500'} mr-2`}>Dark</span>
-            <MoonIcon className={`w-4 h-4 ${resolvedTheme === 'dark' ? 'text-indigo-400' : 'text-gray-400'}`} />
+            <span className={`text-sm ${resolvedTheme === 'dark' ? 'text-foreground font-medium' : 'text-muted-foreground'} mr-2`}>Dark</span>
+            <MoonIcon className={`w-4 h-4 ${resolvedTheme === 'dark' ? 'text-indigo-400' : 'text-muted-foreground'}`} />
           </div>
         </div>
       </div>
