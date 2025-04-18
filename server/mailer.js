@@ -8,17 +8,20 @@ function createTransporter() {
   // Check for required email credentials
   if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
     try {
-      // Create Gmail transporter
+      // First, try to log credentials format (without showing full password)
+      const emailUser = process.env.EMAIL_USER;
+      const emailPassLength = process.env.EMAIL_PASS.length;
+      console.log(`Email credentials check: User=${emailUser}, Password length=${emailPassLength}`);
+      
+      // Try OAuth2-less method for Gmail
       transporter = nodemailer.createTransport({
         service: 'gmail',
         auth: {
           user: process.env.EMAIL_USER,
           pass: process.env.EMAIL_PASS
         },
-        // Required for better compatibility with Gmail
-        tls: {
-          rejectUnauthorized: false
-        }
+        debug: true, // Enable debug output
+        logger: true // Log information in console
       });
       
       console.log("Email service initialized with Gmail account:", process.env.EMAIL_USER);
@@ -87,12 +90,20 @@ export const mailer = {
     if (!transporter) {
       console.log("Transporter not initialized yet, creating a temporary one for logging OTP");
       console.log(`DEVELOPMENT MODE - OTP for ${to} is: ${otp}`);
-      return { messageId: 'dev-mode-no-transport' };
+      return { 
+        messageId: 'dev-mode-no-transport',
+        success: false,
+        error: "Email transporter not initialized" 
+      };
     }
 
     try {
+      // Ensure the from address uses the same domain as the EMAIL_USER
+      const fromEmail = process.env.EMAIL_USER;
+      const fromName = "ADA University Voting System";
+      
       const mailOptions = {
-        from: process.env.EMAIL_FROM || '"ADA University Voting System" <no-reply@ada.edu.az>',
+        from: `"${fromName}" <${fromEmail}>`,
         to,
         subject: "Your Verification Code for ADA University Voting System",
         text: `Your verification code is: ${otp}. This code will expire in 3 minutes.`,
@@ -116,20 +127,41 @@ export const mailer = {
         `
       };
 
+      console.log(`Attempting to send email to ${to} with OTP: ${otp}`);
+      console.log(`Using email account: ${fromEmail}`);
+      
       const info = await transporter.sendMail(mailOptions);
-      console.log("Email sent:", info.messageId);
+      console.log("✅ Email sent successfully:", info.messageId);
       
       // If using Ethereal, log preview URL
       if (transporter.options && transporter.options.host === "smtp.ethereal.email") {
         console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info));
       }
       
-      return info;
+      return {
+        ...info,
+        success: true
+      };
     } catch (error) {
-      console.error("Error sending email:", error);
-      console.log(`ERROR, but OTP for ${to} is: ${otp}`);
-      // In development, don't fail the registration flow even if email sending fails
-      return { messageId: 'error-fallback' };
+      console.error("❌ Error sending email:", error);
+      
+      // Enhanced error logging
+      if (error.code === 'EAUTH') {
+        console.error('Authentication failed. Check EMAIL_USER and EMAIL_PASS environment variables.');
+      } else if (error.code === 'ESOCKET') {
+        console.error('Connection error. Check your network connectivity and SMTP settings.');
+      } else if (error.code === 'EENVELOPE') {
+        console.error('Envelope error. Check from/to email addresses.');
+      }
+      
+      console.log(`📌 IMPORTANT - OTP for ${to} is: ${otp}`);
+      
+      // Return structured error
+      return { 
+        messageId: 'error-fallback',
+        success: false,
+        error: error.message
+      };
     }
   }
 };
