@@ -1173,6 +1173,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.updateUserPassword(email, hashedPassword);
       console.log(`Reset password: Password update completed successfully for ${email}`);
       
+      // Let's log a test comparison to verify the hash works
+      const testCompare = await bcrypt.compare(newPassword, hashedPassword);
+      console.log(`Reset password: Test comparison of new password against hash: ${testCompare ? 'SUCCESS' : 'FAILED'}`);
+      
       // Remove pending user
       await storage.deletePendingUser(email);
       
