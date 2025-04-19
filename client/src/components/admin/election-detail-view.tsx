@@ -63,18 +63,39 @@ export function AdminElectionDetailView({ election, className = "" }: ElectionDe
     },
     onError: (error: any) => {
       let errorMessage = error.message || "Failed to deploy election to blockchain. Please try again.";
+      let errorTitle = "Deployment failed";
       
       // Special handling for common MetaMask errors
-      if (errorMessage.includes("user rejected transaction")) {
+      if (errorMessage.includes("user rejected") || errorMessage.includes("User denied")) {
         errorMessage = "Transaction was rejected in MetaMask. Please try again and approve the transaction.";
-      } else if (errorMessage.includes("insufficient funds")) {
-        errorMessage = "Your wallet has insufficient funds to complete this transaction.";
-      } else if (errorMessage.includes("Election already exists")) {
+      } 
+      // Insufficient funds detection
+      else if (errorMessage.includes("insufficient funds")) {
+        errorTitle = "Insufficient MATIC balance";
+        errorMessage = "Your wallet has insufficient MATIC tokens to complete this transaction. Please add MATIC tokens to your wallet on the Polygon Amoy testnet.";
+      } 
+      // Already deployed
+      else if (errorMessage.includes("Election already exists") || errorMessage.includes("already deployed")) {
         errorMessage = "This election has already been deployed to the blockchain.";
+      }
+      // Polygon RPC errors
+      else if (errorMessage.includes("Internal JSON-RPC error")) {
+        errorTitle = "Polygon Network Error";
+        errorMessage = "There was an error connecting to the Polygon Amoy testnet. This could be due to network congestion or MetaMask configuration issues. Please verify that MetaMask is connected to the Polygon Amoy testnet.";
+      }
+      // Gas or fee errors
+      else if (errorMessage.includes("gas") || errorMessage.includes("fee")) {
+        errorTitle = "Gas Fee Error";
+        errorMessage = "Transaction failed due to gas/fee issues. Try adjusting MetaMask gas settings or adding more MATIC to your wallet.";
+      }
+      // Contract execution errors
+      else if (errorMessage.includes("execution reverted")) {
+        errorTitle = "Contract Error";
+        errorMessage = "The smart contract rejected the transaction. This might be due to a validation error or a problem with the election parameters.";
       }
       
       toast({
-        title: "Deployment failed",
+        title: errorTitle,
         description: errorMessage,
         variant: "destructive"
       });

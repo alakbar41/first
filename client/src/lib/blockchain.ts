@@ -206,7 +206,35 @@ export async function hasUserVoted(startTime: number) {
  */
 export async function deployElectionToBlockchain(electionId: number) {
   try {
-    // First, call the API to prepare the election data
+    // First, check if the user has enough MATIC tokens for the transaction
+    try {
+      if (typeof window !== 'undefined' && window.ethereum) {
+        // Get the current account
+        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+        if (accounts.length === 0) {
+          throw new Error('Please connect to MetaMask first');
+        }
+        
+        // Create a provider to check balance
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const balance = await provider.getBalance(accounts[0]);
+        
+        // Convert balance to ETH (from wei)
+        const balanceInEth = ethers.formatEther(balance);
+        console.log(`Current account balance: ${balanceInEth} MATIC`);
+        
+        // If balance is extremely low (less than 0.01 MATIC), warn the user
+        if (parseFloat(balanceInEth) < 0.01) {
+          console.warn('Warning: Account balance is very low, transaction may fail');
+          alert(`Warning: Your Polygon wallet balance is very low (${balanceInEth} MATIC). The transaction may fail. Please add MATIC tokens to your wallet on the Polygon Amoy testnet.`);
+        }
+      }
+    } catch (balanceError) {
+      console.error('Error checking balance:', balanceError);
+      // Continue anyway, as this is just a warning check
+    }
+    
+    // Call the API to prepare the election data
     const response = await fetch(`/api/blockchain/deploy-election/${electionId}`, {
       method: 'POST',
       headers: {
@@ -282,13 +310,43 @@ export async function deployElectionToBlockchain(electionId: number) {
     };
   } catch (error: any) {
     console.error('Error deploying election to blockchain:', error);
-    // Provide more detailed error message
+    
+    // Capture the specific error message for better diagnostics
+    let errorMessage = 'Unknown blockchain error occurred';
+    
     if (error.message) {
-      if (error.message.includes('user rejected transaction')) {
-        throw new Error('Transaction was rejected by the user');
+      console.log('Original error message:', error.message);
+      
+      // Handle user rejection
+      if (error.message.includes('user rejected') || error.message.includes('User denied')) {
+        errorMessage = 'Transaction was rejected by the user';
+      } 
+      // Handle RPC errors
+      else if (error.message.includes('Internal JSON-RPC error')) {
+        errorMessage = 'MetaMask RPC Error: Please check your network connection and MetaMask configuration';
+        // Try to extract more detailed error information if available
+        if (error.data) {
+          errorMessage += `\nDetails: ${JSON.stringify(error.data)}`;
+        }
+      }
+      // Handle gas errors
+      else if (error.message.includes('gas') || error.message.includes('fee')) {
+        errorMessage = 'Transaction failed due to gas/fee issues. Try adjusting MetaMask settings.';
+      }
+      // Handle contract execution errors
+      else if (error.message.includes('execution reverted')) {
+        errorMessage = 'Contract execution failed: ' + 
+          (error.reason || error.message.substring(error.message.indexOf('execution reverted')));
+      }
+      // Fallback to the original message
+      else {
+        errorMessage = error.message;
       }
     }
-    throw error;
+    
+    // Ensure we don't try to confirm blockchain deployment since it failed
+    console.error('Blockchain deployment failed:', errorMessage);
+    throw new Error(errorMessage);
   }
 }
 
