@@ -203,7 +203,6 @@ export class MemStorage implements IStorage {
       status: election.status || "upcoming",
       createdBy: election.createdBy,
       createdAt: new Date(),
-      blockchainId: null,
     };
     
     this.elections.set(id, newElection);
@@ -893,43 +892,40 @@ export class DatabaseStorage implements IStorage {
     const updates: Promise<void>[] = [];
     
     for (const election of electionsList) {
-      // Only update blockchain-deployed elections
-      if (election.blockchainId !== null) {
-        const startDate = new Date(election.startDate);
-        const endDate = new Date(election.endDate);
+      const startDate = new Date(election.startDate);
+      const endDate = new Date(election.endDate);
+      
+      let newStatus = election.status;
+      let statusChanged = false;
+      
+      // Check if election should be active
+      if (now >= startDate && now < endDate && election.status === 'upcoming') {
+        newStatus = 'active';
+        statusChanged = true;
+        console.log(`Automatically updating election ${election.id} to active status`);
+      } 
+      // Check if election should be completed
+      else if (now >= endDate && election.status !== 'completed') {
+        newStatus = 'completed';
+        statusChanged = true;
+        console.log(`Automatically updating election ${election.id} to completed status`);
+      }
+      
+      // Update database if status changed
+      if (statusChanged) {
+        // Update in the database
+        updates.push(this.updateElectionStatus(election.id, newStatus));
+        // Update the election object for immediate use
+        election.status = newStatus;
         
-        let newStatus = election.status;
-        let statusChanged = false;
-        
-        // Check if election should be active
-        if (now >= startDate && now < endDate && election.status === 'upcoming') {
-          newStatus = 'active';
-          statusChanged = true;
-          console.log(`Automatically updating election ${election.id} to active status`);
-        } 
-        // Check if election should be completed
-        else if (now >= endDate && election.status !== 'completed') {
-          newStatus = 'completed';
-          statusChanged = true;
-          console.log(`Automatically updating election ${election.id} to completed status`);
-        }
-        
-        // Update database if status changed
-        if (statusChanged) {
-          // Update in the database
-          updates.push(this.updateElectionStatus(election.id, newStatus));
-          // Update the election object for immediate use
-          election.status = newStatus;
+        // Update candidate statuses when election status changes
+        // Get all candidates in this election
+        const electionCandidatesList = await this.getElectionCandidates(election.id);
+        for (const ec of electionCandidatesList) {
+          updates.push(this.updateCandidateActiveStatus(ec.candidateId));
           
-          // Update candidate statuses when election status changes
-          // Get all candidates in this election
-          const electionCandidatesList = await this.getElectionCandidates(election.id);
-          for (const ec of electionCandidatesList) {
-            updates.push(this.updateCandidateActiveStatus(ec.candidateId));
-            
-            if (ec.runningMateId && ec.runningMateId > 0) {
-              updates.push(this.updateCandidateActiveStatus(ec.runningMateId));
-            }
+          if (ec.runningMateId && ec.runningMateId > 0) {
+            updates.push(this.updateCandidateActiveStatus(ec.runningMateId));
           }
         }
       }
@@ -1013,23 +1009,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateElection(id: number, election: Partial<InsertElection>): Promise<Election> {
-    // Handle the blockchain ID update separately to avoid date issues
-    if (election.blockchainId !== undefined && Object.keys(election).length === 1) {
-      // This is just a blockchain ID update, use a simplified update
-      console.log(`Simplified update for blockchainId ${election.blockchainId} on election ${id}`);
-      const updated = await db.update(elections)
-        .set({ blockchainId: election.blockchainId })
-        .where(eq(elections.id, id))
-        .returning();
-      
-      if (!updated.length) {
-        throw new Error(`Election with id ${id} not found`);
-      }
-      
-      return updated[0];
-    }
-    
-    // For other updates, proceed normally
+    // For standard updates, proceed normally
     const updateData: any = { ...election };
     
     // Only handle dates if they're present in the update
