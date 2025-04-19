@@ -62,12 +62,12 @@ export interface IStorage {
   addCandidateToElection(electionCandidate: InsertElectionCandidate): Promise<ElectionCandidate>;
   removeCandidateFromElection(electionId: number, candidateId: number): Promise<void>;
   
-  // Vote history tracking (optional, blockchain is the main source of truth)
+  // Vote history tracking
   recordVote?(userId: number, electionId: number): Promise<void>;
   hasUserVoted?(userId: number, electionId: number): Promise<boolean>;
   resetVote?(userId: number, electionId: number): Promise<void>;
   
-  // Voting token methods (for secure blockchain voting)
+  // Voting token methods (for secure voting)
   createVotingToken(userId: number, electionId: number): Promise<VotingToken>;
   getVotingToken(userId: number, electionId: number): Promise<VotingToken | undefined>;
   validateVotingToken(token: string, electionId: number): Promise<boolean>;
@@ -225,11 +225,6 @@ export class MemStorage implements IStorage {
   
   // Implementation of status check/update based on current date
   async updateElectionStatusBasedOnTime(election: Election): Promise<void> {
-    // Only update blockchain-deployed elections
-    if (election.blockchainId === null || election.blockchainId === undefined) {
-      return;
-    }
-    
     const now = new Date();
     const startDate = new Date(election.startDate);
     const endDate = new Date(election.endDate);

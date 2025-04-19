@@ -88,7 +88,6 @@ export const elections = pgTable("elections", {
   status: text("status").notNull().default("upcoming"), // upcoming, active, completed
   createdBy: integer("created_by").notNull(), // Reference to admin user id
   createdAt: timestamp("created_at").notNull().defaultNow(),
-  blockchainId: integer("blockchain_id"), // ID of the election on the blockchain (set after deployment)
 });
 
 export const candidates = pgTable("candidates", {
@@ -112,7 +111,7 @@ export const electionCandidates = pgTable("election_candidates", {
 });
 
 // Table for one-time voting tokens
-// This provides secure blockchain voting by requiring a valid token in addition to wallet signature
+// This provides secure voting by requiring a valid token
 export const votingTokens = pgTable("voting_tokens", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(), // Reference to user id
