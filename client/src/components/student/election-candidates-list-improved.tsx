@@ -14,7 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { ResetUserVoteButton } from "@/components/admin/reset-user-vote-button";
+// Removed missing import that was causing build error
 
 interface ElectionCandidatesListProps {
   election: Election;
