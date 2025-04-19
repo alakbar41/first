@@ -144,7 +144,7 @@ export async function voteForCandidate(startTime: number, candidateHash: string)
     
     console.log(`Voting for candidate with hash ${candidateHash} in election ${startTime}`);
     
-    // Send transaction to blockchain
+    // Send transaction to blockchain - let MetaMask handle gas estimation
     const tx = await contract.vote(startTime, candidateHash);
     console.log('Transaction sent:', tx.hash);
     
@@ -301,25 +301,15 @@ export async function deployElectionToBlockchain(electionId: number) {
     // Send transaction to blockchain
     console.log(`Creating election on blockchain with parameters:`, deployParams);
     
-    // Add explicit gas settings to help with estimation issues
-    console.log('Preparing transaction with explicit gas settings');
+    // Let MetaMask handle gas estimation on its own for better reliability
+    console.log('Calling contract function and letting MetaMask estimate gas');
     
-    // Create transaction options with explicit gas parameters
-    const overrides = {
-      // Use a higher gas limit for Polygon Amoy testnet
-      gasLimit: 5000000,
-      // Set a slightly higher gas price to ensure the transaction goes through
-      maxFeePerGas: ethers.parseUnits('50', 'gwei'),
-      maxPriorityFeePerGas: ethers.parseUnits('5', 'gwei')
-    };
-    
-    // Call the contract method with overrides as the last parameter
+    // Call the contract method without specifying gas parameters
     const tx = await contract.createElection(
       deployParams.positionEnum,
       deployParams.startTimestamp,
       deployParams.endTimestamp,
-      deployParams.candidateIdBytes,
-      overrides
+      deployParams.candidateIdBytes
     );
     
     console.log('Transaction sent:', tx.hash);
