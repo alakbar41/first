@@ -1,9 +1,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Election, getFacultyName } from "@shared/schema";
-import { User, CalendarIcon, Clock, Users } from "lucide-react";
+import { User, CalendarIcon, Clock, Users, ServerIcon, Database } from "lucide-react";
 import { format } from "date-fns";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { Button } from "@/components/ui/button";
+import { useMutation } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 interface ElectionDetailViewProps {
   election: Election;
