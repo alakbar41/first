@@ -507,23 +507,6 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
             });
             // Update UI to reflect that user has voted
             setHasVotedInElection(true);
-          } else if (blockchainError.message?.includes("Internal JSON-RPC error") || 
-                    blockchainError.code === -32603 ||
-                    (blockchainError.error && blockchainError.error.code === -32603)) {
-            // Handle the specific JSON-RPC error
-            toast({
-              title: "Blockchain Network Error",
-              description: "There was an issue with the Polygon Amoy testnet. This is common with test networks. Please try again in a few moments.",
-              variant: "destructive",
-            });
-            console.log("Detailed RPC error:", blockchainError);
-          } else if (blockchainError.message?.includes("Blockchain network error")) {
-            // This is the more specific error thrown by our enhanced error handler
-            toast({
-              title: "Blockchain Network Error",
-              description: blockchainError.message,
-              variant: "destructive",
-            });
           } else {
             toast({
               title: "Blockchain Voting Error",
