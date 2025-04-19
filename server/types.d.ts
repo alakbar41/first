@@ -27,3 +27,19 @@ declare global {
     }
   }
 }
+
+// Also directly augment the express Request type for easier use in routes
+declare module 'express' {
+  interface Request {
+    user?: {
+      id: number;
+      email: string;
+      isAdmin: boolean;
+      faculty: string;
+      [key: string]: any;
+    };
+    isAuthenticated(): boolean;
+    login(user: any, callback: (err: any) => void): void;
+    logout(callback: (err: any) => void): void;
+  }
+}

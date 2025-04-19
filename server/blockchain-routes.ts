@@ -1,4 +1,5 @@
-import { Express, Request, Response } from 'express';
+import { Express, Response } from 'express';
+import { Request as ExpressRequest } from 'express';
 import { 
   getContractAddress, 
   getStudentIdFromHash, 
@@ -9,8 +10,18 @@ import {
 } from './blockchain';
 import { isAdmin, isAuthenticated } from './routes';
 
-// Import the extended Request type
+// Import the extended Request type with user property
 import './types.d.ts';
+// Define the Express.Request type that includes the user property
+type Request = ExpressRequest & {
+  user?: {
+    id: number;
+    email: string;
+    isAdmin: boolean;
+    faculty: string;
+    [key: string]: any;
+  };
+};
 import { storage } from './storage';
 
 /**
@@ -219,7 +230,6 @@ export function registerBlockchainRoutes(app: Express) {
       }
       
       // Record the vote in our database for backup/verification
-      // User is available because of the isAuthenticated middleware
       if (req.user?.id) {
         await storage.recordVote(req.user.id, electionId);
         console.log(`Vote recorded for user ${req.user.id} in election ${electionId} for candidate ${studentId}`);

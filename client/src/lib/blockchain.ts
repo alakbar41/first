@@ -241,6 +241,35 @@ export async function getCandidateVoteCount(startTime: number, candidateStudentI
 }
 
 /**
+ * Check if an election exists on the blockchain
+ * @param startTime The blockchain election ID (timestamp)
+ * @returns Promise that resolves to true if the election exists, false otherwise
+ */
+export async function checkElectionExists(startTime: number): Promise<boolean> {
+  try {
+    const contract = await getVotingContract();
+    
+    // Try to get the election - if it exists, this will return data
+    // If it doesn't exist, it will throw an error
+    await contract.getElection(startTime);
+    
+    // If we got here, the election exists
+    return true;
+  } catch (error: any) {
+    // Check if this is an election not found error
+    if (error?.reason === "Election not found" || 
+        error?.message?.includes("Election not found")) {
+      console.log(`Election ${startTime} doesn't exist on blockchain`);
+      return false;
+    }
+    
+    // For other errors, log them but still return false since we couldn't confirm election exists
+    console.error(`Error checking if election ${startTime} exists:`, error);
+    return false;
+  }
+}
+
+/**
  * Get all candidates with their vote counts for an election
  */
 export async function getAllCandidatesWithVotes(startTime: number): Promise<{ids: string[], voteCounts: number[]}> {
