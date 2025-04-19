@@ -14,6 +14,7 @@ interface ElectionDetailViewProps {
 }
 
 export function AdminElectionDetailView({ election, className = "" }: ElectionDetailViewProps) {
+  const { toast } = useToast();
   
   // Helper function to format dates
   function formatDate(dateString: string | Date) {
@@ -44,6 +45,28 @@ export function AdminElectionDetailView({ election, className = "" }: ElectionDe
     // Also invalidate any specific election query if it exists
     queryClient.invalidateQueries({ queryKey: [`/api/elections/${election.id}`] });
   };
+  
+  // Deploy election to blockchain
+  const deployMutation = useMutation({
+    mutationFn: () => {
+      return apiRequest(`/api/blockchain/deploy-election/${election.id}`, { method: 'POST' });
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Election prepared for blockchain",
+        description: "The election has been successfully prepared for blockchain deployment. Use MetaMask to complete the transaction.",
+        variant: "default"
+      });
+      refreshElectionData();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Deployment failed",
+        description: error.message || "Failed to prepare election for blockchain. Please try again.",
+        variant: "destructive"
+      });
+    }
+  });
 
   return (
     <div className={`space-y-6 ${className}`}>
@@ -107,14 +130,66 @@ export function AdminElectionDetailView({ election, className = "" }: ElectionDe
           
           {/* Status Section */}
           <div className="mt-6 border-t pt-4">
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-700">Election Status</h3>
+              
+              {/* Blockchain Status */}
+              <div className="flex items-center gap-2">
+                {election.blockchainId ? (
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 flex items-center gap-1">
+                      <Database className="h-3 w-3" />
+                      <span>Blockchain ID: {election.blockchainId}</span>
+                    </Badge>
+                  </div>
+                ) : null}
+              </div>
             </div>
             
             <div className="mt-3">
               <p className="text-sm text-gray-600 mb-3">
                 This election is available for eligible students to vote during the active period.
               </p>
+              
+              {/* Blockchain Deployment Section */}
+              <div className="mt-4 border-t pt-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                      <ServerIcon className="h-4 w-4 text-purple-600" />
+                      Blockchain Deployment
+                    </h4>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Deploy this election to the blockchain to enable secure, transparent voting.
+                    </p>
+                  </div>
+                  
+                  {!election.blockchainId ? (
+                    <Button 
+                      onClick={() => deployMutation.mutate()} 
+                      disabled={deployMutation.isPending}
+                      className="bg-purple-600 hover:bg-purple-700"
+                    >
+                      {deployMutation.isPending ? (
+                        <>
+                          <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                          Preparing...
+                        </>
+                      ) : (
+                        <>
+                          <ServerIcon className="h-4 w-4 mr-2" />
+                          Deploy to Blockchain
+                        </>
+                      )}
+                    </Button>
+                  ) : (
+                    <div className="text-sm text-green-600 flex items-center gap-1">
+                      <div className="h-2 w-2 bg-green-500 rounded-full"></div>
+                      <span>Deployed to Blockchain</span>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </CardContent>
