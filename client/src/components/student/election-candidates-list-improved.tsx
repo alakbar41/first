@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Candidate, Election, ElectionCandidate } from "@shared/schema";
 import { Button } from "@/components/ui/button";
-import { UserCircle, Award, Check, Info, Clock, Calendar, AlertTriangle, RefreshCw } from "lucide-react";
+import { UserCircle, Award, Check, Info, Clock, Calendar, AlertTriangle, RefreshCw, Loader2 } from "lucide-react";
 import { getFacultyName } from "@shared/schema";
 import { useState, useEffect, useRef } from "react";
 import {
@@ -609,19 +609,43 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                         </div>
                       ) : (
                         <>
-                          {/* Vote button - modified to show future implementation message */}
+                          {/* Vote button - now active with blockchain voting */}
                           <Button
                             onClick={() => {
-                              toast({
-                                title: "Coming Soon",
-                                description: "Voting functionality will be implemented in the future. Thank you for your patience.",
-                                variant: "default",
-                              });
+                              // Ensure election is active and user is eligible before proceeding
+                              if (!isElectionActive()) {
+                                toast({
+                                  title: "Election Not Active",
+                                  description: "This election is not currently active. Please check back during the voting period.",
+                                  variant: "destructive",
+                                });
+                                return;
+                              }
+                              
+                              if (!isUserEligible()) {
+                                toast({
+                                  title: "Not Eligible to Vote",
+                                  description: `This election is only for students from ${election.eligibleFaculties.map(f => getFacultyName(f)).join(", ")}. You are from ${getFacultyName(user?.faculty || "")}.`,
+                                  variant: "destructive",
+                                });
+                                return;
+                              }
+                              
+                              // Proceed with vote
+                              castVote(candidate.id);
                             }}
+                            disabled={isProcessingVote || !isElectionActive() || !isUserEligible() || hasVotedInElection}
                             className="w-full bg-purple-600 hover:bg-purple-700"
                             size="lg"
                           >
-                            Vote for this Candidate
+                            {isProcessingVote ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Processing...
+                              </>
+                            ) : (
+                              "Vote for this Candidate"
+                            )}
                           </Button>
                           
                           {/* Add debug information */}
