@@ -7,6 +7,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { deployElectionToBlockchain } from "../../lib/blockchain";
 
 interface ElectionDetailViewProps {
   election: Election;
@@ -45,25 +46,36 @@ export function AdminElectionDetailView({ election, className = "" }: ElectionDe
     // Also invalidate any specific election query if it exists
     queryClient.invalidateQueries({ queryKey: [`/api/elections/${election.id}`] });
   };
-  
-  // Deploy election to blockchain
+
+  // Deploy election to blockchain using MetaMask
   const deployMutation = useMutation({
-    mutationFn: () => {
-      // Properly call apiRequest with method as first parameter, URL as second
-      return apiRequest("POST", `/api/blockchain/deploy-election/${election.id}`);
+    mutationFn: async () => {
+      // This function will handle both API call and MetaMask transaction
+      return deployElectionToBlockchain(election.id);
     },
     onSuccess: (data) => {
       toast({
-        title: "Election prepared for blockchain",
-        description: "The election has been successfully prepared for blockchain deployment. Use MetaMask to complete the transaction.",
+        title: "Election deployed to blockchain",
+        description: "The election has been successfully deployed to the blockchain! Transaction confirmed.",
         variant: "default"
       });
       refreshElectionData();
     },
     onError: (error: any) => {
+      let errorMessage = error.message || "Failed to deploy election to blockchain. Please try again.";
+      
+      // Special handling for common MetaMask errors
+      if (errorMessage.includes("user rejected transaction")) {
+        errorMessage = "Transaction was rejected in MetaMask. Please try again and approve the transaction.";
+      } else if (errorMessage.includes("insufficient funds")) {
+        errorMessage = "Your wallet has insufficient funds to complete this transaction.";
+      } else if (errorMessage.includes("Election already exists")) {
+        errorMessage = "This election has already been deployed to the blockchain.";
+      }
+      
       toast({
         title: "Deployment failed",
-        description: error.message || "Failed to prepare election for blockchain. Please try again.",
+        description: errorMessage,
         variant: "destructive"
       });
     }

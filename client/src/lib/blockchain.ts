@@ -198,6 +198,71 @@ export async function hasUserVoted(startTime: number) {
   }
 }
 
+/**
+ * Deploy an election to the blockchain using MetaMask
+ * @param electionId The database ID of the election
+ */
+export async function deployElectionToBlockchain(electionId: number) {
+  try {
+    // First, call the API to prepare the election data
+    const response = await fetch(`/api/blockchain/deploy-election/${electionId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to prepare election for blockchain');
+    }
+    
+    const data = await response.json();
+    console.log('Election prepared for blockchain:', data);
+    
+    // Get the deployment parameters
+    const { deployParams, blockchainId } = data;
+    
+    if (!deployParams) {
+      throw new Error('No deployment parameters received from server');
+    }
+    
+    // Connect to MetaMask and get contract with signer
+    const contract = await getVotingContract(true);
+    
+    // Send transaction to blockchain
+    console.log(`Creating election on blockchain with parameters:`, deployParams);
+    const tx = await contract.createElection(
+      deployParams.positionEnum,
+      deployParams.startTimestamp,
+      deployParams.endTimestamp,
+      deployParams.candidateIdBytes
+    );
+    
+    console.log('Transaction sent:', tx.hash);
+    
+    // Wait for transaction to be mined
+    const receipt = await tx.wait();
+    console.log('Election created on blockchain in block:', receipt.blockNumber);
+    
+    return {
+      success: true,
+      blockchainId,
+      txHash: tx.hash,
+      receipt
+    };
+  } catch (error: any) {
+    console.error('Error deploying election to blockchain:', error);
+    // Provide more detailed error message
+    if (error.message) {
+      if (error.message.includes('user rejected transaction')) {
+        throw new Error('Transaction was rejected by the user');
+      }
+    }
+    throw error;
+  }
+}
+
 // Add TypeScript types for the window.ethereum object
 declare global {
   interface Window {
