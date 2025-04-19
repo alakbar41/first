@@ -124,18 +124,27 @@ export function getVotingContract() {
  * Prepare data for creating an election on the blockchain (client-side)
  * This function no longer actually deploys the election, but returns 
  * the data needed for the client-side MetaMask transaction
+ * 
+ * @param position The position type for the election
+ * @param startTime The election start date
+ * @param endTime The election end date
+ * @param candidateStudentIds Array of student IDs for candidates
+ * @returns An object with startTimestamp for database storage and deployParams for the blockchain transaction
  */
 export async function createElection(
-  position: 'Senator' | 'President/VP',
+  position: string,
   startTime: Date,
   endTime: Date,
   candidateStudentIds: string[]
 ) {
   try {
-    // Convert position to enum
-    const positionEnum = position === 'Senator' ? 0 : 1;
+    // Import the mapping function from schema
+    const { mapPositionToBlockchain } = require('../shared/schema');
     
-    // Convert dates to timestamps (seconds)
+    // Convert position to enum value (0 for Senator, 1 for President/VP)
+    const positionEnum = mapPositionToBlockchain(position);
+    
+    // Convert dates to Unix timestamps (seconds)
     const startTimestamp = Math.floor(startTime.getTime() / 1000);
     const endTimestamp = Math.floor(endTime.getTime() / 1000);
     

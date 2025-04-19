@@ -117,8 +117,9 @@ export function registerBlockchainRoutes(app: Express) {
         .map(c => c!.studentId);
       
       // Prepare data for blockchain deployment (client-side)
+      // The createBlockchainElection function will map the position to the correct enum value
       const electionData = await createBlockchainElection(
-        election.position as 'Senator' | 'President/VP',
+        election.position,
         new Date(election.startDate),
         new Date(election.endDate),
         candidateStudentIds

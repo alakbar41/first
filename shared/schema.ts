@@ -53,11 +53,25 @@ export function getFacultyName(facultyCode: string): string {
   return facultyCode;
 }
 
+// Position types that align with the blockchain contract enum
+// Positions in the contract: enum PositionType { Senator, PresidentVP }
+export const BLOCKCHAIN_POSITIONS = ["Senator", "President/VP"] as const;
+
+// User-facing candidate positions
 export const CANDIDATE_POSITIONS = [
   "President",
   "Vice President",
   "Senator"
 ] as [string, ...string[]];
+
+// Map from database position to blockchain position enum index
+export function mapPositionToBlockchain(position: string): number {
+  if (position === "Senator") {
+    return 0; // Senator enum value
+  } else {
+    return 1; // PresidentVP enum value (for both President and Vice President)
+  }
+}
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
