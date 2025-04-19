@@ -85,25 +85,8 @@ export function EditElectionDialog({ open, onOpenChange, election }: EditElectio
         ? election.eligibleFaculties[0] 
         : "";
       
-      // Check if election is deployed to blockchain using our utility function
-      // This provides a more reliable check than just looking at the blockchainId field
-      const checkDeploymentStatus = async () => {
-        if (election.blockchainId) {
-          // If we have a blockchain ID, it's definitely deployed
-          setIsDeployedToBlockchain(true);
-        } else {
-          // Double-check using our utility which can check for deployment even if ID is missing
-          const isDeployed = await isElectionDeployedToBlockchain(election.id);
-          setIsDeployedToBlockchain(isDeployed);
-          
-          if (isDeployed) {
-            // If we found it's deployed but no blockchainId is set, warn in console
-            console.warn(`Election ${election.id} is deployed to blockchain but has no blockchainId set`);
-          }
-        }
-      };
-      
-      checkDeploymentStatus();
+      // No blockchain checks needed
+      setIsDeployedToBlockchain(false);
       
       form.reset({
         name: election.name,
@@ -165,17 +148,6 @@ export function EditElectionDialog({ open, onOpenChange, election }: EditElectio
   });
 
   const onSubmit = (data: FormValues) => {
-    // Block editing if already deployed to blockchain
-    if (isDeployedToBlockchain) {
-      toast({
-        title: "Cannot Edit Deployed Election",
-        description: "This election has already been deployed to the blockchain and cannot be modified.",
-        variant: "destructive",
-      });
-      onOpenChange(false); // Close the dialog
-      return;
-    }
-    
     // Validate dates
     if (data.endDate < data.startDate) {
       toast({
@@ -186,20 +158,8 @@ export function EditElectionDialog({ open, onOpenChange, election }: EditElectio
       return;
     }
     
-    // Check if start date has changed - clear blockchain ID if it has
-    // This ensures the start date can be used as a stable identifier
-    const oldStartDate = election ? new Date(election.startDate) : null;
-    const newStartDate = data.startDate;
-    
     // Prepare data for submission
     const submissionData = {...data};
-    
-    // If start date changed, we need to clear any existing blockchain ID
-    // since it would invalidate our mapping
-    if (oldStartDate && newStartDate && 
-        oldStartDate.getTime() !== newStartDate.getTime()) {
-      console.log('Start date changed - this will clear any blockchain ID mapping');
-    }
     
     updateElectionMutation.mutate(submissionData);
   };
@@ -465,22 +425,7 @@ export function EditElectionDialog({ open, onOpenChange, election }: EditElectio
               </p>
             </div>
             
-            {/* Blockchain warning for deployed elections */}
-            {isDeployedToBlockchain && (
-              <div className="rounded-md border p-4 bg-amber-50">
-                <div className="flex items-start">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-amber-600 mt-0.5 mr-2">
-                    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
-                    <path d="M12 9v4"></path>
-                    <path d="M12 17h.01"></path>
-                  </svg>
-                  <div className="text-sm text-amber-800">
-                    <p className="font-medium">This election has been deployed to the blockchain</p>
-                    <p className="mt-1">Once deployed to the blockchain, elections cannot be modified to maintain data integrity between systems. To make changes, you must delete this election and create a new one.</p>
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* No warning needed as blockchain integration has been removed */}
 
             <div className="flex justify-end space-x-2">
               <Button 
@@ -492,13 +437,11 @@ export function EditElectionDialog({ open, onOpenChange, election }: EditElectio
               </Button>
               <Button 
                 type="submit" 
-                disabled={updateElectionMutation.isPending || isDeployedToBlockchain}
+                disabled={updateElectionMutation.isPending}
               >
                 {updateElectionMutation.isPending 
                   ? "Saving..." 
-                  : isDeployedToBlockchain 
-                    ? "Cannot Edit Deployed Election" 
-                    : "Save Changes"}
+                  : "Save Changes"}
               </Button>
             </div>
           </form>
