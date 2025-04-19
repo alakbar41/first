@@ -277,12 +277,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Admin sees all elections
         res.json(elections);
       } else {
-        // Students see ALL elections that have been deployed to blockchain, regardless of status
-        // This gives them time to review candidates before voting begins
+        // Students see active elections for now
+        // Since blockchain requirement has been removed, show active and upcoming elections
         const filteredElections = elections.filter(election => 
-          // Only filter on blockchain deployment status, not on election active status
-          election.blockchainId !== null && 
-          election.blockchainId !== undefined
+          // Show active and upcoming elections
+          election.status === 'active' || election.status === 'upcoming'
         );
         console.log(`Student user viewing elections - filtered from ${elections.length} to ${filteredElections.length}`);
         if (filteredElections.length === 0) {
@@ -290,7 +289,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             elections.map(e => ({
               id: e.id, 
               name: e.name, 
-              blockchainId: e.blockchainId, 
               status: e.status
             }))
           );
@@ -318,14 +316,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (isAdmin) {
         // Admin sees all elections
         res.json(election);
-      } else if (election.blockchainId !== null && 
-                 election.blockchainId !== undefined) {
-        // Students see ALL elections that are deployed to blockchain, regardless of status
-        // This allows them to review candidates before the election starts
+      } else if (election.status === 'active' || election.status === 'upcoming') {
+        // Students see active and upcoming elections
+        // This allows them to review candidates before and during the election
         res.json(election);
       } else {
-        // Students can't access non-deployed elections
-        console.log(`Student tried to access election ${election.id} but was denied. Not deployed to blockchain. BlockchainId: ${election.blockchainId}`);
+        // Students can't access completed elections
+        console.log(`Student tried to access election ${election.id} but was denied. Status: ${election.status}`);
         return res.status(404).json({ message: "Election not found" });
       }
     } catch (error) {
@@ -818,13 +815,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Election not found" });
       }
       
-      // Check if user is admin or if election has a blockchain ID
+      // Check if user is admin or if election is active/upcoming
       const isAdmin = req.isAuthenticated() && req.user && req.user.isAdmin === true;
       
-      if (!isAdmin && (election.blockchainId === null || 
-                      election.blockchainId === undefined)) {
-        // Students can't access candidates for non-deployed elections
-        console.log(`Student tried to access candidates for election ${election.id} but was denied. Not deployed to blockchain. BlockchainId: ${election.blockchainId}`);
+      if (!isAdmin && !(election.status === 'active' || election.status === 'upcoming')) {
+        // Students can only access active or upcoming elections
+        console.log(`Student tried to access candidates for election ${election.id} but was denied. Status: ${election.status}`);
         return res.status(404).json({ message: "Election not found" });
       }
       
