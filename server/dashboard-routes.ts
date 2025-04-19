@@ -208,10 +208,10 @@ router.get('/metrics/active-elections', isAdmin, async (req: Request, res: Respo
       ORDER BY e.created_at DESC
     `;
 
-    const activeElections = await db.execute(activeElectionsQuery);
+    const activeElections = await db.execute(activeElectionsQuery) as unknown as ActiveElection[];
     
     // Get candidate vote counts for each active election
-    const result = [];
+    const result: (ActiveElection & { candidates: Candidate[] })[] = [];
     
     for (const election of activeElections) {
       const candidateVotesQuery = sql`
@@ -229,7 +229,7 @@ router.get('/metrics/active-elections', isAdmin, async (req: Request, res: Respo
         ORDER BY vote_count DESC
       `;
       
-      const candidates = await db.execute(candidateVotesQuery);
+      const candidates = await db.execute(candidateVotesQuery) as unknown as Candidate[];
       
       result.push({
         ...election,
@@ -279,7 +279,7 @@ router.get('/metrics/participation-overview', isAdmin, async (req: Request, res:
       ORDER BY id DESC
     `;
 
-    const participationStats = await db.execute(query);
+    const participationStats = await db.execute(query) as unknown as ParticipationOverview[];
     
     res.json(participationStats);
   } catch (error) {

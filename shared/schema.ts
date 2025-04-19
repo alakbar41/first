@@ -318,3 +318,25 @@ export const insertBlockchainTransactionSchema = createInsertSchema(blockchainTr
 
 export type BlockchainTransaction = typeof blockchainTransactions.$inferSelect;
 export type InsertBlockchainTransaction = z.infer<typeof insertBlockchainTransactionSchema>;
+
+// Votes table to track all votes (both regular and blockchain)
+export const votes = pgTable("votes", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(), // Reference to user id
+  electionId: integer("election_id").notNull(), // Reference to election id
+  candidateId: integer("candidate_id").notNull(), // Reference to candidate id
+  tokenId: integer("token_id"), // Reference to voting token id (if token-based voting was used)
+  isBlockchainVote: boolean("is_blockchain_vote").default(false).notNull(), // Whether this vote was recorded on blockchain
+  blockchainTxId: integer("blockchain_tx_id"), // Reference to blockchain transaction id (if applicable)
+  created_at: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Vote schema and types
+export const insertVoteSchema = createInsertSchema(votes)
+  .omit({
+    id: true,
+    created_at: true,
+  });
+
+export type Vote = typeof votes.$inferSelect;
+export type InsertVote = z.infer<typeof insertVoteSchema>;

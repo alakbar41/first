@@ -38,6 +38,14 @@ import { Progress } from '@/components/ui/progress';
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { apiRequest } from '@/lib/queryClient';
+import {
+  FacultyParticipation,
+  VoteTimeline,
+  BlockchainStats,
+  ActiveElection,
+  ParticipationOverview,
+  Election
+} from '@/lib/dashboard-types';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#FF6B6B'];
 
@@ -48,13 +56,14 @@ const AdminDashboard = () => {
   const { 
     data: facultyParticipation,
     isLoading: facultyLoading
-  } = useQuery({
+  } = useQuery<FacultyParticipation[]>({
     queryKey: ['/api/dashboard/metrics/faculty-participation', selectedElection],
-    queryFn: () => {
+    queryFn: async () => {
       const endpoint = selectedElection 
         ? `/api/dashboard/metrics/faculty-participation?electionId=${selectedElection}` 
         : '/api/dashboard/metrics/faculty-participation';
-      return apiRequest({ url: endpoint });
+      const response = await apiRequest({ url: endpoint });
+      return response as FacultyParticipation[];
     }
   });
 
@@ -62,13 +71,14 @@ const AdminDashboard = () => {
   const { 
     data: votingTimeline,
     isLoading: timelineLoading
-  } = useQuery({
+  } = useQuery<VoteTimeline[]>({
     queryKey: ['/api/dashboard/metrics/voting-timeline', selectedElection],
-    queryFn: () => {
+    queryFn: async () => {
       const endpoint = selectedElection 
         ? `/api/dashboard/metrics/voting-timeline?electionId=${selectedElection}` 
         : '/api/dashboard/metrics/voting-timeline';
-      return apiRequest({ url: endpoint });
+      const response = await apiRequest({ url: endpoint });
+      return response as VoteTimeline[];
     }
   });
 
@@ -76,36 +86,48 @@ const AdminDashboard = () => {
   const { 
     data: blockchainStats,
     isLoading: blockchainLoading
-  } = useQuery({
+  } = useQuery<BlockchainStats>({
     queryKey: ['/api/dashboard/metrics/blockchain-status'],
-    queryFn: () => apiRequest({ url: '/api/dashboard/metrics/blockchain-status' })
+    queryFn: async () => {
+      const response = await apiRequest({ url: '/api/dashboard/metrics/blockchain-status' });
+      return response as BlockchainStats;
+    }
   });
 
   // Fetch active elections data
   const { 
     data: activeElections,
     isLoading: activeElectionsLoading
-  } = useQuery({
+  } = useQuery<(ActiveElection & { candidates: any[] })[]>({
     queryKey: ['/api/dashboard/metrics/active-elections'],
-    queryFn: () => apiRequest({ url: '/api/dashboard/metrics/active-elections' })
+    queryFn: async () => {
+      const response = await apiRequest({ url: '/api/dashboard/metrics/active-elections' });
+      return response as (ActiveElection & { candidates: any[] })[];
+    }
   });
 
   // Fetch participation overview
   const { 
     data: participationOverview,
     isLoading: participationOverviewLoading
-  } = useQuery({
+  } = useQuery<ParticipationOverview[]>({
     queryKey: ['/api/dashboard/metrics/participation-overview'],
-    queryFn: () => apiRequest({ url: '/api/dashboard/metrics/participation-overview' })
+    queryFn: async () => {
+      const response = await apiRequest({ url: '/api/dashboard/metrics/participation-overview' });
+      return response as ParticipationOverview[];
+    }
   });
 
   // Fetch all elections for filter dropdown
   const { 
     data: elections,
     isLoading: electionsLoading
-  } = useQuery({
+  } = useQuery<Election[]>({
     queryKey: ['/api/elections'],
-    queryFn: () => apiRequest({ url: '/api/elections' })
+    queryFn: async () => {
+      const response = await apiRequest({ url: '/api/elections' });
+      return response as Election[];
+    }
   });
 
   // Format timeline data for chart
