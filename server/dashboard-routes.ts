@@ -2,7 +2,8 @@ import { Request, Response, Router } from 'express';
 import { db } from './db';
 import { sql } from 'drizzle-orm';
 import { isAdmin } from './routes';
-import { FACULTY_CODES, getFacultyName } from '../shared/constants';
+import { getFacultyName } from '../shared/constants';
+import { type QueryResult } from '@neondatabase/serverless';
 
 const router = Router();
 
