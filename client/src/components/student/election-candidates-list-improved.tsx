@@ -40,7 +40,7 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
   const [votedCandidates, setVotedCandidates] = useState<{[key: number]: boolean}>({});
   const [isVoting, setIsVoting] = useState<{[key: number]: boolean}>({});
   const [hasVotedInElection, setHasVotedInElection] = useState(false);
-  const [blockchainVoteCounts, setBlockchainVoteCounts] = useState<{[key: number]: number}>({});
+  const [voteCounts, setVoteCounts] = useState<{[key: number]: number}>({});
   
   // Fetch candidates for this election
   const { data: electionCandidates, isLoading: isLoadingElectionCandidates } = useQuery<ElectionCandidate[]>({
@@ -104,7 +104,7 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
             voteCountsMap[vc.candidateId] = vc.count;
           });
           
-          setBlockchainVoteCounts(voteCountsMap);
+          setVoteCounts(voteCountsMap);
         }
       } catch (error) {
         console.error("Error loading vote count data:", error);
@@ -132,17 +132,15 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
     );
   }
 
-  // Combine election candidates with their full details and vote counts from blockchain
-  // Note: In a full implementation, you would fetch vote counts from blockchain for each candidate
-  // For now, we still use the estimated vote counts but with the proper infrastructure in place
+  // Combine election candidates with their full details and vote counts from database
+  // Vote counts now come from the database instead of blockchain
   let combinedCandidates: CandidateWithVotes[] = electionCandidates
     .map(ec => {
       const fullCandidate = candidatesData?.find(c => c.id === ec.candidateId);
       if (!fullCandidate) return null;
       
-      // Use the candidate's blockchain vote count if available, otherwise use 0
-      // In a real implementation, you would fetch this data from the blockchain
-      const voteCount = blockchainVoteCounts[fullCandidate.id] || 0;
+      // Use the candidate's vote count from the database if available, otherwise use 0
+      const voteCount = voteCounts[fullCandidate.id] || 0;
       
       return {
         ...fullCandidate,
@@ -296,57 +294,36 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
   };
   
   // Handle successful vote with enhanced response
-  const handleVoteSuccess = (txHash: string, voteCount?: number) => {
-    const shortTxHash = txHash ? `${txHash.substring(0, 6)}...${txHash.substring(txHash.length - 4)}` : 'confirmed';
-    
+  const handleVoteSuccess = (confirmationId: string, voteCount?: number) => {
     toast({
       title: "Vote Cast Successfully",
       description: voteCount !== undefined
-        ? `Your vote has been recorded and verified on the blockchain. The candidate now has ${voteCount} votes. TX: ${shortTxHash}`
-        : `Your vote has been recorded on the blockchain. TX: ${shortTxHash}`,
+        ? `Your vote has been recorded successfully. The candidate now has ${voteCount} votes.`
+        : `Your vote has been recorded successfully.`,
       variant: "default",
     });
     
     // Update UI state to indicate user has voted
     setHasVotedInElection(true);
     
-    // Record this vote in the database
+    // Record this vote in the database if needed
     try {
-      apiRequest('POST', `/api/elections/${election.id}/record-vote`, {
-        transactionHash: txHash
-      }).catch(err => console.warn("Failed to record vote in database:", err));
+      apiRequest('POST', `/api/elections/${election.id}/record-vote`, {})
+        .catch(err => console.warn("Failed to record vote in database:", err));
     } catch (error) {
       console.warn("Error recording vote in database:", error);
     }
     
-    // Multiple refresh stages with increasing delays to account for blockchain confirmation time
+    // Refresh the UI with updated vote counts
     
     // Stage 1: Immediate refresh (visual feedback)
-    console.log("Stage 1: Immediate vote count refresh");
+    console.log("Immediate vote count refresh");
     Object.values(candidateVoteCountRefs.current).forEach(refreshFn => {
       if (typeof refreshFn === 'function') refreshFn();
     });
     
-    // Stage 2: Short delay refresh (1.5s)
-    setTimeout(() => {
-      console.log("Stage 2: Short-delay vote count refresh (1.5s)");
-      // Refresh vote counts for all candidates again
-      Object.values(candidateVoteCountRefs.current).forEach(refreshFn => {
-        if (typeof refreshFn === 'function') refreshFn();
-      });
-      
-      // Also force re-fetch of the candidate list to refresh all data
-      queryClient.invalidateQueries({ queryKey: [`/api/elections/${election.id}/candidates`] });
-    }, 1500);
-    
-    // Stage 3: Longer delay refresh (5s)
-    setTimeout(() => {
-      console.log("Stage 3: Longer-delay vote count refresh (5s)");
-      // Final refresh of vote counts after blockchain likely finalized
-      Object.values(candidateVoteCountRefs.current).forEach(refreshFn => {
-        if (typeof refreshFn === 'function') refreshFn();
-      });
-    }, 2000);
+    // Also force re-fetch of the candidate list to refresh all data
+    queryClient.invalidateQueries({ queryKey: [`/api/elections/${election.id}/candidates`] });
   };
   
   // Handle successful vote reset
@@ -593,7 +570,7 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                             </Badge>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>Current vote count (from blockchain)</p>
+                            <p>Current vote count</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
@@ -606,7 +583,7 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                     </div>
                     
                     <div className="mt-4 space-y-3">
-                      {/* Display blockchain vote count for mobile */}
+                      {/* Display vote count for mobile */}
                       <div className="sm:hidden flex justify-center">
                         <Badge variant="outline" className="text-purple-700 bg-purple-50 border-purple-200 text-xs px-2 py-1">
                           {candidate.voteCount} votes
