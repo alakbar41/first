@@ -1,6 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
+import { AdminSidebar } from '@/components/admin/admin-sidebar';
+import { useAuth } from '@/hooks/use-auth';
+import { useLocation } from 'wouter';
+import { Loader2 } from 'lucide-react';
 import { 
   Card, 
   CardContent, 
@@ -50,7 +54,28 @@ import {
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#FF6B6B'];
 
 const AdminDashboardEnhanced = () => {
+  const { user, isLoading } = useAuth();
+  const [_, navigate] = useLocation();
   const [selectedElection, setSelectedElection] = useState<string>('all');
+  
+  // Redirect non-admin users
+  useEffect(() => {
+    if (!isLoading && (!user || !user.isAdmin)) {
+      navigate("/auth");
+    }
+  }, [user, isLoading, navigate]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-border" />
+      </div>
+    );
+  }
+
+  if (!user || !user.isAdmin) {
+    return null;
+  }
 
   // Fetch participation metrics by faculty
   const { 
@@ -167,8 +192,13 @@ const AdminDashboardEnhanced = () => {
   };
 
   return (
-    <div className="container mx-auto py-6">
-      <h1 className="text-3xl font-bold mb-6">Analytics Dashboard</h1>
+    <div className="flex h-screen bg-gray-50">
+      {/* Sidebar */}
+      <AdminSidebar user={user} />
+      
+      {/* Main content */}
+      <main className="flex-1 overflow-y-auto p-6">
+        <h1 className="text-3xl font-bold mb-6">Analytics Dashboard</h1>
       
       {/* Election Filter */}
       <div className="mb-6">
@@ -588,6 +618,7 @@ const AdminDashboardEnhanced = () => {
           </Card>
         </TabsContent>
       </Tabs>
+      </main>
     </div>
   );
 };
