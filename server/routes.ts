@@ -401,7 +401,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const { blockchainId } = req.body;
-      if (typeof blockchainId !== 'number') {
+      if (typeof blockchainId !== 'string' && typeof blockchainId !== 'number') {
         return res.status(400).json({ message: "Valid blockchain ID is required" });
       }
       
@@ -424,7 +424,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Election start time: ${election.startDate} (used as stable identifier for blockchain mapping)`);
       
       // Use the simplified updateElection method which handles blockchainId updates specially
-      const updatedElection = await storage.updateElection(id, { blockchainId });
+      const updatedElection = await storage.updateElection(id, { blockchainId: blockchainId.toString() });
       
       // Store the start timestamp as the stable identifier
       const startTimestamp = new Date(election.startDate).getTime() / 1000;
