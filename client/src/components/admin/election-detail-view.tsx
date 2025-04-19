@@ -1,10 +1,8 @@
-import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Election, getFacultyName } from "@shared/schema";
-import { User, CalendarIcon, Clock, Users, ServerIcon } from "lucide-react";
+import { User, CalendarIcon, Clock, Users } from "lucide-react";
 import { format } from "date-fns";
-import { DeployToBlockchainButton } from "./deploy-to-blockchain-button";
 import { queryClient } from "@/lib/queryClient";
 
 interface ElectionDetailViewProps {
@@ -13,7 +11,6 @@ interface ElectionDetailViewProps {
 }
 
 export function AdminElectionDetailView({ election, className = "" }: ElectionDetailViewProps) {
-  const [blockchainId, setBlockchainId] = useState<number | null>(election.blockchainId || null);
   
   // Helper function to format dates
   function formatDate(dateString: string | Date) {
@@ -36,43 +33,13 @@ export function AdminElectionDetailView({ election, className = "" }: ElectionDe
     }
   };
 
-  // Handle successful deployment to blockchain
-  const handleDeploySuccess = async (id: number) => {
-    console.log(`handleDeploySuccess called with blockchain ID: ${id}`);
-    setBlockchainId(id);
+  // Simplified function to refresh election data
+  const refreshElectionData = () => {
+    // Invalidate the elections cache to refresh all components that use election data
+    queryClient.invalidateQueries({ queryKey: ["/api/elections"] });
     
-    // Update the election in the database with the blockchain ID
-    try {
-      console.log(`Updating election ${election.id} with blockchain ID ${id}`);
-      // Get the CSRF token
-      const csrfResponse = await fetch('/api/csrf-token');
-      const csrfData = await csrfResponse.json();
-      const csrfToken = csrfData.csrfToken;
-      
-      const response = await fetch(`/api/elections/${election.id}/blockchain-id`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': csrfToken
-        },
-        body: JSON.stringify({ blockchainId: id }),
-      });
-      
-      if (!response.ok) {
-        console.error('Failed to update election with blockchain ID:', await response.text());
-      } else {
-        const updatedElection = await response.json();
-        console.log('Successfully updated election with blockchain ID:', updatedElection);
-        
-        // Invalidate the elections cache to refresh all components that use election data
-        queryClient.invalidateQueries({ queryKey: ["/api/elections"] });
-        
-        // Also invalidate any specific election query if it exists
-        queryClient.invalidateQueries({ queryKey: [`/api/elections/${election.id}`] });
-      }
-    } catch (error) {
-      console.error('Error updating election with blockchain ID:', error);
-    }
+    // Also invalidate any specific election query if it exists
+    queryClient.invalidateQueries({ queryKey: [`/api/elections/${election.id}`] });
   };
 
   return (
@@ -135,31 +102,16 @@ export function AdminElectionDetailView({ election, className = "" }: ElectionDe
             </div>
           )}
           
-          {/* Blockchain Deployment Section */}
+          {/* Status Section */}
           <div className="mt-6 border-t pt-4">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center space-x-2">
-                <ServerIcon className="h-5 w-5 text-purple-600" />
-                <h3 className="text-sm font-semibold text-gray-700">Blockchain Deployment</h3>
-              </div>
-              
-              {blockchainId && (
-                <Badge variant="outline" className="bg-purple-50 text-purple-800 border-purple-200">
-                  Blockchain ID: {blockchainId}
-                </Badge>
-              )}
+            <div className="flex items-center space-x-2">
+              <h3 className="text-sm font-semibold text-gray-700">Election Status</h3>
             </div>
             
             <div className="mt-3">
               <p className="text-sm text-gray-600 mb-3">
-                Deploy this election to the blockchain to enable secure, immutable voting. Elections must be deployed before students can vote.
+                This election is available for eligible students to vote during the active period.
               </p>
-              
-              <DeployToBlockchainButton 
-                election={election}
-                onSuccess={handleDeploySuccess}
-                className="w-full sm:w-auto"
-              />
             </div>
           </div>
         </CardContent>

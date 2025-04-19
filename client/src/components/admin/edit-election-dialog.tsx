@@ -8,7 +8,6 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import { format } from "date-fns";
-import { isElectionDeployedToBlockchain } from "@/lib/blockchain-id-mapping";
 
 import {
   Dialog,

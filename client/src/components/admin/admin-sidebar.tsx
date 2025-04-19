@@ -60,12 +60,6 @@ export function AdminSidebar({ user }: SidebarProps) {
       active: location.includes("/admin/voters")
     },
     {
-      title: "Blockchain",
-      icon: Shield,
-      path: "/admin/blockchain",
-      active: location.includes("/admin/blockchain")
-    },
-    {
       title: "Architecture",
       icon: Network,
       path: "/admin-architecture",

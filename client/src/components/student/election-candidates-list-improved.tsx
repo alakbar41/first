@@ -14,8 +14,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { useStudentIdWeb3 } from "@/hooks/use-student-id-web3";
-import { ConnectWalletButton, CandidateVoteCount, EnhancedSimpleVoteButton } from "@/components/blockchain";
 import { ResetUserVoteButton } from "@/components/admin/reset-user-vote-button";
 
 interface ElectionCandidatesListProps {
@@ -30,18 +28,6 @@ interface CandidateWithVotes extends Candidate {
 export function ElectionCandidatesList({ election }: ElectionCandidatesListProps) {
   const { toast } = useToast();
   const { user } = useAuth();
-  const { 
-    isInitialized,
-    isWalletConnected,
-    walletAddress,
-    connectWallet,
-    getCandidateVoteCount,
-    getTicketVoteCount,
-    checkIfVoted,
-    voteForSenator,
-    voteForPresidentVP,
-    getCandidateIdByStudentId
-  } = useStudentIdWeb3();
   
   // Check if the election is active (for enabling/disabling voting)
   const isElectionActive = () => {
@@ -77,10 +63,9 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
     enabled: !!electionCandidates,
   });
 
-  // First effect - Check if the user has already voted in this election
+  // Check if the user has already voted in this election
   useEffect(() => {
     async function checkVotingStatus() {
-      // First check with database if user has voted
       if (user && election) {
         try {
           // Check with the server if user has already voted in this election
@@ -89,115 +74,45 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
             const data = await response.json();
             if (data.hasVoted) {
               setHasVotedInElection(true);
-              return; // Already know user voted, no need to check blockchain
             }
           }
         } catch (error) {
           console.error("Error checking database vote status:", error);
         }
       }
-      
-      // Then check with blockchain for confirmation
-      if (isInitialized && isWalletConnected && election) {
-        try {
-          // ALWAYS use timestamp as election identifier for consistency between Web2 and Web3
-          const electionTimestamp = Math.floor(new Date(election.startDate).getTime() / 1000);
-          console.log(`Checking if voted using election timestamp ${electionTimestamp} instead of ID ${election.id}`);
-          const hasVoted = await checkIfVoted(electionTimestamp);
-          setHasVotedInElection(hasVoted);
-        } catch (error) {
-          console.error("Error checking blockchain voting status:", error);
-        }
-      }
     }
     
     checkVotingStatus();
-  }, [isInitialized, isWalletConnected, election, checkIfVoted, user]);
+  }, [election, user]);
   
-  // Second effect - Load vote counts for candidates from blockchain
+  // Load vote counts for candidates from database
   useEffect(() => {
-    // Only run if we have candidates data to prevent accessing it before initialization
-    if (!candidatesData || candidatesData.length === 0) {
-      return; // Early return if no candidates data yet
+    // Only run if we have candidates data
+    if (!candidatesData || candidatesData.length === 0 || !election) {
+      return;
     }
     
     async function loadVoteCounts() {
-      if (isInitialized && election) {
-        try {
+      try {
+        const response = await fetch(`/api/elections/${election.id}/vote-counts`);
+        if (response.ok) {
+          const voteCounts = await response.json();
           const voteCountsMap: {[key: number]: number} = {};
           
-          // Process each candidate in the candidatesData array using student IDs
-          // We've already checked that candidatesData exists and has length > 0
-          for (const candidate of (candidatesData || [])) {
-            try {
-              // The improved contract uses student IDs for identification
-              if (candidate.studentId) {
-                try {
-                  // First get the blockchain candidate ID from the student ID
-                  try {
-                    const blockchainCandidateId = await getCandidateIdByStudentId(candidate.studentId);
-                    
-                    if (blockchainCandidateId > 0) {
-                      // Now get the vote count for this candidate
-                      const voteCount = await getCandidateVoteCount(blockchainCandidateId);
-                      voteCountsMap[candidate.id] = voteCount;
-                      console.log(`Vote count for candidate ${candidate.fullName} (Student ID: ${candidate.studentId}): ${voteCount}`);
-                    } else {
-                      console.log(`Candidate with student ID ${candidate.studentId} not registered in blockchain yet`);
-                      voteCountsMap[candidate.id] = 0;
-                    }
-                  } catch (idError) {
-                    // This is expected when a candidate isn't registered yet
-                    console.log(`Candidate with student ID ${candidate.studentId} not registered in blockchain yet:`, idError);
-                    
-                    // Add more detailed logging to help troubleshoot blockchain connection issues
-                    const errorString = idError?.toString?.() || '';
-                    const errorMessage = idError && typeof idError === 'object' && 'message' in idError ? idError.message as string : '';
-                    const errorReason = idError && typeof idError === 'object' && 'reason' in idError ? 
-                      (typeof idError.reason === 'function' ? idError.reason.toString() : String(idError.reason)) : '';
-                    
-                    if (errorReason || errorMessage || errorString) {
-                      console.log(`Error details for candidate lookup failure:`, {
-                        reason: errorReason,
-                        message: errorMessage,
-                        errorString: errorString
-                      });
-                      
-                      if (
-                        errorReason.toLowerCase().includes("no candidate found") || 
-                        errorMessage.toLowerCase().includes("no candidate found") ||
-                        errorString.toLowerCase().includes("no candidate found")
-                      ) {
-                        console.log(`Candidate with student ID ${candidate.studentId} needs to be registered on the blockchain first`);
-                      }
-                    }
-                    
-                    voteCountsMap[candidate.id] = 0;
-                  }
-                } catch (error) {
-                  console.error(`Error getting vote count for candidate ${candidate.fullName} (Student ID: ${candidate.studentId}):`, error);
-                  voteCountsMap[candidate.id] = 0;
-                }
-              } else {
-                console.log(`Candidate ${candidate.fullName} has no student ID`);
-                voteCountsMap[candidate.id] = 0;
-              }
-            } catch (err) {
-              console.error(`Error processing candidate ${candidate.fullName}:`, err);
-              // Don't show error to user, just use 0 votes
-              voteCountsMap[candidate.id] = 0;
-            }
-          }
+          // Map vote counts to candidate IDs
+          voteCounts.forEach((vc: {candidateId: number, count: number}) => {
+            voteCountsMap[vc.candidateId] = vc.count;
+          });
           
           setBlockchainVoteCounts(voteCountsMap);
-        } catch (error) {
-          console.error("Error loading blockchain data:", error);
         }
+      } catch (error) {
+        console.error("Error loading vote count data:", error);
       }
     }
     
     loadVoteCounts();
-  }, [isInitialized, election, candidatesData, getCandidateVoteCount]);
+  }, [election, candidatesData]);
 
   const isLoading = isLoadingElectionCandidates || isLoadingCandidates;
 
@@ -309,8 +224,7 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
     return true; // Default to true for other election types
   };
   
-  // This function is no longer used as we're using the VoteButtons components directly
-  // It remains here as a reference for the eligibility check logic
+  // Function to cast a vote
   const castVote = async (candidateId: number) => {
     // Check faculty eligibility for Senator elections
     if (!isUserEligible()) {
@@ -332,17 +246,45 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
       return;
     }
     
-    if (!isWalletConnected) {
+    // Set loading state for this candidate
+    setIsVoting(prev => ({ ...prev, [candidateId]: true }));
+    
+    try {
+      // Record vote in database
+      const response = await apiRequest('POST', `/api/elections/${election.id}/vote`, {
+        candidateId: candidateId
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Update UI state to indicate user has voted
+        setVotedCandidates(prev => ({ ...prev, [candidateId]: true }));
+        setHasVotedInElection(true);
+        
+        toast({
+          title: "Vote Cast Successfully",
+          description: "Your vote has been recorded successfully.",
+          variant: "default",
+        });
+        
+        // Refresh vote counts
+        queryClient.invalidateQueries({ queryKey: [`/api/elections/${election.id}/vote-counts`] });
+        queryClient.invalidateQueries({ queryKey: [`/api/elections/${election.id}/candidates`] });
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to cast vote");
+      }
+    } catch (error) {
       toast({
-        title: "Wallet Not Connected",
-        description: "Please connect your wallet to vote using blockchain.",
+        title: "Error Casting Vote",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
         variant: "destructive",
       });
-      return;
+    } finally {
+      // Clear loading state
+      setIsVoting(prev => ({ ...prev, [candidateId]: false }));
     }
-    
-    // For actual implementation, we use the EnhancedSimpleVoteButton component
-    // which handles the blockchain integration directly
   };
   
   // Create a reference to all CandidateVoteCount components for refreshing
@@ -576,14 +518,13 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                         </>
                       ) : (
                         <>
-                          <EnhancedSimpleVoteButton
-                            electionId={election.id}
-                            candidateId={president.id} // Using president ID as the ticket ID
-                            studentId={president.studentId || ""}
-                            disabled={!isElectionActive() || !isUserEligible() || hasVotedInElection || !president.studentId}
-                            onVoteSuccess={handleVoteSuccess}
+                          <Button
+                            onClick={() => castVote(president.id)}
+                            disabled={!isElectionActive() || !isUserEligible() || hasVotedInElection || isVoting[president.id]}
                             className="w-full sm:w-auto bg-gradient-to-r from-purple-700 to-purple-600 hover:from-purple-800 hover:to-purple-700 shadow-md"
-                          />
+                          >
+                            {isVoting[president.id] ? "Processing..." : "Vote for this Ticket"}
+                          </Button>
                           
                           {/* Add debug information */}
                           <div className="mt-2 text-xs text-gray-500">
@@ -667,13 +608,10 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                         </Badge>
                       </div>
                       
-                      {/* Display blockchain vote count */}
-                      <CandidateVoteCount 
-                        candidateId={candidate.id} 
-                        showLabel={true}
-                        className="w-full justify-center"
-                        onRegisterRefresh={registerVoteCountRefresh}
-                      />
+                      {/* Display vote count */}
+                      <div className="flex items-center justify-center bg-gray-50 p-2 rounded-md">
+                        <span className="text-sm font-medium text-gray-700">{candidate.voteCount} votes</span>
+                      </div>
                     
                       {hasVotedInElection ? (
                         <div className="flex flex-col sm:flex-row w-full gap-2">
@@ -689,16 +627,15 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                         </div>
                       ) : (
                         <>
-                          {/* Vote button using the enhanced simple vote button */}
-                          <EnhancedSimpleVoteButton
-                            electionId={election.id}
-                            candidateId={candidate.id}
-                            studentId={candidate.studentId || ""}
-                            disabled={!isElectionActive() || !isUserEligible() || hasVotedInElection || !candidate.studentId}
-                            onVoteSuccess={handleVoteSuccess}
+                          {/* Vote button */}
+                          <Button
+                            onClick={() => castVote(candidate.id)}
+                            disabled={!isElectionActive() || !isUserEligible() || hasVotedInElection || isVoting[candidate.id]}
                             className="w-full bg-purple-600 hover:bg-purple-700"
                             size="lg"
-                          />
+                          >
+                            {isVoting[candidate.id] ? "Processing..." : "Vote for this Candidate"}
+                          </Button>
                           
                           {/* Add debug information */}
                           <div className="mt-2 text-xs text-gray-500">

@@ -14,13 +14,10 @@ import AdminCandidates from "@/pages/admin-candidates";
 import TicketsPage from "@/pages/tickets-page";
 import AdminTickets from "@/pages/admin-tickets";
 import AdminArchitecture from "@/pages/admin-architecture";
-import AdminBlockchain from "@/pages/admin-blockchain";
 import { SettingsPage } from "@/pages/settings";
 import { ProtectedRoute, AdminProtectedRoute } from "./lib/protected-route";
 import { FC, ReactNode } from 'react';
 import { AuthProvider } from "./hooks/use-auth";
-import { Web3Provider } from "./hooks/use-web3";
-import { StudentIdWeb3Provider } from "./hooks/use-student-id-web3";
 import { CSRFProvider } from "./hooks/use-csrf";
 import { ThemeProvider } from "./hooks/use-theme";
 
@@ -42,7 +39,6 @@ function Router() {
       <AdminProtectedRoute path="/admin/tickets" component={AdminTickets} />
       <AdminProtectedRoute path="/admin/voters" component={AdminDashboard} />
       <AdminProtectedRoute path="/admin/settings" component={AdminDashboard} />
-      <AdminProtectedRoute path="/admin/blockchain" component={AdminBlockchain} />
       <AdminProtectedRoute path="/admin-architecture" component={AdminArchitecture} />
       
       {/* Auth routes */}
@@ -61,12 +57,8 @@ function App() {
       <CSRFProvider>
         <AuthProvider>
           <ThemeProvider>
-            <Web3Provider>
-              <StudentIdWeb3Provider>
-                <Router />
-                <Toaster />
-              </StudentIdWeb3Provider>
-            </Web3Provider>
+            <Router />
+            <Toaster />
           </ThemeProvider>
         </AuthProvider>
       </CSRFProvider>

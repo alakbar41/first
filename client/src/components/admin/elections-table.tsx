@@ -3,9 +3,6 @@ import { MoreHorizontal, Edit, Trash, UserPlus, Users, ServerIcon } from "lucide
 import { Election, getFacultyName } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { DeployToBlockchainButton } from "./deploy-to-blockchain-button";
-import { BlockchainDeploymentStatus } from "./blockchain-deployment-status";
-import { ActivateElectionButton } from "./activate-election-button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -58,9 +55,6 @@ export function ElectionsTable({ elections, onEdit, onDelete, onAddCandidates, o
             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Status
             </th>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Blockchain
-            </th>
             <th scope="col" className="relative px-6 py-3">
               <span className="sr-only">Actions</span>
             </th>
@@ -69,7 +63,7 @@ export function ElectionsTable({ elections, onEdit, onDelete, onAddCandidates, o
         <tbody className="bg-white divide-y divide-gray-200">
           {elections.length === 0 ? (
             <tr>
-              <td colSpan={7} className="px-6 py-12 text-center text-sm text-gray-500">
+              <td colSpan={6} className="px-6 py-12 text-center text-sm text-gray-500">
                 <p className="font-medium mb-2">No elections found</p>
                 <p>Create your first election to get started</p>
               </td>
@@ -132,25 +126,6 @@ export function ElectionsTable({ elections, onEdit, onDelete, onAddCandidates, o
                   </Badge>
                 </td>
 
-                {/* Blockchain Status */}
-                <td className="px-6 py-4 text-sm text-gray-500">
-                  <div className="flex flex-col space-y-2">
-                    <BlockchainDeploymentStatus election={election} />
-                    
-                    {election.blockchainId && 
-                     election.blockchainId > 0 && 
-                     election.status !== "completed" && (
-                      <ActivateElectionButton 
-                        electionId={election.id}
-                        blockchainId={election.blockchainId as number}
-                        size="sm"
-                        variant="outline"
-                        className="mt-2"
-                      />
-                    )}
-                  </div>
-                </td>
-
                 <td className="px-6 py-4 text-right text-sm font-medium">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -182,7 +157,7 @@ export function ElectionsTable({ elections, onEdit, onDelete, onAddCandidates, o
                         className="cursor-pointer"
                       >
                         <ServerIcon className="mr-2 h-4 w-4" />
-                        <span>View & Deploy to Blockchain</span>
+                        <span>View Details</span>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem 
