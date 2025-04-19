@@ -312,8 +312,19 @@ export async function deployElectionToBlockchain(electionId: number) {
     const data = await response.json();
     console.log('Election prepared for blockchain:', data);
     
-    // Get the deployment parameters
-    const { deployParams, blockchainId } = data;
+    // Get the deployment parameters and check for adjusted start date
+    const { deployParams, blockchainId, adjustedStartDate } = data;
+    
+    // If the start date was adjusted, show a notification to the user
+    if (adjustedStartDate) {
+      const formattedDate = new Date(adjustedStartDate).toLocaleString();
+      console.log(`Warning: Election start date was automatically adjusted to: ${formattedDate}`);
+      
+      // Show alert with non-blocking notification
+      setTimeout(() => {
+        alert(`Note: The election start date has been automatically adjusted to ${formattedDate} to ensure it's in the future as required by the blockchain contract.`);
+      }, 500); // Small delay to allow the current flow to continue
+    }
     
     if (!deployParams) {
       throw new Error('No deployment parameters received from server');

@@ -88,7 +88,24 @@ export function AdminElectionDetailView({ election, className = "" }: ElectionDe
         errorTitle = "Gas Fee Error";
         errorMessage = "Transaction failed due to gas/fee issues. Try adjusting MetaMask gas settings or adding more MATIC to your wallet.";
       }
-      // Contract execution errors
+      // Contract execution errors with specific error types
+      else if (errorMessage.includes("Invalid times")) {
+        errorTitle = "Election Times Invalid";
+        errorMessage = "The smart contract requires that the election start time must be in the future and end time must be after start time. The system will automatically adjust the start time, but please try again.";
+      }
+      else if (errorMessage.includes("At least two candidates required")) {
+        errorTitle = "Not Enough Candidates";
+        errorMessage = "The smart contract requires at least two candidates for the election. Please add more candidates and try again.";
+      }
+      else if (errorMessage.includes("Duplicate candidate")) {
+        errorTitle = "Duplicate Candidates";
+        errorMessage = "The smart contract detected duplicate candidate IDs. Please ensure all candidates have unique student IDs.";
+      }
+      else if (errorMessage.includes("Not authorized")) {
+        errorTitle = "Authorization Error";
+        errorMessage = "Your MetaMask account is not authorized to deploy elections. Only the contract owner can perform this action.";
+      }
+      // General contract execution errors
       else if (errorMessage.includes("execution reverted")) {
         errorTitle = "Contract Error";
         errorMessage = "The smart contract rejected the transaction. This might be due to a validation error or a problem with the election parameters.";
@@ -195,6 +212,10 @@ export function AdminElectionDetailView({ election, className = "" }: ElectionDe
                     </h4>
                     <p className="text-xs text-gray-500 mt-1">
                       Deploy this election to the blockchain to enable secure, transparent voting.
+                    </p>
+                    <p className="text-xs text-amber-600 mt-1">
+                      {new Date(election.startDate) <= new Date() && 
+                        "Note: Start date will be automatically adjusted to ensure it's in the future."}
                     </p>
                   </div>
                   

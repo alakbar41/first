@@ -116,14 +116,29 @@ export function registerBlockchainRoutes(app: Express) {
         .filter(c => c !== undefined)
         .map(c => c!.studentId);
       
+      // Check if the start date is in the past, and if so, adjust it
+      let startDate = new Date(election.startDate);
+      const currentTime = new Date();
+      
+      if (startDate <= currentTime) {
+        // Add 5 minutes to the current time to ensure it's in the future
+        startDate = new Date(currentTime.getTime() + 5 * 60 * 1000);
+        console.log(`Warning: Election start date was in the past. Adjusted from ${election.startDate} to ${startDate}`);
+      }
+      
       // Prepare data for blockchain deployment (client-side)
       // The createBlockchainElection function will map the position to the correct enum value
       const electionData = await createBlockchainElection(
         election.position,
-        new Date(election.startDate),
+        startDate, // Use the potentially adjusted start date
         new Date(election.endDate),
         candidateStudentIds
       );
+      
+      // Log timestamp comparison for debugging
+      const currentTimestamp = Math.floor(Date.now() / 1000);
+      console.log(`Current timestamp: ${currentTimestamp}, Election start timestamp: ${electionData.startTimestamp}`);
+      console.log(`Is election in the future? ${electionData.startTimestamp > currentTimestamp ? 'Yes' : 'No'}`);
       
       // Do NOT update the election with blockchain ID yet
       // We'll update it only after the client successfully deploys it
@@ -137,7 +152,8 @@ export function registerBlockchainRoutes(app: Express) {
         message: 'Election prepared for blockchain deployment',
         election: currentElection,
         deployParams: electionData.deployParams,
-        blockchainId: electionData.startTimestamp
+        blockchainId: electionData.startTimestamp,
+        adjustedStartDate: startDate.getTime() !== new Date(election.startDate).getTime() ? startDate : undefined
       });
     } catch (error: any) {
       console.error('Error deploying election to blockchain:', error);
