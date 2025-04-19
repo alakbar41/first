@@ -50,7 +50,7 @@ import {
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#FF6B6B'];
 
 const AdminDashboardEnhanced = () => {
-  const [selectedElection, setSelectedElection] = useState<string>('');
+  const [selectedElection, setSelectedElection] = useState<string>('all');
 
   // Fetch participation metrics by faculty
   const { 
@@ -59,7 +59,7 @@ const AdminDashboardEnhanced = () => {
   } = useQuery<FacultyParticipation[]>({
     queryKey: ['/api/dashboard/metrics/faculty-participation', selectedElection],
     queryFn: async () => {
-      const endpoint = selectedElection 
+      const endpoint = selectedElection && selectedElection !== 'all'
         ? `/api/dashboard/metrics/faculty-participation?electionId=${selectedElection}` 
         : '/api/dashboard/metrics/faculty-participation';
       const response = await apiRequest({ url: endpoint });
@@ -74,7 +74,7 @@ const AdminDashboardEnhanced = () => {
   } = useQuery<VoteTimeline[]>({
     queryKey: ['/api/dashboard/metrics/voting-timeline', selectedElection],
     queryFn: async () => {
-      const endpoint = selectedElection 
+      const endpoint = selectedElection && selectedElection !== 'all'
         ? `/api/dashboard/metrics/voting-timeline?electionId=${selectedElection}` 
         : '/api/dashboard/metrics/voting-timeline';
       const response = await apiRequest({ url: endpoint });
@@ -177,7 +177,7 @@ const AdminDashboardEnhanced = () => {
             <SelectValue placeholder="All Elections (Filter by election)" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Elections</SelectItem>
+            <SelectItem value="all">All Elections</SelectItem>
             {elections?.map((election) => (
               <SelectItem key={election.id} value={election.id.toString()}>
                 {election.name} ({election.position})
