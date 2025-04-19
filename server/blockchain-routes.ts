@@ -8,6 +8,9 @@ import {
   checkElectionExists
 } from './blockchain';
 import { isAdmin, isAuthenticated } from './routes';
+
+// Import the extended Request type
+import './types.d.ts';
 import { storage } from './storage';
 
 /**
@@ -216,6 +219,7 @@ export function registerBlockchainRoutes(app: Express) {
       }
       
       // Record the vote in our database for backup/verification
+      // User is available because of the isAuthenticated middleware
       if (req.user?.id) {
         await storage.recordVote(req.user.id, electionId);
         console.log(`Vote recorded for user ${req.user.id} in election ${electionId} for candidate ${studentId}`);

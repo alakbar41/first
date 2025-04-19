@@ -137,6 +137,7 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
         }
         
         // If the election is on blockchain, load vote counts from there as well
+        // Check if this election has been deployed to the blockchain
         if (election.blockchainId) {
           setIsLoadingBlockchainVotes(true);
           try {
@@ -144,78 +145,113 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
             const blockchainTimestamp = parseInt(election.blockchainId);
             console.log(`Using blockchain ID as timestamp: ${blockchainTimestamp}`);
             
-            // For debug comparison - also log the calculated timestamp
-            const calculatedTimestamp = Math.floor(new Date(election.startDate).getTime() / 1000);
-            console.log(`Calculated timestamp from startDate (not used): ${calculatedTimestamp}`);
-            
-            // First, get the list of candidates actually in this election to avoid checking for candidates that aren't registered
+            // Get the list of candidates actually in this election
             const electionCandidateIds = electionCandidates?.map(ec => ec.candidateId) || [];
-            console.log(`Only getting vote counts for candidates in this election: ${electionCandidateIds.join(', ')}`);
+            console.log(`Getting vote counts for candidates in this election: ${electionCandidateIds.join(', ')}`);
             
             try {
-              // Import blockchain functions 
-              const { getCandidateVoteCount, getAllCandidatesWithVotes, studentIdToBytes32 } = await import('@/lib/blockchain');
+              // Import blockchain functions
+              const { 
+                getCandidateVoteCount, 
+                getAllCandidatesWithVotes, 
+                studentIdToBytes32,
+                checkElectionExists 
+              } = await import('@/lib/blockchain');
+              
+              // First check if the election exists on the blockchain to avoid unnecessary requests
+              let electionExists = false;
+              try {
+                electionExists = await checkElectionExists(blockchainTimestamp);
+                console.log(`Blockchain election exists: ${electionExists}`);
+              } catch (checkError) {
+                console.warn(`Error checking if election exists on blockchain:`, checkError);
+                // Continue anyway, since the individual functions will handle errors
+              }
               
               // Create a map to store blockchain vote counts
               const blockchainCounts: {[studentId: string]: number} = {};
               
-              // First try to get all candidates and vote counts at once (more efficient)
-              try {
-                console.log(`Getting all candidates with votes for timestamp ${blockchainTimestamp}`);
-                const allCandidatesWithVotes = await getAllCandidatesWithVotes(blockchainTimestamp);
-                console.log(`Received all candidates with votes:`, allCandidatesWithVotes);
-                
-                // If this succeeds, we can process all candidates at once
-                if (candidatesData && allCandidatesWithVotes.ids.length > 0) {
-                  // Filter candidates to only include those in this election
-                  const electionCandidatesOnly = candidatesData.filter(candidate => 
-                    electionCandidateIds.includes(candidate.id)
-                  );
+              // Only try to fetch votes if the election exists
+              if (electionExists) {
+                // First try to get all candidates and vote counts at once (more efficient)
+                try {
+                  console.log(`Getting all candidates with votes for timestamp ${blockchainTimestamp}`);
+                  const allCandidatesWithVotes = await getAllCandidatesWithVotes(blockchainTimestamp);
+                  console.log(`Received ${allCandidatesWithVotes.ids.length} candidates with votes from blockchain`);
                   
-                  console.log(`Only checking blockchain votes for ${electionCandidatesOnly.length} candidates in this election`);
+                  // If this succeeds, we can process all candidates at once
+                  if (candidatesData && allCandidatesWithVotes.ids.length > 0) {
+                    // Filter candidates to only include those in this election
+                    const electionCandidatesOnly = candidatesData.filter(candidate => 
+                      electionCandidateIds.includes(candidate.id)
+                    );
+                    
+                    console.log(`Checking blockchain votes for ${electionCandidatesOnly.length} candidates in this election`);
+                    
+                    // Map blockchain hashes back to student IDs for each candidate in this election
+                    electionCandidatesOnly.forEach(candidate => {
+                      if (candidate.studentId) {
+                        try {
+                          // Generate hash for student ID
+                          const hash = studentIdToBytes32(candidate.studentId);
+                          
+                          // Find the index of this candidate's hash in the result
+                          const index = allCandidatesWithVotes.ids.findIndex(id => 
+                            id.toLowerCase() === hash.toLowerCase());
+                          
+                          // If found, get the vote count
+                          if (index !== -1) {
+                            blockchainCounts[candidate.studentId] = allCandidatesWithVotes.voteCounts[index];
+                            console.log(`Found vote count for ${candidate.studentId}: ${blockchainCounts[candidate.studentId]}`);
+                          } else {
+                            // If not found in the blockchain results, record 0 votes
+                            blockchainCounts[candidate.studentId] = 0;
+                            console.log(`Candidate ${candidate.studentId} has 0 votes (not found in blockchain results)`);
+                          }
+                        } catch (hashError) {
+                          console.warn(`Error processing candidate ${candidate.studentId}:`, hashError);
+                          // Set to 0 votes on error
+                          blockchainCounts[candidate.studentId] = 0;
+                        }
+                      }
+                    });
+                  }
+                } catch (batchError) {
+                  console.warn("Could not get all candidates in batch, falling back to individual queries:", batchError);
                   
-                  // Map blockchain hashes back to student IDs for each candidate in this election
-                  electionCandidatesOnly.forEach(candidate => {
-                    if (candidate.studentId) {
-                      // For debugging, log student ID and its hash
-                      const hash = studentIdToBytes32(candidate.studentId);
-                      console.log(`Candidate ${candidate.fullName} ID: ${candidate.studentId}, Hash: ${hash}`);
-                      
-                      // Find the index of this candidate's hash in the result
-                      const index = allCandidatesWithVotes.ids.findIndex(id => 
-                        id.toLowerCase() === hash.toLowerCase());
-                      
-                      // If found, get the vote count
-                      if (index !== -1) {
-                        blockchainCounts[candidate.studentId] = allCandidatesWithVotes.voteCounts[index];
-                        console.log(`Found vote count for ${candidate.studentId}: ${blockchainCounts[candidate.studentId]}`);
+                  // Fall back to individual queries if the batch method fails
+                  if (candidatesData) {
+                    // Filter the candidates to only include those that are part of this election
+                    const electionCandidatesOnly = candidatesData.filter(candidate => 
+                      electionCandidateIds.includes(candidate.id)
+                    );
+                    
+                    console.log(`Falling back to individual queries for ${electionCandidatesOnly.length} candidates`);
+                    
+                    // Only check vote counts for candidates in this specific election
+                    for (const candidate of electionCandidatesOnly) {
+                      try {
+                        if (!candidate.studentId) continue;
+                        const voteCount = await getCandidateVoteCount(blockchainTimestamp, candidate.studentId);
+                        blockchainCounts[candidate.studentId] = voteCount;
+                        console.log(`Blockchain vote count for ${candidate.studentId}: ${voteCount}`);
+                      } catch (e) {
+                        console.warn(`Could not get blockchain vote count for ${candidate.studentId}:`, e);
+                        // Ensure we always have a vote count value, even if it's 0
+                        blockchainCounts[candidate.studentId] = 0;
                       }
                     }
-                  });
-                }
-              } catch (batchError) {
-                console.warn("Could not get all candidates in batch, falling back to individual queries:", batchError);
-                
-                // Fall back to individual queries
-                if (candidatesData) {
-                  // Filter the candidates to only include those that are part of this election
-                  const electionCandidatesOnly = candidatesData.filter(candidate => 
-                    electionCandidateIds.includes(candidate.id)
-                  );
-                  
-                  console.log(`Only checking vote counts for ${electionCandidatesOnly.length} candidates in this election`);
-                  
-                  // Only check vote counts for candidates in this specific election
-                  for (const candidate of electionCandidatesOnly) {
-                    try {
-                      if (!candidate.studentId) continue;
-                      const voteCount = await getCandidateVoteCount(blockchainTimestamp, candidate.studentId);
-                      blockchainCounts[candidate.studentId] = voteCount;
-                      console.log(`Blockchain vote count for ${candidate.studentId}: ${voteCount}`);
-                    } catch (e) {
-                      console.warn(`Could not get blockchain vote count for ${candidate.studentId}:`, e);
-                    }
                   }
+                }
+              } else {
+                console.log('Election not found on blockchain, using zero vote counts');
+                // If election doesn't exist on chain, set all candidates to 0 votes
+                if (candidatesData) {
+                  candidatesData.forEach(candidate => {
+                    if (candidate.studentId) {
+                      blockchainCounts[candidate.studentId] = 0;
+                    }
+                  });
                 }
               }
               
