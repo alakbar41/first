@@ -146,6 +146,13 @@ export async function createElection(
     const startTimestamp = Math.floor(startTime.getTime() / 1000);
     const endTimestamp = Math.floor(endTime.getTime() / 1000);
     
+    // Check if startTime is in the future as required by the contract
+    const currentTimestamp = Math.floor(Date.now() / 1000);
+    if (startTimestamp <= currentTimestamp) {
+      console.warn(`Warning: Start time (${startTimestamp}) is not in the future. Current time: ${currentTimestamp}`);
+      console.warn('Contract requires start time to be in the future. This transaction will likely fail.');
+    }
+    
     // Store hashed student IDs for each candidate
     const candidateIdBytes = [];
     for (const studentId of candidateStudentIds) {

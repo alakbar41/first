@@ -348,18 +348,38 @@ export async function deployElectionToBlockchain(electionId: number) {
     // Send transaction to blockchain
     console.log(`Creating election on blockchain with parameters:`, deployParams);
     
-    // Let ethers.js automatically estimate the gas - this is more reliable than manual settings
+    // Add explicit gas settings to help with estimation issues
+    console.log('Preparing transaction with explicit gas settings');
+    
+    // Create transaction options with explicit gas parameters
+    const overrides = {
+      // Use a higher gas limit for Polygon Amoy testnet
+      gasLimit: 5000000,
+      // Set a slightly higher gas price to ensure the transaction goes through
+      maxFeePerGas: ethers.parseUnits('50', 'gwei'),
+      maxPriorityFeePerGas: ethers.parseUnits('5', 'gwei')
+    };
+    
+    // Call the contract method with overrides as the last parameter
     const tx = await contract.createElection(
       deployParams.positionEnum,
       deployParams.startTimestamp,
       deployParams.endTimestamp,
-      deployParams.candidateIdBytes
+      deployParams.candidateIdBytes,
+      overrides
     );
     
     console.log('Transaction sent:', tx.hash);
     
     // Wait for transaction to be mined
+    console.log('Waiting for transaction to be mined...');
     const receipt = await tx.wait();
+    
+    if (!receipt) {
+      console.error('No transaction receipt received');
+      throw new Error('Transaction was sent but no receipt was received. Check MetaMask for transaction status.');
+    }
+    
     console.log('Election created on blockchain in block:', receipt.blockNumber);
     
     // Now that the blockchain transaction is confirmed, update the election in our database
@@ -428,8 +448,26 @@ export async function deployElectionToBlockchain(electionId: number) {
       }
       // Handle contract execution errors
       else if (error.message.includes('execution reverted')) {
-        errorMessage = 'Contract execution failed: ' + 
-          (error.reason || error.message.substring(error.message.indexOf('execution reverted')));
+        // Check for specific error reasons from the contract
+        if (error.message.includes('Election already exists')) {
+          errorMessage = 'This election timestamp already exists on the blockchain. Please modify the start time slightly and try again.';
+        }
+        else if (error.message.includes('Invalid times')) {
+          errorMessage = 'Election times are invalid. The start time must be in the future and end time must be after start time.';
+        }
+        else if (error.message.includes('At least two candidates required')) {
+          errorMessage = 'At least two candidates are required for an election.';
+        }
+        else if (error.message.includes('Duplicate candidate')) {
+          errorMessage = 'One or more candidates have duplicate IDs. Please check the candidate list.';
+        }
+        else if (error.message.includes('Not authorized')) {
+          errorMessage = 'Your account is not authorized to deploy elections. Only the contract owner can do this.';
+        }
+        else {
+          errorMessage = 'Contract execution failed: ' + 
+            (error.reason || error.message.substring(error.message.indexOf('execution reverted')));
+        }
       }
       // Fallback to the original message
       else {
