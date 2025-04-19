@@ -248,37 +248,105 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
     setIsVoting(prev => ({ ...prev, [candidateId]: true }));
     
     try {
-      // Record vote in database
-      const response = await apiRequest('POST', `/api/elections/${election.id}/vote`, {
-        candidateId: candidateId
-      });
+      // Find the full candidate object to get the studentId which is needed for blockchain
+      const candidate = candidatesData?.find(c => c.id === candidateId);
+      if (!candidate) {
+        throw new Error("Candidate details not found");
+      }
       
-      if (response.ok) {
-        const data = await response.json();
-        
-        // Update UI state to indicate user has voted
-        setVotedCandidates(prev => ({ ...prev, [candidateId]: true }));
-        setHasVotedInElection(true);
-        
-        toast({
-          title: "Vote Cast Successfully",
-          description: "Your vote has been recorded successfully.",
-          variant: "default",
+      if (election.blockchainId) {
+        // For blockchain-enabled elections, use the blockchain voting method
+        try {
+          const blockchainTimestamp = Math.floor(new Date(election.startDate).getTime() / 1000);
+          
+          // Import the blockchain voting function dynamically
+          const { voteForCandidate, studentIdToBytes32 } = await import('@/lib/blockchain');
+          
+          // Convert student ID to bytes32 hash format for the blockchain
+          const candidateHash = studentIdToBytes32(candidate.studentId);
+          
+          console.log(`Voting for candidate ${candidate.fullName} (${candidate.studentId}) with hash ${candidateHash} in election ${blockchainTimestamp}`);
+          
+          // Call blockchain to cast vote
+          await voteForCandidate(blockchainTimestamp, candidateHash);
+          
+          // After successful blockchain vote, update UI
+          setVotedCandidates(prev => ({ ...prev, [candidateId]: true }));
+          setHasVotedInElection(true);
+          
+          toast({
+            title: "Vote Cast Successfully on Blockchain",
+            description: "Your vote has been securely recorded on the blockchain.",
+            variant: "default",
+          });
+        } catch (blockchainError: any) {
+          console.error("Blockchain voting error:", blockchainError);
+          
+          if (blockchainError.message?.includes("MetaMask not detected")) {
+            toast({
+              title: "MetaMask Required",
+              description: "To vote in blockchain elections, you need to install the MetaMask wallet extension.",
+              variant: "destructive",
+            });
+          } else if (blockchainError.message?.includes("user rejected")) {
+            toast({
+              title: "Transaction Cancelled",
+              description: "You cancelled the voting transaction in MetaMask.",
+              variant: "destructive",
+            });
+          } else if (blockchainError.message?.includes("Already voted")) {
+            toast({
+              title: "Already Voted",
+              description: "You have already voted in this election on the blockchain.",
+              variant: "destructive",
+            });
+            // Update UI to reflect that user has voted
+            setHasVotedInElection(true);
+          } else {
+            toast({
+              title: "Blockchain Voting Error",
+              description: blockchainError.message || "An error occurred while trying to cast your vote on the blockchain.",
+              variant: "destructive",
+            });
+          }
+          throw blockchainError; // Re-throw for the outer catch block
+        }
+      } else {
+        // For regular database elections, use the original method
+        const response = await apiRequest('POST', `/api/elections/${election.id}/vote`, {
+          candidateId: candidateId
         });
         
-        // Refresh vote counts
-        queryClient.invalidateQueries({ queryKey: [`/api/elections/${election.id}/vote-counts`] });
-        queryClient.invalidateQueries({ queryKey: [`/api/elections/${election.id}/candidates`] });
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to cast vote");
+        if (response.ok) {
+          const data = await response.json();
+          
+          // Update UI state to indicate user has voted
+          setVotedCandidates(prev => ({ ...prev, [candidateId]: true }));
+          setHasVotedInElection(true);
+          
+          toast({
+            title: "Vote Cast Successfully",
+            description: "Your vote has been recorded successfully.",
+            variant: "default",
+          });
+        } else {
+          const errorData = await response.json();
+          throw new Error(errorData.message || "Failed to cast vote");
+        }
       }
+      
+      // Refresh vote counts regardless of voting method
+      queryClient.invalidateQueries({ queryKey: [`/api/elections/${election.id}/vote-counts`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/elections/${election.id}/candidates`] });
     } catch (error) {
-      toast({
-        title: "Error Casting Vote",
-        description: error instanceof Error ? error.message : "An unexpected error occurred",
-        variant: "destructive",
-      });
+      // This will catch both blockchain and regular voting errors
+      if (!(error instanceof Error && error.message.includes("user rejected"))) {
+        toast({
+          title: "Error Casting Vote",
+          description: error instanceof Error ? error.message : "An unexpected error occurred",
+          variant: "destructive",
+        });
+      }
     } finally {
       // Clear loading state
       setIsVoting(prev => ({ ...prev, [candidateId]: false }));
@@ -487,11 +555,18 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                             <Check className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                             Voted Successfully
                           </Button>
-                          <ResetUserVoteButton 
-                            electionId={election.id}
-                            className="text-xs sm:text-sm"
-                            onResetSuccess={handleResetSuccess}
-                          />
+                          <Button 
+                            onClick={() => {
+                              toast({
+                                title: "Reset Vote",
+                                description: "The vote reset feature has been disabled in this version.",
+                                variant: "default",
+                              });
+                            }}
+                            className="text-xs sm:text-sm bg-gray-500 hover:bg-gray-600"
+                          >
+                            Reset Vote
+                          </Button>
                         </>
                       ) : (
                         <>
@@ -601,11 +676,18 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                             <Check className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                             Voted Successfully
                           </Button>
-                          <ResetUserVoteButton 
-                            electionId={election.id}
-                            className="text-xs sm:text-sm"
-                            onResetSuccess={handleResetSuccess}
-                          />
+                          <Button 
+                            onClick={() => {
+                              toast({
+                                title: "Reset Vote",
+                                description: "The vote reset feature has been disabled in this version.",
+                                variant: "default",
+                              });
+                            }}
+                            className="text-xs sm:text-sm bg-gray-500 hover:bg-gray-600"
+                          >
+                            Reset Vote
+                          </Button>
                         </div>
                       ) : (
                         <>
