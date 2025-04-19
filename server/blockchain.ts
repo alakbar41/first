@@ -1,5 +1,6 @@
 import { ethers } from 'ethers';
 import { storage } from './storage';
+import { mapPositionToBlockchain } from '../shared/schema';
 
 /**
  * SimpleUniversityVoting contract ABI
@@ -138,9 +139,6 @@ export async function createElection(
   candidateStudentIds: string[]
 ) {
   try {
-    // Import the mapping function from schema
-    const { mapPositionToBlockchain } = require('../shared/schema');
-    
     // Convert position to enum value (0 for Senator, 1 for President/VP)
     const positionEnum = mapPositionToBlockchain(position);
     
