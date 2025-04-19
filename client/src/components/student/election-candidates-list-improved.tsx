@@ -438,7 +438,7 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
               description: "To vote in blockchain elections, you need to install the MetaMask wallet extension.",
               variant: "destructive",
             });
-          } else if (blockchainError.message?.includes("user rejected")) {
+          } else if (blockchainError.message?.includes("user rejected") || blockchainError.message?.includes("cancelled")) {
             toast({
               title: "Transaction Cancelled",
               description: "You cancelled the voting transaction in MetaMask.",
@@ -452,6 +452,33 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
             });
             // Update UI to reflect that user has voted
             setHasVotedInElection(true);
+          } else if (blockchainError.message?.includes("Internal JSON-RPC error") || 
+                    blockchainError.message?.includes("coalesce error") || 
+                    blockchainError.code === -32603) {
+            toast({
+              title: "MetaMask Network Error",
+              description: "There was a network issue with your MetaMask transaction. This could be due to network congestion or MetaMask configuration. Please try again in a few moments, or try resetting your MetaMask account.",
+              variant: "destructive",
+            });
+            console.error("Detailed error from MetaMask:", blockchainError);
+          } else if (blockchainError.message?.includes("gas")) {
+            toast({
+              title: "Transaction Gas Error",
+              description: "Not enough gas or gas estimation failed. Please try again with higher gas limits in MetaMask.",
+              variant: "destructive",
+            });
+          } else if (blockchainError.message?.includes("nonce")) {
+            toast({
+              title: "Transaction Nonce Error",
+              description: "There was an issue with your account nonce. Try resetting your MetaMask account in Settings > Advanced > Reset Account.",
+              variant: "destructive",
+            });
+          } else if (blockchainError.message?.includes("balance")) {
+            toast({
+              title: "Insufficient Balance",
+              description: "Not enough funds for gas. Please add more MATIC to your wallet.",
+              variant: "destructive",
+            });
           } else {
             toast({
               title: "Blockchain Voting Error",

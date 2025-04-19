@@ -167,8 +167,10 @@ export async function voteForCandidate(startTime: number, candidateHash: string)
     return true;
   } catch (error: any) {
     console.error('Error voting for candidate:', error);
-    // Provide more detailed error message
+    
+    // Provide more detailed error message based on the type of error
     if (error.message) {
+      // Handle contract-specific errors
       if (error.message.includes('Not active')) {
         throw new Error('This election is not currently active');
       } else if (error.message.includes('Already voted')) {
@@ -176,7 +178,47 @@ export async function voteForCandidate(startTime: number, candidateHash: string)
       } else if (error.message.includes('Candidate not found')) {
         throw new Error('Invalid candidate selection');
       }
+      
+      // Handle JSON-RPC errors with custom messages for better user understanding
+      if (error.code === -32603 || error.message.includes('Internal JSON-RPC error')) {
+        // Try to extract nested error if possible
+        let innerError = '';
+        try {
+          // Various formats the error might be in
+          if (error.error && error.error.message) {
+            innerError = error.error.message;
+          } else if (error.data && error.data.message) {
+            innerError = error.data.message;
+          } else if (typeof error.error === 'string') {
+            innerError = error.error;
+          }
+        } catch (e) {
+          console.warn('Failed to extract inner error details:', e);
+        }
+        
+        // Common RPC error scenarios
+        if (innerError.includes('gas')) {
+          throw new Error('Transaction failed: Not enough gas or gas estimation failed. Please try again with higher gas limits in MetaMask.');
+        } else if (innerError.includes('nonce')) {
+          throw new Error('Transaction failed: Nonce issue. Try resetting your MetaMask account in Settings > Advanced > Reset Account.');
+        } else if (innerError.includes('underpriced')) {
+          throw new Error('Transaction failed: Gas price too low. Please increase gas price in MetaMask settings.');
+        } else if (innerError.includes('balance')) {
+          throw new Error('Transaction failed: Not enough funds for gas. Please add more MATIC to your wallet.');
+        } else {
+          // More general error for other JSON-RPC issues
+          console.log('MetaMask error details:', error);
+          throw new Error('Network connection issue. This might be due to network congestion or MetaMask configuration. Please try again in a few moments.');
+        }
+      }
+      
+      // Handle other common MetaMask errors
+      if (error.message.includes('user rejected')) {
+        throw new Error('You cancelled the transaction in MetaMask');
+      }
     }
+    
+    // If we couldn't identify a specific error, throw the original
     throw error;
   }
 }
