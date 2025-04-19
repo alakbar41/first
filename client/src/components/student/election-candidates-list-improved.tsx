@@ -409,19 +409,10 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                 [candidate.studentId]: updatedVoteCount
               };
               
-              // Update all other candidates' vote counts if candidates data is available
-              if (candidatesData) {
-                for (const otherCandidate of candidatesData) {
-                  if (otherCandidate.id !== candidateId) {
-                    try {
-                      const otherVoteCount = await getCandidateVoteCount(blockchainTimestamp, otherCandidate.studentId);
-                      newBlockchainCounts[otherCandidate.studentId] = otherVoteCount;
-                    } catch (e) {
-                      console.warn(`Could not refresh vote count for ${otherCandidate.studentId}:`, e);
-                    }
-                  }
-                }
-              }
+              // We'll only refresh the voted candidate's count since the others 
+              // might not be registered in this blockchain election
+              console.log(`Only refreshing vote count for the candidate that was voted for (${candidate.studentId}).`);
+              console.log(`Skipping refresh for other candidates to avoid "Candidate not found" errors.`);
               
               // Update all vote counts in state
               setBlockchainVoteCounts(newBlockchainCounts);

@@ -215,7 +215,16 @@ export async function getCandidateVoteCount(startTime: number, candidateStudentI
     
     // Return the vote count as a number
     return Number(voteCount);
-  } catch (error) {
+  } catch (error: any) {
+    // Check if this is a "Candidate not found" error from the blockchain
+    if (error?.reason === "Candidate not found" || 
+        error?.message?.includes("Candidate not found")) {
+      console.warn(`Candidate ${candidateStudentId} not registered in blockchain election ${startTime}, returning 0 votes`);
+      // Return 0 instead of throwing an error for candidates not registered in this election
+      return 0;
+    }
+    
+    // Log the error but return 0 to avoid breaking the UI
     console.error(`Error getting vote count for candidate ${candidateStudentId}:`, error);
     return 0;
   }
@@ -234,12 +243,25 @@ export async function getAllCandidatesWithVotes(startTime: number): Promise<{ids
     // Convert BigInts to numbers for the vote counts
     const voteCounts: number[] = result.voteCounts.map((count: any) => Number(count));
     
+    console.log(`Received ${result.ids.length} candidates with votes from blockchain for election ${startTime}`);
+    if (result.ids.length > 0) {
+      console.log('First candidate hash:', result.ids[0], 'with votes:', voteCounts[0]);
+    }
+    
     return {
       ids: result.ids,
       voteCounts: voteCounts
     };
-  } catch (error) {
-    console.error(`Error getting all candidates with votes for election ${startTime}:`, error);
+  } catch (error: any) {
+    // Check if this is an election not found error
+    if (error?.reason === "Election not found" || 
+        error?.message?.includes("Election not found")) {
+      console.warn(`Election ${startTime} not found on blockchain, returning empty results`);
+    } else {
+      console.error(`Error getting all candidates with votes for election ${startTime}:`, error);
+    }
+    
+    // Return empty arrays to avoid breaking the UI
     return {
       ids: [],
       voteCounts: []
