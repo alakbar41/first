@@ -277,12 +277,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Admin sees all elections
         res.json(elections);
       } else {
-        // Students see active elections for now
-        // Since blockchain requirement has been removed, show active and upcoming elections
-        const filteredElections = elections.filter(election => 
-          // Show active and upcoming elections
-          election.status === 'active' || election.status === 'upcoming'
-        );
+        // Students can see all elections (active, upcoming, and completed)
+        // This gives them access to both current and historical election data
+        const filteredElections = elections;
         console.log(`Student user viewing elections - filtered from ${elections.length} to ${filteredElections.length}`);
         if (filteredElections.length === 0) {
           console.log("No elections available to students. Elections available:", 
@@ -313,18 +310,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if user is admin or if election has a blockchain ID (regardless of status)
       const isAdmin = req.isAuthenticated() && req.user && req.user.isAdmin === true;
       
-      if (isAdmin) {
-        // Admin sees all elections
-        res.json(election);
-      } else if (election.status === 'active' || election.status === 'upcoming') {
-        // Students see active and upcoming elections
-        // This allows them to review candidates before and during the election
-        res.json(election);
-      } else {
-        // Students can't access completed elections
-        console.log(`Student tried to access election ${election.id} but was denied. Status: ${election.status}`);
-        return res.status(404).json({ message: "Election not found" });
-      }
+      // Both admins and students can see all elections
+      res.json(election);
     } catch (error) {
       console.error("Failed to fetch election:", error);
       res.status(500).json({ message: "Failed to fetch election" });
