@@ -296,3 +296,25 @@ export const updateTicketStatusSchema = z.object({
 });
 
 export type UpdateTicketStatus = z.infer<typeof updateTicketStatusSchema>;
+
+// Add blockchain transaction tracking
+export const blockchainTransactions = pgTable("blockchain_transactions", {
+  id: serial("id").primaryKey(),
+  electionId: integer("election_id").notNull(), // Reference to election id
+  txHash: text("tx_hash").notNull(), // Transaction hash from blockchain
+  txType: text("tx_type").notNull(), // Type of transaction: 'create_election', 'vote', etc.
+  userId: integer("user_id").notNull(), // Reference to user id
+  success: boolean("success").notNull(), // Transaction success status
+  errorMessage: text("error_message"), // Error message if transaction failed
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Blockchain transaction schema and types
+export const insertBlockchainTransactionSchema = createInsertSchema(blockchainTransactions)
+  .omit({
+    id: true,
+    createdAt: true,
+  });
+
+export type BlockchainTransaction = typeof blockchainTransactions.$inferSelect;
+export type InsertBlockchainTransaction = z.infer<typeof insertBlockchainTransactionSchema>;
