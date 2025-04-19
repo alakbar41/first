@@ -222,8 +222,8 @@ export async function deployElectionToBlockchain(electionId: number) {
       const chainId = await window.ethereum.request({ method: 'eth_chainId' });
       console.log(`Current chain ID: ${chainId}`);
       
-      // Polygon Amoy testnet chainId is 0x13881 (hex) or 80001 (decimal)
-      if (chainId !== '0x13881') {
+      // Polygon Amoy testnet chainId is 0x13882 (hex) or 80002 (decimal)
+      if (chainId !== '0x13882') {
         const confirmSwitch = confirm(
           "You are not connected to the Polygon Amoy testnet. " +
           "Would you like to switch networks now? " +
@@ -236,7 +236,7 @@ export async function deployElectionToBlockchain(electionId: number) {
             // Try to switch to Polygon Amoy testnet
             await window.ethereum.request({
               method: 'wallet_switchEthereumChain',
-              params: [{ chainId: '0x13881' }],
+              params: [{ chainId: '0x13882' }],
             });
             console.log('Successfully switched to Polygon Amoy testnet');
           } catch (switchError: any) {
@@ -247,7 +247,7 @@ export async function deployElectionToBlockchain(electionId: number) {
                   method: 'wallet_addEthereumChain',
                   params: [
                     {
-                      chainId: '0x13881',
+                      chainId: '0x13882',
                       chainName: 'Polygon Amoy Testnet',
                       nativeCurrency: {
                         name: 'MATIC',
@@ -334,7 +334,7 @@ export async function deployElectionToBlockchain(electionId: number) {
     console.log('- Values:', deployParams.candidateIdBytes);
     
     // Additional checks for each candidate ID to ensure proper formatting
-    deployParams.candidateIdBytes.forEach((bytes, index) => {
+    deployParams.candidateIdBytes.forEach((bytes: string, index: number) => {
       console.log(`Candidate ${index + 1}:`, bytes);
       if (typeof bytes !== 'string') {
         console.error(`Error: Candidate ${index + 1} ID is not a string, it's a ${typeof bytes}`);
