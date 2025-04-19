@@ -201,6 +201,53 @@ export async function hasUserVoted(startTime: number) {
 }
 
 /**
+ * Get a candidate's vote count from the blockchain
+ */
+export async function getCandidateVoteCount(startTime: number, candidateStudentId: string): Promise<number> {
+  try {
+    const contract = await getVotingContract();
+    
+    // Convert student ID to bytes32 hash
+    const candidateHash = studentIdToBytes32(candidateStudentId);
+    
+    // Call the contract's getVoteCount function
+    const voteCount = await contract.getVoteCount(startTime, candidateHash);
+    
+    // Return the vote count as a number
+    return Number(voteCount);
+  } catch (error) {
+    console.error(`Error getting vote count for candidate ${candidateStudentId}:`, error);
+    return 0;
+  }
+}
+
+/**
+ * Get all candidates with their vote counts for an election
+ */
+export async function getAllCandidatesWithVotes(startTime: number): Promise<{ids: string[], voteCounts: number[]}> {
+  try {
+    const contract = await getVotingContract();
+    
+    // Call the contract's getAllCandidatesWithVotes function
+    const result = await contract.getAllCandidatesWithVotes(startTime);
+    
+    // Convert BigInts to numbers for the vote counts
+    const voteCounts = result.voteCounts.map(count => Number(count));
+    
+    return {
+      ids: result.ids,
+      voteCounts: voteCounts
+    };
+  } catch (error) {
+    console.error(`Error getting all candidates with votes for election ${startTime}:`, error);
+    return {
+      ids: [],
+      voteCounts: []
+    };
+  }
+}
+
+/**
  * Deploy an election to the blockchain using MetaMask
  * @param electionId The database ID of the election
  */

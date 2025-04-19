@@ -41,6 +41,10 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
   const [isVoting, setIsVoting] = useState<{[key: number]: boolean}>({});
   const [hasVotedInElection, setHasVotedInElection] = useState(false);
   const [voteCounts, setVoteCounts] = useState<{[key: number]: number}>({});
+  // State to store blockchain vote counts
+  const [blockchainVoteCounts, setBlockchainVoteCounts] = useState<{ [studentId: string]: number }>({});
+  // State to track if we're loading blockchain vote counts
+  const [isLoadingBlockchainVotes, setIsLoadingBlockchainVotes] = useState(false);
   
   // Fetch candidates for this election
   const { data: electionCandidates, isLoading: isLoadingElectionCandidates } = useQuery<ElectionCandidate[]>({
@@ -85,7 +89,7 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
     checkVotingStatus();
   }, [election, user]);
   
-  // Load vote counts for candidates from database
+  // Load vote counts for candidates from database and blockchain (if applicable)
   useEffect(() => {
     // Only run if we have candidates data
     if (!candidatesData || candidatesData.length === 0 || !election) {
@@ -94,6 +98,7 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
     
     async function loadVoteCounts() {
       try {
+        // First load vote counts from database (will be used for non-blockchain elections)
         const response = await fetch(`/api/elections/${election.id}/vote-counts`);
         if (response.ok) {
           const voteCounts = await response.json();
@@ -106,13 +111,47 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
           
           setVoteCounts(voteCountsMap);
         }
+        
+        // If the election is on blockchain, load vote counts from there as well
+        if (election.blockchainId) {
+          setIsLoadingBlockchainVotes(true);
+          try {
+            // Calculate blockchain timestamp from election start date
+            const blockchainTimestamp = Math.floor(new Date(election.startDate).getTime() / 1000);
+            
+            // Import blockchain functions
+            const { getCandidateVoteCount, getAllCandidatesWithVotes } = await import('@/lib/blockchain');
+            
+            // Create a map to store blockchain vote counts
+            const blockchainCounts: {[studentId: string]: number} = {};
+            
+            // For each candidate, get their vote count from the blockchain
+            if (candidatesData) {
+              for (const candidate of candidatesData) {
+                try {
+                  const voteCount = await getCandidateVoteCount(blockchainTimestamp, candidate.studentId);
+                  blockchainCounts[candidate.studentId] = voteCount;
+                  console.log(`Blockchain vote count for ${candidate.studentId}: ${voteCount}`);
+                } catch (e) {
+                  console.warn(`Could not get blockchain vote count for ${candidate.studentId}:`, e);
+                }
+              }
+            }
+            
+            setBlockchainVoteCounts(blockchainCounts);
+          } catch (blockchainError) {
+            console.error("Error fetching blockchain vote counts:", blockchainError);
+          } finally {
+            setIsLoadingBlockchainVotes(false);
+          }
+        }
       } catch (error) {
         console.error("Error loading vote count data:", error);
       }
     }
     
     loadVoteCounts();
-  }, [election, candidatesData]);
+  }, [election, candidatesData, election.blockchainId]);
 
   const isLoading = isLoadingElectionCandidates || isLoadingCandidates;
 
@@ -132,15 +171,23 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
     );
   }
 
-  // Combine election candidates with their full details and vote counts from database
-  // Vote counts now come from the database instead of blockchain
+  // Combine election candidates with their full details and vote counts
+  // For blockchain elections, use vote counts from blockchain, otherwise use database
   let combinedCandidates: CandidateWithVotes[] = electionCandidates
     .map(ec => {
       const fullCandidate = candidatesData?.find(c => c.id === ec.candidateId);
       if (!fullCandidate) return null;
       
-      // Use the candidate's vote count from the database if available, otherwise use 0
-      const voteCount = voteCounts[fullCandidate.id] || 0;
+      let voteCount = 0;
+      
+      // For blockchain elections, use the blockchain vote count if available
+      if (election.blockchainId && blockchainVoteCounts[fullCandidate.studentId] !== undefined) {
+        voteCount = blockchainVoteCounts[fullCandidate.studentId];
+        console.log(`Using blockchain vote count for ${fullCandidate.fullName}: ${voteCount}`);
+      } else {
+        // Otherwise use the vote count from the database
+        voteCount = voteCounts[fullCandidate.id] || 0;
+      }
       
       return {
         ...fullCandidate,
