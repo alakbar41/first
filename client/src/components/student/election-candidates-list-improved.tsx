@@ -148,6 +148,10 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
             const calculatedTimestamp = Math.floor(new Date(election.startDate).getTime() / 1000);
             console.log(`Calculated timestamp from startDate (not used): ${calculatedTimestamp}`);
             
+            // First, get the list of candidates actually in this election to avoid checking for candidates that aren't registered
+            const electionCandidateIds = electionCandidates?.map(ec => ec.candidateId) || [];
+            console.log(`Only getting vote counts for candidates in this election: ${electionCandidateIds.join(', ')}`);
+            
             try {
               // Import blockchain functions 
               const { getCandidateVoteCount, getAllCandidatesWithVotes, studentIdToBytes32 } = await import('@/lib/blockchain');
@@ -163,8 +167,15 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                 
                 // If this succeeds, we can process all candidates at once
                 if (candidatesData && allCandidatesWithVotes.ids.length > 0) {
-                  // Map blockchain hashes back to student IDs for each candidate
-                  candidatesData.forEach(candidate => {
+                  // Filter candidates to only include those in this election
+                  const electionCandidatesOnly = candidatesData.filter(candidate => 
+                    electionCandidateIds.includes(candidate.id)
+                  );
+                  
+                  console.log(`Only checking blockchain votes for ${electionCandidatesOnly.length} candidates in this election`);
+                  
+                  // Map blockchain hashes back to student IDs for each candidate in this election
+                  electionCandidatesOnly.forEach(candidate => {
                     if (candidate.studentId) {
                       // For debugging, log student ID and its hash
                       const hash = studentIdToBytes32(candidate.studentId);
@@ -187,7 +198,15 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                 
                 // Fall back to individual queries
                 if (candidatesData) {
-                  for (const candidate of candidatesData) {
+                  // Filter the candidates to only include those that are part of this election
+                  const electionCandidatesOnly = candidatesData.filter(candidate => 
+                    electionCandidateIds.includes(candidate.id)
+                  );
+                  
+                  console.log(`Only checking vote counts for ${electionCandidatesOnly.length} candidates in this election`);
+                  
+                  // Only check vote counts for candidates in this specific election
+                  for (const candidate of electionCandidatesOnly) {
                     try {
                       if (!candidate.studentId) continue;
                       const voteCount = await getCandidateVoteCount(blockchainTimestamp, candidate.studentId);
