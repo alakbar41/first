@@ -107,28 +107,20 @@ export function getProvider() {
 }
 
 /**
- * Get contract instance with admin wallet
+ * Get contract instance (read-only)
  */
-export function getVotingContract(withSigner = false) {
+export function getVotingContract() {
   const provider = getProvider();
   const contractAddress = getContractAddress();
-  
-  if (withSigner) {
-    // Only use admin private key for creating elections
-    const privateKey = process.env.ADMIN_WALLET_PRIVATE_KEY;
-    if (!privateKey) {
-      throw new Error('Admin wallet private key not configured');
-    }
-    const wallet = new ethers.Wallet(privateKey, provider);
-    return new ethers.Contract(contractAddress, votingContractABI, wallet);
-  }
   
   // Return read-only contract instance
   return new ethers.Contract(contractAddress, votingContractABI, provider);
 }
 
 /**
- * Create a new election on the blockchain
+ * Prepare data for creating an election on the blockchain (client-side)
+ * This function no longer actually deploys the election, but returns 
+ * the data needed for the client-side MetaMask transaction
  */
 export async function createElection(
   position: 'Senator' | 'President/VP',
@@ -137,8 +129,6 @@ export async function createElection(
   candidateStudentIds: string[]
 ) {
   try {
-    const contract = getVotingContract(true); // With signer
-    
     // Convert position to enum
     const positionEnum = position === 'Senator' ? 0 : 1;
     
@@ -156,22 +146,23 @@ export async function createElection(
       await storeStudentIdHash(studentId, hash);
     }
     
-    // Create election on blockchain
-    const tx = await contract.createElection(
-      positionEnum,
-      startTimestamp,
-      endTimestamp,
-      candidateIdBytes
-    );
-    
-    // Wait for transaction to be mined
-    const receipt = await tx.wait();
-    console.log('Election created on blockchain:', receipt.transactionHash);
+    // Instead of creating the election directly, return the parameters 
+    // needed for the client-side MetaMask transaction
+    console.log('Election data prepared for client-side creation');
     
     // Return the election ID (start timestamp) for storage in database
-    return startTimestamp;
+    // along with the prepared data for the contract call
+    return {
+      startTimestamp,
+      deployParams: {
+        positionEnum,
+        startTimestamp,
+        endTimestamp,
+        candidateIdBytes
+      }
+    };
   } catch (error) {
-    console.error('Error creating election on blockchain:', error);
+    console.error('Error preparing election data for blockchain:', error);
     throw error;
   }
 }

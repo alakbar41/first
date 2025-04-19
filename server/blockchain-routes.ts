@@ -17,10 +17,24 @@ export function registerBlockchainRoutes(app: Express) {
   // Get contract address
   app.get('/api/blockchain/contract-address', (req: Request, res: Response) => {
     try {
-      const address = getContractAddress();
-      // Ensure we return proper JSON instead of HTML
+      // Check if the contract address is in env vars directly
+      const contractAddress = process.env.VOTING_CONTRACT_ADDRESS;
+      
+      if (!contractAddress) {
+        res.setHeader('Content-Type', 'application/json');
+        return res.status(404).json({ 
+          message: 'Contract address not configured',
+          isConfigured: false 
+        });
+      }
+      
+      // Return the contract address
       res.setHeader('Content-Type', 'application/json');
-      res.json({ address });
+      res.json({ 
+        contractAddress,
+        isConfigured: true,
+        network: process.env.POLYGON_NETWORK || 'amoy'
+      });
     } catch (error) {
       console.error('Error getting contract address:', error);
       res.setHeader('Content-Type', 'application/json');
@@ -102,18 +116,21 @@ export function registerBlockchainRoutes(app: Express) {
         .filter(c => c !== undefined)
         .map(c => c!.studentId);
       
-      // Deploy to blockchain
-      const blockchainId = await createBlockchainElection(
+      // Prepare data for blockchain deployment (client-side)
+      const electionData = await createBlockchainElection(
         election.position as 'Senator' | 'President/VP',
         new Date(election.startDate),
         new Date(election.endDate),
         candidateStudentIds
       );
       
-      // Update election in database with blockchain ID
+      // Update election in database with blockchain ID (timestamp)
       const updatedElection = await storage.updateElection(electionId, { 
-        blockchainId: blockchainId 
+        blockchainId: electionData.startTimestamp 
       });
+      
+      // Return the deployment data to the client
+      res.setHeader('Content-Type', 'application/json');
       
       res.json({ 
         message: 'Election deployed to blockchain successfully',
