@@ -519,11 +519,16 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                       ) : (
                         <>
                           <Button
-                            onClick={() => castVote(president.id)}
-                            disabled={!isElectionActive() || !isUserEligible() || hasVotedInElection || isVoting[president.id]}
+                            onClick={() => {
+                              toast({
+                                title: "Coming Soon",
+                                description: "Voting functionality will be implemented in the future. Thank you for your patience.",
+                                variant: "default",
+                              });
+                            }}
                             className="w-full sm:w-auto bg-gradient-to-r from-purple-700 to-purple-600 hover:from-purple-800 hover:to-purple-700 shadow-md"
                           >
-                            {isVoting[president.id] ? "Processing..." : "Vote for this Ticket"}
+                            Vote for this Ticket
                           </Button>
                           
                           {/* Add debug information */}
@@ -627,14 +632,19 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                         </div>
                       ) : (
                         <>
-                          {/* Vote button */}
+                          {/* Vote button - modified to show future implementation message */}
                           <Button
-                            onClick={() => castVote(candidate.id)}
-                            disabled={!isElectionActive() || !isUserEligible() || hasVotedInElection || isVoting[candidate.id]}
+                            onClick={() => {
+                              toast({
+                                title: "Coming Soon",
+                                description: "Voting functionality will be implemented in the future. Thank you for your patience.",
+                                variant: "default",
+                              });
+                            }}
                             className="w-full bg-purple-600 hover:bg-purple-700"
                             size="lg"
                           >
-                            {isVoting[candidate.id] ? "Processing..." : "Vote for this Candidate"}
+                            Vote for this Candidate
                           </Button>
                           
                           {/* Add debug information */}
