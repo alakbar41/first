@@ -27,11 +27,20 @@ const studentIdHashMap = new Map<string, string>();
  * Convert a student ID to bytes32 format for the smart contract
  */
 export function studentIdToBytes32(studentId: string): string {
-  // Use keccak256 hash
-  const bytes32Hash = ethers.utils.id(studentId);
-  // Store the mapping for future reference
-  studentIdHashMap.set(bytes32Hash, studentId);
-  return bytes32Hash;
+  try {
+    // Use keccak256 hash with ethers.js v6
+    const bytes32Hash = ethers.keccak256(ethers.toUtf8Bytes(studentId));
+    
+    // Store the mapping for future reference
+    studentIdHashMap.set(bytes32Hash, studentId);
+    
+    console.log(`Generated hash for student ID ${studentId}: ${bytes32Hash}`);
+    
+    return bytes32Hash;
+  } catch (error) {
+    console.error('Error generating student ID hash:', error);
+    throw error;
+  }
 }
 
 /**
@@ -94,7 +103,7 @@ export function getProvider() {
   if (!rpcUrl) {
     throw new Error('Polygon RPC URL not configured in environment variables');
   }
-  return new ethers.providers.JsonRpcProvider(rpcUrl);
+  return new ethers.JsonRpcProvider(rpcUrl);
 }
 
 /**
