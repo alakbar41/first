@@ -232,11 +232,20 @@ export function registerBlockchainRoutes(app: Express) {
         console.warn('Could not resolve candidate hash to student ID:', e);
       }
       
-      // Get election details
+      // Get election details - we need to be careful with blockchain ID vs database ID
       try {
-        const election = await storage.getElection(parseInt(electionId));
-        if (election) {
-          electionName = election.name;
+        // First try to find an election with this blockchain ID
+        const electionsByBlockchainId = await storage.getElectionByBlockchainId(electionId);
+        if (electionsByBlockchainId) {
+          console.log(`Found election by blockchain ID: ${electionsByBlockchainId.name}`);
+          electionName = electionsByBlockchainId.name;
+        } else {
+          // If not found by blockchain ID, try by database ID (less likely)
+          const electionByDbId = await storage.getElection(parseInt(electionId));
+          if (electionByDbId) {
+            console.log(`Found election by database ID: ${electionByDbId.name}`);
+            electionName = electionByDbId.name;
+          }
         }
       } catch (e) {
         console.warn('Could not get election details:', e);

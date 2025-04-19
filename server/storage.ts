@@ -37,6 +37,7 @@ export interface IStorage {
   // Election methods
   getElections(): Promise<Election[]>;
   getElection(id: number): Promise<Election | undefined>;
+  getElectionByBlockchainId(blockchainId: string): Promise<Election | undefined>;
   createElection(election: InsertElection): Promise<Election>;
   updateElection(id: number, election: Partial<InsertElection>): Promise<Election>;
   updateElectionStatus(id: number, status: string): Promise<void>;
@@ -189,6 +190,12 @@ export class MemStorage implements IStorage {
 
   async getElection(id: number): Promise<Election | undefined> {
     return this.elections.get(id);
+  }
+  
+  async getElectionByBlockchainId(blockchainId: string): Promise<Election | undefined> {
+    return Array.from(this.elections.values()).find(
+      (election) => election.blockchainId === blockchainId
+    );
   }
 
   async createElection(election: InsertElection): Promise<Election> {
