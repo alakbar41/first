@@ -1,4 +1,5 @@
 import { ethers } from 'ethers';
+import { storage } from './storage';
 
 /**
  * SimpleUniversityVoting contract ABI
@@ -117,8 +118,15 @@ export async function createElection(
     const startTimestamp = Math.floor(startTime.getTime() / 1000);
     const endTimestamp = Math.floor(endTime.getTime() / 1000);
     
-    // Convert student IDs to bytes32
-    const candidateIdBytes = candidateStudentIds.map(studentIdToBytes32);
+    // Store hashed student IDs for each candidate
+    const candidateIdBytes = [];
+    for (const studentId of candidateStudentIds) {
+      const hash = studentIdToBytes32(studentId);
+      candidateIdBytes.push(hash);
+      
+      // Store the hash in the database for this candidate
+      await storeStudentIdHash(studentId, hash);
+    }
     
     // Create election on blockchain
     const tx = await contract.createElection(
@@ -149,13 +157,32 @@ export async function getElectionResults(startTimestamp: number) {
     const result = await contract.getAllCandidatesWithVotes(startTimestamp);
     
     // Map bytes32 hashes back to student IDs and format the results
-    const candidateResults = result.ids.map((id: string, index: number) => {
-      const studentId = getStudentIdFromHash(id) || 'unknown';
-      return {
-        studentId,
-        voteCount: Number(result.voteCounts[index])
-      };
-    });
+    const candidateResults = await Promise.all(
+      result.ids.map(async (hash: string, index: number) => {
+        // First try the in-memory map
+        let studentId = getStudentIdFromHash(hash);
+        
+        // If not found in memory, try the database
+        if (!studentId) {
+          try {
+            const candidate = await storage.getCandidateByHash(hash);
+            if (candidate) {
+              studentId = candidate.studentId;
+              // Restore to in-memory map for future use
+              studentIdHashMap.set(hash, studentId);
+            }
+          } catch (err) {
+            console.error('Error looking up candidate by hash:', err);
+          }
+        }
+        
+        return {
+          studentId: studentId || 'unknown',
+          voteCount: Number(result.voteCounts[index]),
+          hash: hash // Include the hash for debugging/verification
+        };
+      })
+    );
     
     return candidateResults;
   } catch (error) {

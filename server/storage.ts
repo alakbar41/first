@@ -47,6 +47,7 @@ export interface IStorage {
   getCandidates(): Promise<Candidate[]>;
   getCandidate(id: number): Promise<Candidate | undefined>;
   getCandidateByStudentId(studentId: string): Promise<Candidate | undefined>;
+  getCandidateByHash(blockchainHash: string): Promise<Candidate | undefined>;
   createCandidate(candidate: InsertCandidate): Promise<Candidate>;
   updateCandidate(id: number, candidate: Partial<InsertCandidate>): Promise<Candidate>;
   updateCandidateStatus(id: number, status: string): Promise<void>;
@@ -341,6 +342,12 @@ export class MemStorage implements IStorage {
   async getCandidateByStudentId(studentId: string): Promise<Candidate | undefined> {
     return Array.from(this.candidates.values()).find(
       (candidate) => candidate.studentId === studentId
+    );
+  }
+  
+  async getCandidateByHash(blockchainHash: string): Promise<Candidate | undefined> {
+    return Array.from(this.candidates.values()).find(
+      (candidate) => candidate.blockchainHash === blockchainHash
     );
   }
   
