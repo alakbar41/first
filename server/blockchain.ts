@@ -28,6 +28,11 @@ const studentIdHashMap = new Map<string, string>();
  * Convert a student ID to bytes32 format for the smart contract
  */
 export function studentIdToBytes32(studentId: string): string {
+  if (!studentId) {
+    console.error('Attempted to hash an empty student ID');
+    throw new Error('Student ID is required for blockchain operations');
+  }
+  
   try {
     // Use keccak256 hash with ethers.js v6
     const bytes32Hash = ethers.keccak256(ethers.toUtf8Bytes(studentId));
@@ -39,8 +44,8 @@ export function studentIdToBytes32(studentId: string): string {
     
     return bytes32Hash;
   } catch (error) {
-    console.error('Error generating student ID hash:', error);
-    throw error;
+    console.error(`Error generating student ID hash for ${studentId}:`, error);
+    throw new Error(`Failed to generate blockchain hash for student ID: ${studentId}`);
   }
 }
 

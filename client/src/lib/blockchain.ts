@@ -25,8 +25,18 @@ let contractAddress: string = '';
  * Convert a student ID to bytes32 format for the smart contract
  */
 export function studentIdToBytes32(studentId: string): string {
-  // Use ethers.js v6 keccak256 function
-  return ethers.keccak256(ethers.toUtf8Bytes(studentId));
+  if (!studentId) {
+    console.error('Attempted to hash an empty student ID');
+    throw new Error('Student ID is required for blockchain operations');
+  }
+  
+  try {
+    // Use ethers.js v6 keccak256 function
+    return ethers.keccak256(ethers.toUtf8Bytes(studentId));
+  } catch (error) {
+    console.error(`Failed to hash student ID ${studentId}:`, error);
+    throw new Error(`Could not generate hash for student ID ${studentId}`);
+  }
 }
 
 /**

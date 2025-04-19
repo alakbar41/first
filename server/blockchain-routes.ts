@@ -51,10 +51,13 @@ export function registerBlockchainRoutes(app: Express) {
       
       if (!studentId) {
         console.log(`No student ID found for hash: ${hash}`);
+        // Instead of returning 404, provide a fallback value to improve UX
+        // Return 200 with a special placeholder to indicate unknown ID
         res.setHeader('Content-Type', 'application/json');
-        return res.status(404).json({ 
-          message: 'Student ID not found for hash',
-          hash: hash 
+        return res.json({ 
+          studentId: 'Unknown Candidate',
+          hash: hash,
+          warning: 'Student ID mapping not found'
         });
       }
       
@@ -66,8 +69,9 @@ export function registerBlockchainRoutes(app: Express) {
       });
     } catch (error) {
       console.error('Error getting student ID from hash:', error);
-      res.status(500).json({ 
-        message: 'Failed to retrieve student ID',
+      // Return a fallback value even on error to prevent UI issues
+      res.json({ 
+        studentId: 'Unknown Candidate',
         hash: hash,
         error: error instanceof Error ? error.message : String(error)
       });
