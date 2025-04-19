@@ -204,7 +204,7 @@ export class MemStorage implements IStorage {
       status: election.status || "upcoming",
       createdBy: election.createdBy,
       createdAt: new Date(),
-      blockchainId: election.blockchainId || null,
+      blockchainId: election.blockchainId ? election.blockchainId.toString() : null,
     };
     
     this.elections.set(id, newElection);

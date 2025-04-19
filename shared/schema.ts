@@ -102,7 +102,7 @@ export const elections = pgTable("elections", {
   status: text("status").notNull().default("upcoming"), // upcoming, active, completed
   createdBy: integer("created_by").notNull(), // Reference to admin user id
   createdAt: timestamp("created_at").notNull().defaultNow(),
-  blockchainId: integer("blockchain_id"), // Stores the start timestamp used as election identifier in blockchain
+  blockchainId: text("blockchain_id"), // Stores the start timestamp used as election identifier in blockchain
 });
 
 export const candidates = pgTable("candidates", {
@@ -160,7 +160,7 @@ export const insertElectionSchema = createInsertSchema(elections)
     // Allow dates to be passed as ISO strings
     startDate: z.union([z.string().transform(str => new Date(str)), z.date()]),
     endDate: z.union([z.string().transform(str => new Date(str)), z.date()]),
-    blockchainId: z.number().optional(),
+    blockchainId: z.string().optional(),
   });
 
 export const insertCandidateSchema = createInsertSchema(candidates)

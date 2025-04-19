@@ -125,17 +125,17 @@ export function registerBlockchainRoutes(app: Express) {
         candidateStudentIds
       );
       
-      // Update election in database with blockchain ID (timestamp)
-      const updatedElection = await storage.updateElection(electionId, { 
-        blockchainId: electionData.startTimestamp 
-      });
+      // Do NOT update the election with blockchain ID yet
+      // We'll update it only after the client successfully deploys it
+      // Get the current election data without updating
+      const currentElection = await storage.getElection(electionId);
       
       // Return the deployment data to the client
       res.setHeader('Content-Type', 'application/json');
       
       res.json({ 
         message: 'Election prepared for blockchain deployment',
-        election: updatedElection,
+        election: currentElection,
         deployParams: electionData.deployParams,
         blockchainId: electionData.startTimestamp
       });
@@ -219,5 +219,36 @@ export function registerBlockchainRoutes(app: Express) {
     const studentId = req.params.studentId;
     const hash = studentIdToBytes32(studentId);
     res.json({ studentId, hash });
+  });
+  
+  // Update election with blockchain ID after successful client-side deployment
+  app.post('/api/blockchain/confirm-deployment/:id', isAdmin, async (req: Request, res: Response) => {
+    try {
+      const electionId = parseInt(req.params.id);
+      const { blockchainId, txHash } = req.body;
+      
+      if (!blockchainId) {
+        return res.status(400).json({ message: 'Missing blockchainId parameter' });
+      }
+      
+      // Update the election with blockchain ID
+      const updatedElection = await storage.updateElection(electionId, { 
+        blockchainId: blockchainId 
+      });
+      
+      console.log(`Election ${electionId} successfully deployed to blockchain with ID ${blockchainId}, transaction: ${txHash}`);
+      
+      res.json({
+        success: true,
+        message: 'Election blockchain deployment confirmed',
+        election: updatedElection
+      });
+    } catch (error: any) {
+      console.error('Error confirming blockchain deployment:', error);
+      res.status(500).json({ 
+        message: 'Failed to confirm blockchain deployment',
+        error: error.message
+      });
+    }
   });
 }

@@ -247,6 +247,33 @@ export async function deployElectionToBlockchain(electionId: number) {
     const receipt = await tx.wait();
     console.log('Election created on blockchain in block:', receipt.blockNumber);
     
+    // Now that the blockchain transaction is confirmed, update the election in our database
+    try {
+      console.log('Confirming blockchain deployment with server...');
+      const confirmResponse = await fetch(`/api/blockchain/confirm-deployment/${electionId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          blockchainId: blockchainId,
+          txHash: tx.hash
+        })
+      });
+      
+      if (!confirmResponse.ok) {
+        const errorData = await confirmResponse.json();
+        console.error('Failed to confirm blockchain deployment with server:', errorData);
+        // Continue anyway since the blockchain deployment itself succeeded
+      } else {
+        const confirmData = await confirmResponse.json();
+        console.log('Blockchain deployment confirmed with server:', confirmData);
+      }
+    } catch (confirmError) {
+      console.error('Error confirming blockchain deployment with server:', confirmError);
+      // Continue anyway since the blockchain deployment itself succeeded
+    }
+    
     return {
       success: true,
       blockchainId,
