@@ -1,0 +1,147 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+/**
+ * @title SimpleUniversityVoting
+ * @dev A simple and frontend-friendly voting contract for university elections.
+ * It supports President/VP and Senator elections with only the contract deployer as admin.
+ */
+contract SimpleUniversityVoting {
+    enum PositionType { Senator, PresidentVP }
+
+    address public owner;
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Not authorized");
+        _;
+    }
+
+    struct Candidate {
+        bytes32 id;
+        uint256 voteCount;
+    }
+
+    struct Election {
+        PositionType position;
+        uint256 startTime;
+        uint256 endTime;
+        Candidate[] candidates;
+        mapping(bytes32 => bool) candidateExists;
+    }
+
+    mapping(uint256 => Election) private electionsData;
+    mapping(uint256 => mapping(address => bool)) public hasVoted;
+
+    event ElectionCreated(uint256 indexed startTime, PositionType position, uint256 endTime);
+    event CandidateAdded(uint256 indexed startTime, bytes32 candidateId);
+    event VoteCast(uint256 indexed startTime, address indexed voter, bytes32 candidateId);
+
+    constructor() {
+        owner = msg.sender;
+    }
+
+    function createElection(
+        PositionType position,
+        uint256 startTime,
+        uint256 endTime,
+        bytes32[] calldata candidateIds
+    ) external onlyOwner {
+        require(electionsData[startTime].startTime == 0, "Election already exists");
+        require(startTime > block.timestamp && endTime > startTime, "Invalid times");
+        require(candidateIds.length > 1, "At least two candidates required");
+
+        Election storage election = electionsData[startTime];
+        election.position = position;
+        election.startTime = startTime;
+        election.endTime = endTime;
+
+        for (uint i = 0; i < candidateIds.length; i++) {
+            bytes32 id = candidateIds[i];
+            require(!election.candidateExists[id], "Duplicate candidate");
+            election.candidateExists[id] = true;
+            election.candidates.push(Candidate(id, 0));
+            emit CandidateAdded(startTime, id);
+        }
+
+        emit ElectionCreated(startTime, position, endTime);
+    }
+
+    function vote(uint256 startTime, bytes32 candidateId) external {
+        Election storage election = electionsData[startTime];
+        require(election.startTime != 0, "Election not found");
+        require(block.timestamp >= election.startTime && block.timestamp <= election.endTime, "Not active");
+        require(!hasVoted[startTime][msg.sender], "Already voted");
+        require(election.candidateExists[candidateId], "Candidate not found");
+
+        for (uint i = 0; i < election.candidates.length; i++) {
+            if (election.candidates[i].id == candidateId) {
+                election.candidates[i].voteCount++;
+                break;
+            }
+        }
+
+        hasVoted[startTime][msg.sender] = true;
+        emit VoteCast(startTime, msg.sender, candidateId);
+    }
+
+    function getElection(uint256 startTime)
+        external
+        view
+        returns (PositionType position, uint256 start, uint256 end, string memory status)
+    {
+        Election storage e = electionsData[startTime];
+        require(e.startTime != 0, "Election not found");
+
+        if (block.timestamp < e.startTime) status = "Pending";
+        else if (block.timestamp <= e.endTime) status = "Active";
+        else status = "Completed";
+
+        return (e.position, e.startTime, e.endTime, status);
+    }
+
+    function getVoteCount(uint256 startTime, bytes32 candidateId) external view returns (uint256) {
+        Election storage election = electionsData[startTime];
+        require(election.candidateExists[candidateId], "Candidate not found");
+        for (uint i = 0; i < election.candidates.length; i++) {
+            if (election.candidates[i].id == candidateId) {
+                return election.candidates[i].voteCount;
+            }
+        }
+        revert("Candidate not found");
+    }
+
+    function getAllCandidatesWithVotes(uint256 startTime)
+        external
+        view
+        returns (bytes32[] memory ids, uint256[] memory voteCounts)
+    {
+        Candidate[] storage cands = electionsData[startTime].candidates;
+        uint256 len = cands.length;
+        Candidate[] memory temp = new Candidate[](len);
+
+        for (uint i = 0; i < len; i++) {
+            temp[i] = cands[i];
+        }
+
+        // Sort candidates by voteCount descending (simple bubble sort for small arrays)
+        for (uint i = 0; i < len; i++) {
+            for (uint j = i + 1; j < len; j++) {
+                if (temp[j].voteCount > temp[i].voteCount) {
+                    Candidate memory t = temp[i];
+                    temp[i] = temp[j];
+                    temp[j] = t;
+                }
+            }
+        }
+
+        ids = new bytes32[](len);
+        voteCounts = new uint256[](len);
+
+        for (uint i = 0; i < len; i++) {
+            ids[i] = temp[i].id;
+            voteCounts[i] = temp[i].voteCount;
+        }
+
+        return (ids, voteCounts);
+    }
+}    
