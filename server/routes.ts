@@ -18,6 +18,7 @@ import {
   updateTicketStatusSchema,
   Election
 } from "@shared/schema";
+import { loadStudentIdHashMap } from "./blockchain";
 import { z } from "zod";
 import { mailer } from "./mailer.js";
 
@@ -144,7 +145,7 @@ function securityHeaders(req: Request, res: Response, next: NextFunction) {
 }
 
 // Middleware to check if user is authenticated
-function isAuthenticated(req: Request, res: Response, next: NextFunction) {
+export function isAuthenticated(req: Request, res: Response, next: NextFunction) {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ message: "Not authenticated" });
   }
@@ -152,7 +153,7 @@ function isAuthenticated(req: Request, res: Response, next: NextFunction) {
 }
 
 // Middleware to check if user is admin
-function isAdmin(req: Request, res: Response, next: NextFunction) {
+export function isAdmin(req: Request, res: Response, next: NextFunction) {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ message: "Not authenticated" });
   }
@@ -186,6 +187,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Set up authentication routes
   setupAuth(app);
+  
+  // Load blockchain student ID mappings
+  try {
+    // Get all candidates with blockchain hashes
+    const candidates = await storage.getCandidates();
+    const mappings = candidates
+      .filter(c => c.blockchainHash) // Filter out candidates without hash
+      .map(c => ({ 
+        hash: c.blockchainHash!, 
+        studentId: c.studentId 
+      }));
+    
+    console.log(`Loading ${mappings.length} student ID hash mappings for blockchain`);
+    loadStudentIdHashMap(mappings);
+  } catch (error) {
+    console.error('Failed to load student ID hash mappings:', error);
+  }
   
   // Inactivity timeout middleware
   app.use((req: Request, res: Response, next: NextFunction) => {
