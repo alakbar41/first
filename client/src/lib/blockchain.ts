@@ -177,16 +177,52 @@ export async function voteForCandidate(startTime: number, candidateHash: string)
     return true;
   } catch (error: any) {
     console.error('Error voting for candidate:', error);
-    // Provide more detailed error message
+    
+    // Handle common error messages from the contract
     if (error.message) {
+      // Check for specific contract errors
       if (error.message.includes('Not active')) {
         throw new Error('This election is not currently active');
       } else if (error.message.includes('Already voted')) {
         throw new Error('You have already voted in this election');
       } else if (error.message.includes('Candidate not found')) {
         throw new Error('Invalid candidate selection');
+      } 
+      // Handle common MetaMask/RPC errors
+      else if (error.message.includes('user rejected') || error.message.includes('User denied')) {
+        throw new Error('Transaction rejected by user');
+      } 
+      // Handle Internal JSON-RPC error (-32603)
+      else if (error.message.includes('Internal JSON-RPC error') || error.code === -32603) {
+        // This is a common error with Polygon Amoy testnet
+        console.error('JSON-RPC Error details:', error);
+        
+        let errorMsg = 'Blockchain network error - Please try again. ';
+        
+        // Check if there's more specific information in the error object
+        if (error.data) {
+          console.log('RPC Error data:', error.data);
+          errorMsg += `Details: ${error.data}`;
+        } else if (error.info) {
+          console.log('RPC Error info:', error.info);
+          errorMsg += `Details: ${error.info}`;
+        } else {
+          errorMsg += 'This may be due to network congestion on the Polygon Amoy testnet.';
+        }
+        
+        throw new Error(errorMsg);
+      }
+      // Handle gas estimation errors
+      else if (error.message.includes('gas') || error.message.includes('fee')) {
+        throw new Error('Transaction failed due to gas fee issues. Try adjusting MetaMask settings.');
+      }
+      // Handle chain/network errors
+      else if (error.message.includes('chain') || error.message.includes('network')) {
+        throw new Error('Wrong blockchain network. Please connect to Polygon Amoy testnet.');
       }
     }
+    
+    // For unknown errors, pass through the original error
     throw error;
   }
 }
