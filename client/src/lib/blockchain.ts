@@ -152,7 +152,7 @@ export async function voteForCandidate(startTime: number, candidateHash: string)
     const receipt = await tx.wait();
     console.log('Transaction confirmed in block:', receipt.blockNumber);
     
-    // Notify backend about the vote for backup/analytics
+    // Notify backend about the vote for backup/analytics and email confirmation
     await fetch('/api/blockchain/vote', {
       method: 'POST',
       headers: {
@@ -160,7 +160,8 @@ export async function voteForCandidate(startTime: number, candidateHash: string)
       },
       body: JSON.stringify({
         electionId: startTime,
-        candidateHash: candidateHash
+        candidateHash: candidateHash,
+        txHash: tx.hash // Add transaction hash for email confirmations
       })
     });
     
