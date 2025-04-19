@@ -321,6 +321,49 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
           setVotedCandidates(prev => ({ ...prev, [candidateId]: true }));
           setHasVotedInElection(true);
           
+          // Import the vote count function
+          const { getCandidateVoteCount } = await import('@/lib/blockchain');
+          
+          // Refresh blockchain vote counts immediately after voting
+          const refreshVoteCounts = async () => {
+            try {
+              // Wait a moment for the blockchain to update
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              
+              // Get updated vote count for the voted candidate
+              const updatedVoteCount = await getCandidateVoteCount(blockchainTimestamp, candidate.studentId);
+              console.log(`Updated blockchain vote count for ${candidate.studentId}: ${updatedVoteCount}`);
+              
+              // Also refresh all candidate vote counts for consistency
+              const newBlockchainCounts: {[studentId: string]: number} = {
+                ...blockchainVoteCounts,
+                [candidate.studentId]: updatedVoteCount
+              };
+              
+              // Update all other candidates' vote counts if candidates data is available
+              if (candidatesData) {
+                for (const otherCandidate of candidatesData) {
+                  if (otherCandidate.id !== candidateId) {
+                    try {
+                      const otherVoteCount = await getCandidateVoteCount(blockchainTimestamp, otherCandidate.studentId);
+                      newBlockchainCounts[otherCandidate.studentId] = otherVoteCount;
+                    } catch (e) {
+                      console.warn(`Could not refresh vote count for ${otherCandidate.studentId}:`, e);
+                    }
+                  }
+                }
+              }
+              
+              // Update all vote counts in state
+              setBlockchainVoteCounts(newBlockchainCounts);
+            } catch (refreshError) {
+              console.error("Error refreshing vote counts:", refreshError);
+            }
+          };
+          
+          // Start the refresh process
+          refreshVoteCounts();
+          
           toast({
             title: "Vote Cast Successfully on Blockchain",
             description: "Your vote has been securely recorded on the blockchain.",

@@ -232,7 +232,7 @@ export async function getAllCandidatesWithVotes(startTime: number): Promise<{ids
     const result = await contract.getAllCandidatesWithVotes(startTime);
     
     // Convert BigInts to numbers for the vote counts
-    const voteCounts = result.voteCounts.map(count => Number(count));
+    const voteCounts: number[] = result.voteCounts.map((count: any) => Number(count));
     
     return {
       ids: result.ids,
