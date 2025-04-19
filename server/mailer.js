@@ -233,7 +233,7 @@ export const mailer = {
       const fromName = "ADA University Voting System";
       
       // Generate a link to view the transaction on Polygon Amoy Explorer
-      const explorerUrl = `https://www.oklink.com/amoy/tx/${transactionHash}`;
+      const explorerUrl = `https://amoy.polygonscan.com/tx/${transactionHash}`;
       
       const mailOptions = {
         from: `"${fromName}" <${fromEmail}>`,
