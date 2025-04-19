@@ -206,7 +206,7 @@ export async function hasUserVoted(startTime: number) {
  */
 export async function deployElectionToBlockchain(electionId: number) {
   try {
-    // First, check if the user has enough MATIC tokens and is on the correct network
+    // Basic MetaMask check - students will be taught to use Polygon Amoy beforehand
     try {
       if (typeof window === 'undefined' || !window.ethereum) {
         throw new Error('MetaMask is not installed or not accessible');
@@ -218,75 +218,17 @@ export async function deployElectionToBlockchain(electionId: number) {
         throw new Error('Please connect to MetaMask first');
       }
       
-      // Check if user is on Polygon Amoy testnet
+      // Just log the chain ID for informational purposes without validation
       const chainId = await window.ethereum.request({ method: 'eth_chainId' });
       console.log(`Current chain ID: ${chainId}`);
       
-      // Polygon Amoy testnet chainId is 0x13882 (hex) or 80002 (decimal)
-      if (chainId !== '0x13882') {
-        const confirmSwitch = confirm(
-          "You are not connected to the Polygon Amoy testnet. " +
-          "Would you like to switch networks now? " +
-          "(If you've already added Polygon Amoy to MetaMask, we'll switch automatically. " +
-          "Otherwise, you'll need to add it manually.)"
-        );
-        
-        if (confirmSwitch) {
-          try {
-            // Try to switch to Polygon Amoy testnet
-            await window.ethereum.request({
-              method: 'wallet_switchEthereumChain',
-              params: [{ chainId: '0x13882' }],
-            });
-            console.log('Successfully switched to Polygon Amoy testnet');
-          } catch (switchError: any) {
-            // This error code indicates that the chain has not been added to MetaMask
-            if (switchError.code === 4902) {
-              try {
-                await window.ethereum.request({
-                  method: 'wallet_addEthereumChain',
-                  params: [
-                    {
-                      chainId: '0x13882',
-                      chainName: 'Polygon Amoy Testnet',
-                      nativeCurrency: {
-                        name: 'MATIC',
-                        symbol: 'MATIC',
-                        decimals: 18
-                      },
-                      rpcUrls: ['https://rpc-amoy.polygon.technology/'],
-                      blockExplorerUrls: ['https://amoy.polygonscan.com/']
-                    },
-                  ],
-                });
-                console.log('Added Polygon Amoy testnet to MetaMask');
-              } catch (addError) {
-                console.error('Failed to add Polygon Amoy testnet to MetaMask:', addError);
-                throw new Error('Please add Polygon Amoy testnet to MetaMask manually');
-              }
-            } else {
-              console.error('Failed to switch to Polygon Amoy testnet:', switchError);
-              throw new Error('Failed to switch to Polygon Amoy testnet');
-            }
-          }
-        } else {
-          throw new Error('Please switch to Polygon Amoy testnet before deploying');
-        }
-      }
-      
-      // Create a provider to check balance
+      // Create a provider to check and log balance info (no validation)
       const provider = new ethers.BrowserProvider(window.ethereum);
       const balance = await provider.getBalance(accounts[0]);
       
       // Convert balance to MATIC (from wei)
       const balanceInMatic = ethers.formatEther(balance);
       console.log(`Current account balance: ${balanceInMatic} MATIC`);
-      
-      // If balance is extremely low (less than 0.01 MATIC), warn the user
-      if (parseFloat(balanceInMatic) < 0.01) {
-        console.warn('Warning: Account balance is very low, transaction may fail');
-        alert(`Warning: Your Polygon wallet balance is very low (${balanceInMatic} MATIC). The transaction may fail. Please add MATIC tokens to your wallet on the Polygon Amoy testnet. You can get free test MATIC from https://faucet.polygon.technology/`);
-      }
     } catch (error: unknown) {
       console.error('Error checking network or balance:', error);
       const errorMessage = error instanceof Error 
@@ -441,21 +383,16 @@ export async function deployElectionToBlockchain(electionId: number) {
       } 
       // Handle RPC errors
       else if (error.message.includes('Internal JSON-RPC error')) {
-        errorMessage = 'Polygon Network Error: There was an issue with the Polygon Amoy testnet connection. Please try the following steps:\n\n' +
-          '1. Make sure you are connected to the Polygon Amoy testnet in MetaMask\n' +
-          '2. Refresh the page and try again\n' +
-          '3. If the error persists, Polygon Amoy testnet might be experiencing congestion\n' + 
-          '4. Try again later when the network is less congested\n\n' +
-          'If you continue to see this error, visit https://status.polygon.technology to check if there are any known issues with the Polygon network';
+        errorMessage = 'Blockchain network error: There was an issue with your transaction. Please try refreshing the page and trying again.';
         
         // Try to extract more detailed error information if available
         if (error.data) {
           console.log('RPC Error details:', error.data);
         }
       }
-      // Handle gas errors
+      // Handle gas/fee errors
       else if (error.message.includes('gas') || error.message.includes('fee')) {
-        errorMessage = 'Transaction failed due to gas/fee issues. Try adjusting MetaMask settings.';
+        errorMessage = 'Transaction failed due to fee issues. Try adjusting MetaMask settings.';
       }
       // Handle contract execution errors
       else if (error.message.includes('execution reverted')) {

@@ -78,15 +78,15 @@ export function AdminElectionDetailView({ election, className = "" }: ElectionDe
       else if (errorMessage.includes("Election already exists") || errorMessage.includes("already deployed")) {
         errorMessage = "This election has already been deployed to the blockchain.";
       }
-      // Polygon RPC errors
+      // Blockchain RPC errors
       else if (errorMessage.includes("Internal JSON-RPC error")) {
-        errorTitle = "Polygon Network Error";
-        errorMessage = "There was an error connecting to the Polygon Amoy testnet. This could be due to network congestion or MetaMask configuration issues. Please verify that MetaMask is connected to the Polygon Amoy testnet.";
+        errorTitle = "Blockchain Network Error";
+        errorMessage = "There was an issue with the blockchain transaction. Please refresh and try again.";
       }
       // Gas or fee errors
       else if (errorMessage.includes("gas") || errorMessage.includes("fee")) {
-        errorTitle = "Gas Fee Error";
-        errorMessage = "Transaction failed due to gas/fee issues. Try adjusting MetaMask gas settings or adding more MATIC to your wallet.";
+        errorTitle = "Transaction Fee Error";
+        errorMessage = "Transaction failed due to fee issues. Try adjusting MetaMask settings or make sure your wallet has sufficient funds.";
       }
       // Contract execution errors with specific error types
       else if (errorMessage.includes("Invalid times")) {
