@@ -49,7 +49,8 @@ export function AdminElectionDetailView({ election, className = "" }: ElectionDe
   // Deploy election to blockchain
   const deployMutation = useMutation({
     mutationFn: () => {
-      return apiRequest(`/api/blockchain/deploy-election/${election.id}`, { method: 'POST' });
+      // Properly call apiRequest with method as first parameter, URL as second
+      return apiRequest("POST", `/api/blockchain/deploy-election/${election.id}`);
     },
     onSuccess: (data) => {
       toast({

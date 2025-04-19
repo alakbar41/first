@@ -160,6 +160,7 @@ export const insertElectionSchema = createInsertSchema(elections)
     // Allow dates to be passed as ISO strings
     startDate: z.union([z.string().transform(str => new Date(str)), z.date()]),
     endDate: z.union([z.string().transform(str => new Date(str)), z.date()]),
+    blockchainId: z.number().optional(),
   });
 
 export const insertCandidateSchema = createInsertSchema(candidates)
@@ -177,6 +178,7 @@ export const insertCandidateSchema = createInsertSchema(candidates)
     faculty: z.string(), // Accept full faculty name or code
     position: z.enum(CANDIDATE_POSITIONS),
     pictureUrl: z.string().optional().default(""),
+    blockchainHash: z.string().optional(),
   });
 
 export const insertElectionCandidateSchema = createInsertSchema(electionCandidates).omit({
