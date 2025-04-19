@@ -136,6 +136,98 @@ export async function getCandidateVotes(startTime: number) {
 }
 
 /**
+ * Get comprehensive election results from the blockchain
+ * This function fetches vote counts from the blockchain and matches them with candidate details from the database
+ */
+export async function getElectionResultsFromBlockchain(electionId: string | number) {
+  try {
+    // Step 1: Get the election details from our database to get the blockchain ID
+    const response = await fetch(`/api/elections/${electionId}`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch election with ID ${electionId}`);
+    }
+    
+    const election = await response.json();
+    
+    // Step 2: Check if the election has been deployed to the blockchain
+    if (!election.blockchainId) {
+      console.warn(`Election ${electionId} has not been deployed to the blockchain`);
+      return { election, candidates: [], totalVotes: 0, error: "This election has not been deployed to the blockchain" };
+    }
+    
+    const blockchainId = parseInt(election.blockchainId);
+    
+    // Step 3: Get all candidates for this election
+    const candidatesResponse = await fetch(`/api/elections/${electionId}/candidates`);
+    if (!candidatesResponse.ok) {
+      throw new Error(`Failed to fetch candidates for election ${electionId}`);
+    }
+    
+    const electionCandidates = await candidatesResponse.json();
+    
+    // Step 4: Get candidate details
+    const candidateDetailsPromises = electionCandidates.map(async (ec: any) => {
+      // Get full candidate details
+      const detailsResponse = await fetch(`/api/candidates/${ec.candidateId}`);
+      if (!detailsResponse.ok) return null;
+      
+      return detailsResponse.json();
+    });
+    
+    const candidateDetails = await Promise.all(candidateDetailsPromises);
+    const validCandidateDetails = candidateDetails.filter(c => c !== null);
+    
+    // Step 5: Get vote counts from the blockchain
+    const contract = await getVotingContract();
+    const blockchainResults = await contract.getAllCandidatesWithVotes(blockchainId);
+    
+    // Create a mapping of candidate ID hashes to vote counts
+    const voteCountMap = new Map();
+    blockchainResults.ids.forEach((hash: string, index: number) => {
+      voteCountMap.set(hash, Number(blockchainResults.voteCounts[index]));
+    });
+    
+    // Step 6: Match blockchain data with candidate details
+    const totalVotes = blockchainResults.voteCounts.reduce(
+      (sum: number, count: any) => sum + Number(count), 0
+    );
+    
+    const candidatesWithVotes = await Promise.all(
+      validCandidateDetails.map(async (candidate) => {
+        // Convert the student ID to a bytes32 hash that the blockchain uses
+        const hash = studentIdToBytes32(candidate.studentId);
+        const voteCount = voteCountMap.get(hash) || 0;
+        
+        return {
+          ...candidate,
+          voteCount,
+          percentage: totalVotes > 0 ? Math.round((voteCount / totalVotes) * 100) : 0,
+          hash
+        };
+      })
+    );
+    
+    // Sort candidates by vote count (highest first)
+    const sortedCandidates = candidatesWithVotes.sort((a, b) => b.voteCount - a.voteCount);
+    
+    return {
+      election,
+      candidates: sortedCandidates,
+      totalVotes,
+      error: null
+    };
+  } catch (error) {
+    console.error('Error fetching election results from blockchain:', error);
+    return {
+      election: null,
+      candidates: [],
+      totalVotes: 0,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    };
+  }
+}
+
+/**
  * Vote for a candidate in an election
  */
 export async function voteForCandidate(startTime: number, candidateHash: string) {
