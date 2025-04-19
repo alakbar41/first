@@ -160,6 +160,17 @@ export async function createElection(
     // needed for the client-side MetaMask transaction
     console.log('Election data prepared for client-side creation');
     
+    // Log the candidate bytes format to help debug blockchain deployment issues
+    console.log(`Candidates prepared: ${candidateStudentIds.length}`);
+    console.log(`Candidate bytes array prepared: ${candidateIdBytes.length} items`);
+    candidateIdBytes.forEach((hash, index) => {
+      console.log(`Candidate ${index + 1} hash: ${hash}`);
+      // Verify each hash is a valid bytes32
+      if (!hash.startsWith('0x') || hash.length !== 66) {
+        console.warn(`WARNING: Candidate ${index + 1} hash is not a valid bytes32 format: ${hash}`);
+      }
+    });
+    
     // Return the election ID (start timestamp) for storage in database
     // along with the prepared data for the contract call
     return {

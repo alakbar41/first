@@ -333,21 +333,27 @@ export async function deployElectionToBlockchain(electionId: number) {
     console.log('- Length:', deployParams.candidateIdBytes.length);
     console.log('- Values:', deployParams.candidateIdBytes);
     
+    // Additional checks for each candidate ID to ensure proper formatting
+    deployParams.candidateIdBytes.forEach((bytes, index) => {
+      console.log(`Candidate ${index + 1}:`, bytes);
+      if (typeof bytes !== 'string') {
+        console.error(`Error: Candidate ${index + 1} ID is not a string, it's a ${typeof bytes}`);
+      } else if (!bytes.startsWith('0x')) {
+        console.error(`Error: Candidate ${index + 1} ID does not start with 0x: ${bytes}`);
+      } else if (bytes.length !== 66) { // 0x + 64 hex chars = 66
+        console.error(`Error: Candidate ${index + 1} ID has incorrect length ${bytes.length}, expected 66: ${bytes}`);
+      }
+    });
+    
     // Send transaction to blockchain
     console.log(`Creating election on blockchain with parameters:`, deployParams);
     
-    // Manually specify a higher gas limit to avoid estimation issues
-    // Based on the suggestion, we'll provide a higher gas limit than the 195,037 that was failing
-    // For Polygon Amoy testnet, gas limits can be set higher because gas costs are very low
+    // Let ethers.js automatically estimate the gas - this is more reliable than manual settings
     const tx = await contract.createElection(
       deployParams.positionEnum,
       deployParams.startTimestamp,
       deployParams.endTimestamp,
-      deployParams.candidateIdBytes,
-      {
-        // Set gas limit 50% higher than what was failing (195037)
-        gasLimit: 300000
-      }
+      deployParams.candidateIdBytes
     );
     
     console.log('Transaction sent:', tx.hash);
