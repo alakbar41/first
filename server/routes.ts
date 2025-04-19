@@ -18,7 +18,7 @@ import {
   updateTicketStatusSchema,
   Election
 } from "@shared/schema";
-import { loadStudentIdHashMap } from "./blockchain";
+import { loadStudentIdHashMap, studentIdToBytes32 } from "./blockchain";
 import { z } from "zod";
 import { mailer } from "./mailer.js";
 
@@ -542,9 +542,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Candidate with this student ID already exists" });
       }
       
+      // Generate blockchain hash for the student ID
+      try {
+        const blockchainHash = studentIdToBytes32(result.data.studentId);
+        result.data.blockchainHash = blockchainHash;
+        
+        console.log(`Generated blockchain hash for student ID ${result.data.studentId}:`, blockchainHash);
+      } catch (hashError) {
+        console.error('Error generating blockchain hash:', hashError);
+        // Continue without blockchain hash if there's an error
+      }
+      
       const candidate = await storage.createCandidate(result.data);
       res.status(201).json(candidate);
     } catch (error) {
+      console.error('Error creating candidate:', error);
       res.status(500).json({ message: "Failed to create candidate" });
     }
   });
