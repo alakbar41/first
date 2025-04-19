@@ -48,6 +48,15 @@ app.use((req, res, next) => {
     throw err;
   });
 
+  // Error handler middleware for API routes
+  app.use('/api/*', (err: any, req: Request, res: Response, _next: NextFunction) => {
+    const status = err.status || err.statusCode || 500;
+    const message = err.message || "Internal Server Error";
+    
+    res.status(status).json({ message });
+    console.error(`API Error (${status}):`, message, err.stack);
+  });
+  
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes

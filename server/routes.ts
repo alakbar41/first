@@ -7,6 +7,7 @@ import crypto from "crypto";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { registerBlockchainRoutes } from "./blockchain-routes";
 import { 
   insertElectionSchema, 
   insertCandidateSchema, 
@@ -204,6 +205,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   } catch (error) {
     console.error('Failed to load student ID hash mappings:', error);
   }
+  
+  // Register blockchain routes
+  registerBlockchainRoutes(app);
   
   // Inactivity timeout middleware
   app.use((req: Request, res: Response, next: NextFunction) => {
