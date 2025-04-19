@@ -26,15 +26,20 @@ export function registerBlockchainRoutes(app: Express) {
   });
 
   // Get student ID from hash
-  app.get('/api/blockchain/student-id-from-hash/:hash', (req: Request, res: Response) => {
+  app.get('/api/blockchain/student-id-from-hash/:hash', async (req: Request, res: Response) => {
     const hash = req.params.hash;
-    const studentId = getStudentIdFromHash(hash);
-    
-    if (!studentId) {
-      return res.status(404).json({ message: 'Student ID not found for hash' });
+    try {
+      const studentId = await getStudentIdFromHash(hash);
+      
+      if (!studentId) {
+        return res.status(404).json({ message: 'Student ID not found for hash' });
+      }
+      
+      res.json({ studentId });
+    } catch (error) {
+      console.error('Error getting student ID from hash:', error);
+      res.status(500).json({ message: 'Failed to retrieve student ID' });
     }
-    
-    res.json({ studentId });
   });
 
   // Deploy election to blockchain

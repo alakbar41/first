@@ -51,9 +51,28 @@ export async function storeStudentIdHash(studentId: string, hash: string) {
 
 /**
  * Get student ID from bytes32 hash
+ * Checks both in-memory map and database
  */
-export function getStudentIdFromHash(hash: string): string | undefined {
-  return studentIdHashMap.get(hash);
+export async function getStudentIdFromHash(hash: string): Promise<string | undefined> {
+  // First check in-memory map
+  const fromMemory = studentIdHashMap.get(hash);
+  if (fromMemory) {
+    return fromMemory;
+  }
+  
+  // If not found in memory, check database
+  try {
+    const candidate = await storage.getCandidateByHash(hash);
+    if (candidate) {
+      // Add to in-memory map for future use
+      studentIdHashMap.set(hash, candidate.studentId);
+      return candidate.studentId;
+    }
+  } catch (err) {
+    console.error('Error looking up candidate by hash:', err);
+  }
+  
+  return undefined;
 }
 
 /**
@@ -159,27 +178,13 @@ export async function getElectionResults(startTimestamp: number) {
     // Map bytes32 hashes back to student IDs and format the results
     const candidateResults = await Promise.all(
       result.ids.map(async (hash: string, index: number) => {
-        // First try the in-memory map
-        let studentId = getStudentIdFromHash(hash);
-        
-        // If not found in memory, try the database
-        if (!studentId) {
-          try {
-            const candidate = await storage.getCandidateByHash(hash);
-            if (candidate) {
-              studentId = candidate.studentId;
-              // Restore to in-memory map for future use
-              studentIdHashMap.set(hash, studentId);
-            }
-          } catch (err) {
-            console.error('Error looking up candidate by hash:', err);
-          }
-        }
+        // Use the improved function that checks both memory and database
+        let studentId = await getStudentIdFromHash(hash);
         
         return {
           studentId: studentId || 'unknown',
           voteCount: Number(result.voteCounts[index]),
-          hash: hash // Include the hash for debugging/verification
+          hash // Include the hash for debugging/verification
         };
       })
     );
