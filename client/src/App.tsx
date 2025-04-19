@@ -14,7 +14,7 @@ import AdminCandidates from "@/pages/admin-candidates";
 import TicketsPage from "@/pages/tickets-page";
 import AdminTickets from "@/pages/admin-tickets";
 import AdminArchitecture from "@/pages/admin-architecture";
-import AdminDashboardEnhanced from "@/pages/admin-dashboard";
+import AdminDashboardEnhanced from "@/pages/admin-dashboard-enhanced";
 import { SettingsPage } from "@/pages/settings";
 import { ProtectedRoute, AdminProtectedRoute } from "./lib/protected-route";
 import { FC, ReactNode } from 'react';
