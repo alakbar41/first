@@ -133,8 +133,10 @@ export function registerBlockchainRoutes(app: Express) {
       res.setHeader('Content-Type', 'application/json');
       
       res.json({ 
-        message: 'Election deployed to blockchain successfully',
-        election: updatedElection
+        message: 'Election prepared for blockchain deployment',
+        election: updatedElection,
+        deployParams: electionData.deployParams,
+        blockchainId: electionData.startTimestamp
       });
     } catch (error: any) {
       console.error('Error deploying election to blockchain:', error);

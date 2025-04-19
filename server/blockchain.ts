@@ -86,13 +86,11 @@ export async function getStudentIdFromHash(hash: string): Promise<string | undef
 
 /**
  * Get contract address from environment variables
+ * Returns null if not configured, instead of throwing an error
  */
-export function getContractAddress(): string {
+export function getContractAddress(): string | null {
   const address = process.env.VOTING_CONTRACT_ADDRESS;
-  if (!address) {
-    throw new Error('Contract address not configured in environment variables');
-  }
-  return address;
+  return address || null;
 }
 
 /**
@@ -108,10 +106,15 @@ export function getProvider() {
 
 /**
  * Get contract instance (read-only)
+ * @throws Error if contract address is not configured
  */
 export function getVotingContract() {
   const provider = getProvider();
   const contractAddress = getContractAddress();
+  
+  if (!contractAddress) {
+    throw new Error('Contract address not configured');
+  }
   
   // Return read-only contract instance
   return new ethers.Contract(contractAddress, votingContractABI, provider);
