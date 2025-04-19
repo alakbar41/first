@@ -14,6 +14,7 @@ import AdminCandidates from "@/pages/admin-candidates";
 import TicketsPage from "@/pages/tickets-page";
 import AdminTickets from "@/pages/admin-tickets";
 import AdminArchitecture from "@/pages/admin-architecture";
+import AdminDashboardEnhanced from "@/pages/admin-dashboard";
 import { SettingsPage } from "@/pages/settings";
 import { ProtectedRoute, AdminProtectedRoute } from "./lib/protected-route";
 import { FC, ReactNode } from 'react';
@@ -40,6 +41,7 @@ function Router() {
       <AdminProtectedRoute path="/admin/voters" component={AdminDashboard} />
       <AdminProtectedRoute path="/admin/settings" component={AdminDashboard} />
       <AdminProtectedRoute path="/admin-architecture" component={AdminArchitecture} />
+      <AdminProtectedRoute path="/admin/dashboard-enhanced" component={AdminDashboardEnhanced} />
       
       {/* Auth routes */}
       <Route path="/auth" component={AuthPage} />

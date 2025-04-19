@@ -5,6 +5,70 @@ import { isAdmin } from './routes';
 import { getFacultyName } from '../shared/constants';
 import { type QueryResult } from '@neondatabase/serverless';
 
+// Type definitions for our dashboard data
+type FacultyParticipation = {
+  faculty: string;
+  total_students: number;
+  voted_students: number;
+  participation_percentage: number;
+  faculty_name?: string;
+};
+
+type VoteTimeline = {
+  hour: string;
+  vote_count: number;
+};
+
+type BlockchainTransaction = {
+  total_transactions: number;
+  successful_transactions: number;
+};
+
+type Election = {
+  id: number;
+  name: string;
+  position: string;
+  status: string;
+  is_on_blockchain: boolean;
+  blockchain_id: string | null;
+};
+
+type Candidate = {
+  id: number;
+  full_name: string; 
+  student_id: string;
+  faculty: string;
+  vote_count: number;
+  faculty_name?: string;
+};
+
+type ActiveElection = {
+  id: number;
+  name: string;
+  position: string;
+  blockchain_id: string | null;
+  vote_count: number;
+  total_eligible_voters: number;
+  candidates?: Candidate[];
+};
+
+type BlockchainStats = {
+  total_elections: number;
+  blockchain_elections: number;
+  transaction_stats: BlockchainTransaction;
+  elections: Election[];
+};
+
+type ParticipationOverview = {
+  id: number;
+  name: string;
+  position: string;
+  status: string;
+  voters: number;
+  total_eligible_voters: number;
+  participation_percentage: number;
+};
+
 const router = Router();
 
 // Faculty participation metrics
@@ -44,7 +108,7 @@ router.get('/metrics/faculty-participation', isAdmin, async (req: Request, res: 
       ORDER BY fc.faculty
     `;
 
-    const facultyParticipation = await db.execute(query);
+    const facultyParticipation = await db.execute(query) as unknown as FacultyParticipation[];
     
     // Add faculty names for display purposes
     const result = facultyParticipation.map(row => ({
@@ -74,7 +138,7 @@ router.get('/metrics/voting-timeline', isAdmin, async (req: Request, res: Respon
       ORDER BY hour
     `;
 
-    const voteTimeline = await db.execute(query);
+    const voteTimeline = await db.execute(query) as unknown as VoteTimeline[];
     
     res.json(voteTimeline);
   } catch (error) {
@@ -99,7 +163,7 @@ router.get('/metrics/blockchain-status', isAdmin, async (req: Request, res: Resp
       ORDER BY created_at DESC
     `;
 
-    const elections = await db.execute(query);
+    const elections = await db.execute(query) as unknown as Election[];
     
     // Get blockchain vote transaction success rate
     const blockchainTransactionsQuery = sql`
@@ -109,9 +173,9 @@ router.get('/metrics/blockchain-status', isAdmin, async (req: Request, res: Resp
       FROM blockchain_transactions
     `;
 
-    const transactionStats = await db.execute(blockchainTransactionsQuery);
+    const transactionStats = await db.execute(blockchainTransactionsQuery) as unknown as BlockchainTransaction[];
     
-    const stats = {
+    const stats: BlockchainStats = {
       total_elections: elections.length,
       blockchain_elections: elections.filter(e => e.is_on_blockchain).length,
       transaction_stats: transactionStats[0] || { total_transactions: 0, successful_transactions: 0 },

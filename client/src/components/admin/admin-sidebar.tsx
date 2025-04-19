@@ -36,6 +36,12 @@ export function AdminSidebar({ user }: SidebarProps) {
       active: location === "/admin"
     },
     {
+      title: "Analytics",
+      icon: BarChart,
+      path: "/admin/dashboard-enhanced",
+      active: location === "/admin/dashboard-enhanced"
+    },
+    {
       title: "Elections",
       icon: Vote,
       path: "/admin/elections",
