@@ -902,6 +902,15 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
   
+  async getElectionByBlockchainId(blockchainId: string): Promise<Election | undefined> {
+    const result = await db.select().from(elections).where(eq(elections.blockchainId, blockchainId));
+    if (result.length > 0) {
+      // Check and update status based on date
+      await this.updateElectionStatusBasedOnTime(result[0]);
+    }
+    return result[0];
+  }
+  
   // Helper method to update election statuses based on current time
   async updateElectionStatusesBasedOnTime(electionsList: Election[]): Promise<void> {
     const now = new Date();

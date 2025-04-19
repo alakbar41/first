@@ -233,18 +233,22 @@ export function registerBlockchainRoutes(app: Express) {
       }
       
       // Get election details - we need to be careful with blockchain ID vs database ID
+      console.log(`Trying to find election with blockchain ID or DB ID: ${electionId}`);
       try {
         // First try to find an election with this blockchain ID
         const electionsByBlockchainId = await storage.getElectionByBlockchainId(electionId);
         if (electionsByBlockchainId) {
-          console.log(`Found election by blockchain ID: ${electionsByBlockchainId.name}`);
+          console.log(`Found election by blockchain ID: ${electionsByBlockchainId.name} (ID: ${electionsByBlockchainId.id})`);
           electionName = electionsByBlockchainId.name;
         } else {
+          console.log(`No election found with blockchain ID: ${electionId}, trying database ID`);
           // If not found by blockchain ID, try by database ID (less likely)
           const electionByDbId = await storage.getElection(parseInt(electionId));
           if (electionByDbId) {
-            console.log(`Found election by database ID: ${electionByDbId.name}`);
+            console.log(`Found election by database ID: ${electionByDbId.name} (ID: ${electionByDbId.id})`);
             electionName = electionByDbId.name;
+          } else {
+            console.log(`No election found with database ID: ${electionId} either`);
           }
         }
       } catch (e) {
