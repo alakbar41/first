@@ -204,6 +204,7 @@ export class MemStorage implements IStorage {
       status: election.status || "upcoming",
       createdBy: election.createdBy,
       createdAt: new Date(),
+      blockchainId: election.blockchainId || null,
     };
     
     this.elections.set(id, newElection);
@@ -364,7 +365,8 @@ export class MemStorage implements IStorage {
       status: "inactive", // Default status is inactive until added to an election
       pictureUrl: candidate.pictureUrl || "",
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
+      blockchainHash: candidate.blockchainHash || null
     };
     
     this.candidates.set(id, newCandidate);
@@ -1056,6 +1058,11 @@ export class DatabaseStorage implements IStorage {
     const result = await db.select().from(candidates).where(eq(candidates.studentId, studentId));
     return result[0];
   }
+  
+  async getCandidateByHash(blockchainHash: string): Promise<Candidate | undefined> {
+    const result = await db.select().from(candidates).where(eq(candidates.blockchainHash, blockchainHash));
+    return result[0];
+  }
 
   async createCandidate(candidate: InsertCandidate): Promise<Candidate> {
     const now = new Date();
@@ -1067,7 +1074,8 @@ export class DatabaseStorage implements IStorage {
       status: "inactive", // Default status is inactive until added to an election
       pictureUrl: candidate.pictureUrl || "",
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
+      blockchainHash: candidate.blockchainHash || null
     }).returning();
     return result[0];
   }
