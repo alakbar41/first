@@ -1,5 +1,4 @@
-import { Express, Response } from 'express';
-import { Request as ExpressRequest } from 'express';
+import { Express, Request, Response } from 'express';
 import { 
   getContractAddress, 
   getStudentIdFromHash, 
@@ -9,19 +8,6 @@ import {
   checkElectionExists
 } from './blockchain';
 import { isAdmin, isAuthenticated } from './routes';
-
-// Import the extended Request type with user property
-import './types.d.ts';
-// Define the Express.Request type that includes the user property
-type Request = ExpressRequest & {
-  user?: {
-    id: number;
-    email: string;
-    isAdmin: boolean;
-    faculty: string;
-    [key: string]: any;
-  };
-};
 import { storage } from './storage';
 
 /**
@@ -65,13 +51,10 @@ export function registerBlockchainRoutes(app: Express) {
       
       if (!studentId) {
         console.log(`No student ID found for hash: ${hash}`);
-        // Instead of returning 404, provide a fallback value to improve UX
-        // Return 200 with a special placeholder to indicate unknown ID
         res.setHeader('Content-Type', 'application/json');
-        return res.json({ 
-          studentId: 'Unknown Candidate',
-          hash: hash,
-          warning: 'Student ID mapping not found'
+        return res.status(404).json({ 
+          message: 'Student ID not found for hash',
+          hash: hash 
         });
       }
       
@@ -83,9 +66,8 @@ export function registerBlockchainRoutes(app: Express) {
       });
     } catch (error) {
       console.error('Error getting student ID from hash:', error);
-      // Return a fallback value even on error to prevent UI issues
-      res.json({ 
-        studentId: 'Unknown Candidate',
+      res.status(500).json({ 
+        message: 'Failed to retrieve student ID',
         hash: hash,
         error: error instanceof Error ? error.message : String(error)
       });

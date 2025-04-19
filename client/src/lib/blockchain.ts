@@ -25,18 +25,8 @@ let contractAddress: string = '';
  * Convert a student ID to bytes32 format for the smart contract
  */
 export function studentIdToBytes32(studentId: string): string {
-  if (!studentId) {
-    console.error('Attempted to hash an empty student ID');
-    throw new Error('Student ID is required for blockchain operations');
-  }
-  
-  try {
-    // Use ethers.js v6 keccak256 function
-    return ethers.keccak256(ethers.toUtf8Bytes(studentId));
-  } catch (error) {
-    console.error(`Failed to hash student ID ${studentId}:`, error);
-    throw new Error(`Could not generate hash for student ID ${studentId}`);
-  }
+  // Use ethers.js v6 keccak256 function
+  return ethers.keccak256(ethers.toUtf8Bytes(studentId));
 }
 
 /**
@@ -237,35 +227,6 @@ export async function getCandidateVoteCount(startTime: number, candidateStudentI
     // Log the error but return 0 to avoid breaking the UI
     console.error(`Error getting vote count for candidate ${candidateStudentId}:`, error);
     return 0;
-  }
-}
-
-/**
- * Check if an election exists on the blockchain
- * @param startTime The blockchain election ID (timestamp)
- * @returns Promise that resolves to true if the election exists, false otherwise
- */
-export async function checkElectionExists(startTime: number): Promise<boolean> {
-  try {
-    const contract = await getVotingContract();
-    
-    // Try to get the election - if it exists, this will return data
-    // If it doesn't exist, it will throw an error
-    await contract.getElection(startTime);
-    
-    // If we got here, the election exists
-    return true;
-  } catch (error: any) {
-    // Check if this is an election not found error
-    if (error?.reason === "Election not found" || 
-        error?.message?.includes("Election not found")) {
-      console.log(`Election ${startTime} doesn't exist on blockchain`);
-      return false;
-    }
-    
-    // For other errors, log them but still return false since we couldn't confirm election exists
-    console.error(`Error checking if election ${startTime} exists:`, error);
-    return false;
   }
 }
 
