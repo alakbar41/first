@@ -116,8 +116,13 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
         if (election.blockchainId) {
           setIsLoadingBlockchainVotes(true);
           try {
-            // Calculate blockchain timestamp from election start date
-            const blockchainTimestamp = Math.floor(new Date(election.startDate).getTime() / 1000);
+            // Use the blockchain ID directly which contains the correct timestamp
+            const blockchainTimestamp = parseInt(election.blockchainId);
+            console.log(`Using blockchain ID as timestamp: ${blockchainTimestamp}`);
+            
+            // For debug comparison - also log the calculated timestamp
+            const calculatedTimestamp = Math.floor(new Date(election.startDate).getTime() / 1000);
+            console.log(`Calculated timestamp from startDate (not used): ${calculatedTimestamp}`);
             
             // Import blockchain functions
             const { getCandidateVoteCount, getAllCandidatesWithVotes } = await import('@/lib/blockchain');
@@ -304,7 +309,9 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
       if (election.blockchainId) {
         // For blockchain-enabled elections, use the blockchain voting method
         try {
-          const blockchainTimestamp = Math.floor(new Date(election.startDate).getTime() / 1000);
+          // Use the blockchain ID directly as the timestamp instead of calculating from start date
+          const blockchainTimestamp = parseInt(election.blockchainId);
+          console.log(`Using blockchain ID directly for voting: ${blockchainTimestamp}`);
           
           // Import the blockchain voting function dynamically
           const { voteForCandidate, studentIdToBytes32 } = await import('@/lib/blockchain');
