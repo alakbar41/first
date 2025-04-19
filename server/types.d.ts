@@ -6,7 +6,8 @@ declare module './auth.js' {
 
 declare module './mailer.js' {
   export const mailer: {
-    sendOtp(to: string, otp: string): Promise<void>;
+    sendOtp(to: string, otp: string): Promise<any>;
+    sendVoteConfirmation(to: string, transactionHash: string, electionName: string, candidateName: string): Promise<any>;
   };
 }
 

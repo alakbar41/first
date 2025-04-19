@@ -1,5 +1,15 @@
 import { Express, Request, Response } from 'express';
-import { RequestWithUser } from './types';
+
+// Define RequestWithUser using Express.Request that already has the user property thanks to type augmentation
+type RequestWithUser = Request & {
+  user?: {
+    id: number;
+    email: string;
+    isAdmin: boolean;
+    faculty: string;
+    [key: string]: any;
+  };
+};
 import { 
   getContractAddress, 
   getStudentIdFromHash, 
