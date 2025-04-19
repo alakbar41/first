@@ -88,6 +88,7 @@ export const elections = pgTable("elections", {
   status: text("status").notNull().default("upcoming"), // upcoming, active, completed
   createdBy: integer("created_by").notNull(), // Reference to admin user id
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  blockchainId: integer("blockchain_id"), // Stores the start timestamp used as election identifier in blockchain
 });
 
 export const candidates = pgTable("candidates", {
@@ -100,6 +101,7 @@ export const candidates = pgTable("candidates", {
   pictureUrl: text("picture_url").default("").notNull(), // URL to candidate's picture (stored as base64)
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  blockchainHash: text("blockchain_hash"), // Stores the bytes32 hash of the student ID for blockchain identification
 });
 
 export const electionCandidates = pgTable("election_candidates", {
