@@ -99,17 +99,41 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
     async function loadVoteCounts() {
       try {
         // First load vote counts from database (will be used for non-blockchain elections)
-        const response = await fetch(`/api/elections/${election.id}/vote-counts`);
-        if (response.ok) {
-          const voteCounts = await response.json();
-          const voteCountsMap: {[key: number]: number} = {};
-          
-          // Map vote counts to candidate IDs
-          voteCounts.forEach((vc: {candidateId: number, count: number}) => {
-            voteCountsMap[vc.candidateId] = vc.count;
-          });
-          
-          setVoteCounts(voteCountsMap);
+        try {
+          const response = await fetch(`/api/elections/${election.id}/vote-counts`);
+          if (response.ok) {
+            // Check if the response is empty first
+            const text = await response.text();
+            if (!text || text.trim() === '') {
+              console.log('Vote counts response was empty');
+              setVoteCounts({});
+            } else {
+              // Then parse the JSON if we have content
+              try {
+                const voteCounts = JSON.parse(text);
+                const voteCountsMap: {[key: number]: number} = {};
+                
+                // Map vote counts to candidate IDs
+                if (Array.isArray(voteCounts)) {
+                  voteCounts.forEach((vc: {candidateId: number, count: number}) => {
+                    voteCountsMap[vc.candidateId] = vc.count;
+                  });
+                }
+                
+                setVoteCounts(voteCountsMap);
+              } catch (jsonError) {
+                console.error('Error parsing vote counts JSON:', jsonError);
+                console.log('Raw response:', text.substring(0, 100) + '...');
+                setVoteCounts({});
+              }
+            }
+          } else {
+            console.error(`Failed to fetch vote counts: ${response.status} ${response.statusText}`);
+            setVoteCounts({});
+          }
+        } catch (fetchError) {
+          console.error('Error fetching vote counts:', fetchError);
+          setVoteCounts({});
         }
         
         // If the election is on blockchain, load vote counts from there as well
@@ -124,26 +148,64 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
             const calculatedTimestamp = Math.floor(new Date(election.startDate).getTime() / 1000);
             console.log(`Calculated timestamp from startDate (not used): ${calculatedTimestamp}`);
             
-            // Import blockchain functions
-            const { getCandidateVoteCount, getAllCandidatesWithVotes } = await import('@/lib/blockchain');
-            
-            // Create a map to store blockchain vote counts
-            const blockchainCounts: {[studentId: string]: number} = {};
-            
-            // For each candidate, get their vote count from the blockchain
-            if (candidatesData) {
-              for (const candidate of candidatesData) {
-                try {
-                  const voteCount = await getCandidateVoteCount(blockchainTimestamp, candidate.studentId);
-                  blockchainCounts[candidate.studentId] = voteCount;
-                  console.log(`Blockchain vote count for ${candidate.studentId}: ${voteCount}`);
-                } catch (e) {
-                  console.warn(`Could not get blockchain vote count for ${candidate.studentId}:`, e);
+            try {
+              // Import blockchain functions 
+              const { getCandidateVoteCount, getAllCandidatesWithVotes, studentIdToBytes32 } = await import('@/lib/blockchain');
+              
+              // Create a map to store blockchain vote counts
+              const blockchainCounts: {[studentId: string]: number} = {};
+              
+              // First try to get all candidates and vote counts at once (more efficient)
+              try {
+                console.log(`Getting all candidates with votes for timestamp ${blockchainTimestamp}`);
+                const allCandidatesWithVotes = await getAllCandidatesWithVotes(blockchainTimestamp);
+                console.log(`Received all candidates with votes:`, allCandidatesWithVotes);
+                
+                // If this succeeds, we can process all candidates at once
+                if (candidatesData && allCandidatesWithVotes.ids.length > 0) {
+                  // Map blockchain hashes back to student IDs for each candidate
+                  candidatesData.forEach(candidate => {
+                    if (candidate.studentId) {
+                      // For debugging, log student ID and its hash
+                      const hash = studentIdToBytes32(candidate.studentId);
+                      console.log(`Candidate ${candidate.fullName} ID: ${candidate.studentId}, Hash: ${hash}`);
+                      
+                      // Find the index of this candidate's hash in the result
+                      const index = allCandidatesWithVotes.ids.findIndex(id => 
+                        id.toLowerCase() === hash.toLowerCase());
+                      
+                      // If found, get the vote count
+                      if (index !== -1) {
+                        blockchainCounts[candidate.studentId] = allCandidatesWithVotes.voteCounts[index];
+                        console.log(`Found vote count for ${candidate.studentId}: ${blockchainCounts[candidate.studentId]}`);
+                      }
+                    }
+                  });
+                }
+              } catch (batchError) {
+                console.warn("Could not get all candidates in batch, falling back to individual queries:", batchError);
+                
+                // Fall back to individual queries
+                if (candidatesData) {
+                  for (const candidate of candidatesData) {
+                    try {
+                      if (!candidate.studentId) continue;
+                      const voteCount = await getCandidateVoteCount(blockchainTimestamp, candidate.studentId);
+                      blockchainCounts[candidate.studentId] = voteCount;
+                      console.log(`Blockchain vote count for ${candidate.studentId}: ${voteCount}`);
+                    } catch (e) {
+                      console.warn(`Could not get blockchain vote count for ${candidate.studentId}:`, e);
+                    }
+                  }
                 }
               }
+              
+              // Set the state with the vote counts
+              console.log('Final blockchain vote counts:', blockchainCounts);
+              setBlockchainVoteCounts(blockchainCounts);
+            } catch (importError) {
+              console.error('Failed to import blockchain functions:', importError);
             }
-            
-            setBlockchainVoteCounts(blockchainCounts);
           } catch (blockchainError) {
             console.error("Error fetching blockchain vote counts:", blockchainError);
           } finally {
