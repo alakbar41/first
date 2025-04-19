@@ -43,7 +43,9 @@ export async function getVotingContract(requireSigner = false) {
     try {
       const response = await fetch('/api/blockchain/contract-address');
       const data = await response.json();
-      contractAddress = data.address;
+      contractAddress = data.contractAddress; // Fixed: changed from data.address to data.contractAddress
+      
+      console.log('Retrieved contract address:', contractAddress);
       
       if (!contractAddress) {
         throw new Error('Contract address not configured');
