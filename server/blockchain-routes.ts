@@ -1,4 +1,5 @@
 import { Express, Request, Response } from 'express';
+import { RequestWithUser } from './types';
 import { 
   getContractAddress, 
   getStudentIdFromHash, 
@@ -9,6 +10,7 @@ import {
 } from './blockchain';
 import { isAdmin, isAuthenticated } from './routes';
 import { storage } from './storage';
+import { mailer } from './mailer';
 
 /**
  * Register blockchain-related routes
@@ -190,11 +192,11 @@ export function registerBlockchainRoutes(app: Express) {
   });
 
   // Vote in election
-  app.post('/api/blockchain/vote', isAuthenticated, async (req: Request, res: Response) => {
+  app.post('/api/blockchain/vote', isAuthenticated, async (req: RequestWithUser, res: Response) => {
     try {
-      const { electionId, candidateHash } = req.body;
+      const { electionId, candidateHash, txHash } = req.body;
       
-      console.log(`Recording vote in election ${electionId} for candidate hash ${candidateHash}`);
+      console.log(`Recording vote in election ${electionId} for candidate hash ${candidateHash} with transaction hash ${txHash}`);
       
       // This endpoint confirms the voting request was received
       // and records a backup of the vote in our database
@@ -202,19 +204,54 @@ export function registerBlockchainRoutes(app: Express) {
       
       // Get student ID from hash (if possible) for record-keeping
       let studentId = 'unknown';
+      let candidateName = 'Unknown Candidate';
+      let electionName = 'Unknown Election';
+      
       try {
         const idResult = await getStudentIdFromHash(candidateHash);
         if (idResult) {
           studentId = idResult;
+          
+          // Get candidate details
+          const candidate = await storage.getCandidateByStudentId(studentId);
+          if (candidate) {
+            candidateName = candidate.fullName;
+          }
         }
       } catch (e) {
         console.warn('Could not resolve candidate hash to student ID:', e);
       }
       
+      // Get election details
+      try {
+        const election = await storage.getElection(parseInt(electionId));
+        if (election) {
+          electionName = election.name;
+        }
+      } catch (e) {
+        console.warn('Could not get election details:', e);
+      }
+      
       // Record the vote in our database for backup/verification
       if (req.user?.id) {
-        await storage.recordVote(req.user.id, electionId);
+        await storage.recordVote(req.user.id, parseInt(electionId));
         console.log(`Vote recorded for user ${req.user.id} in election ${electionId} for candidate ${studentId}`);
+        
+        // Send email confirmation if we have a transaction hash
+        if (txHash && req.user.email) {
+          try {
+            await mailer.sendVoteConfirmation(
+              req.user.email,
+              txHash,
+              electionName,
+              candidateName
+            );
+            console.log(`Vote confirmation email sent to ${req.user.email} with transaction hash ${txHash}`);
+          } catch (emailError) {
+            console.error('Failed to send vote confirmation email:', emailError);
+            // Continue even if email fails - don't block the response
+          }
+        }
       }
       
       res.json({ 
