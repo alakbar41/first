@@ -25,7 +25,8 @@ let contractAddress: string = '';
  * Convert a student ID to bytes32 format for the smart contract
  */
 export function studentIdToBytes32(studentId: string): string {
-  return ethers.utils.id(studentId); // keccak256 hash
+  // Use ethers.js v6 keccak256 function
+  return ethers.keccak256(ethers.toUtf8Bytes(studentId));
 }
 
 /**
@@ -53,16 +54,16 @@ export async function getVotingContract(requireSigner = false) {
     }
   }
 
-  let provider;
   if (requireSigner) {
     // Request account access if needed
     await window.ethereum.request({ method: 'eth_requestAccounts' });
-    provider = new ethers.providers.Web3Provider(window.ethereum);
-    const signer = provider.getSigner();
+    // Using ethers.js v6 BrowserProvider instead of Web3Provider
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const signer = await provider.getSigner();
     return new ethers.Contract(contractAddress, votingContractABI, signer);
   } else {
     // Read-only access doesn't require connecting wallet
-    provider = new ethers.providers.Web3Provider(window.ethereum);
+    const provider = new ethers.BrowserProvider(window.ethereum);
     return new ethers.Contract(contractAddress, votingContractABI, provider);
   }
 }
@@ -99,14 +100,29 @@ export async function getCandidateVotes(startTime: number) {
     // This requires the backend to maintain a mapping
     const candidatesWithVotes = await Promise.all(
       result.ids.map(async (id: string, index: number) => {
-        // Get student ID from the bytes32 hash
-        const studentIdResponse = await fetch(`/api/blockchain/student-id-from-hash/${id}`);
-        const { studentId } = await studentIdResponse.json();
-        
-        return {
-          studentId,
-          voteCount: Number(result.voteCounts[index])
-        };
+        try {
+          // Get student ID from the bytes32 hash
+          const studentIdResponse = await fetch(`/api/blockchain/student-id-from-hash/${id}`);
+          
+          if (!studentIdResponse.ok) {
+            throw new Error(`Failed to get student ID for hash: ${id}`);
+          }
+          
+          const { studentId } = await studentIdResponse.json();
+          
+          return {
+            studentId: studentId || 'Unknown Student',
+            voteCount: Number(result.voteCounts[index]),
+            hash: id // Include hash for debugging
+          };
+        } catch (error) {
+          console.error(`Error mapping hash ${id} to student ID:`, error);
+          return {
+            studentId: 'Unknown Student',
+            voteCount: Number(result.voteCounts[index]),
+            hash: id
+          };
+        }
       })
     );
     
@@ -120,17 +136,45 @@ export async function getCandidateVotes(startTime: number) {
 /**
  * Vote for a candidate in an election
  */
-export async function voteForCandidate(startTime: number, studentId: string) {
+export async function voteForCandidate(startTime: number, candidateHash: string) {
   try {
     const contract = await getVotingContract(true); // Need signer for voting
-    const candidateIdBytes32 = studentIdToBytes32(studentId);
     
-    const tx = await contract.vote(startTime, candidateIdBytes32);
-    await tx.wait(); // Wait for transaction to be mined
+    console.log(`Voting for candidate with hash ${candidateHash} in election ${startTime}`);
+    
+    // Send transaction to blockchain
+    const tx = await contract.vote(startTime, candidateHash);
+    console.log('Transaction sent:', tx.hash);
+    
+    // Wait for transaction to be mined
+    const receipt = await tx.wait();
+    console.log('Transaction confirmed in block:', receipt.blockNumber);
+    
+    // Notify backend about the vote for backup/analytics
+    await fetch('/api/blockchain/vote', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        electionId: startTime,
+        candidateHash: candidateHash
+      })
+    });
     
     return true;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error voting for candidate:', error);
+    // Provide more detailed error message
+    if (error.message) {
+      if (error.message.includes('Not active')) {
+        throw new Error('This election is not currently active');
+      } else if (error.message.includes('Already voted')) {
+        throw new Error('You have already voted in this election');
+      } else if (error.message.includes('Candidate not found')) {
+        throw new Error('Invalid candidate selection');
+      }
+    }
     throw error;
   }
 }

@@ -29,16 +29,29 @@ export function registerBlockchainRoutes(app: Express) {
   app.get('/api/blockchain/student-id-from-hash/:hash', async (req: Request, res: Response) => {
     const hash = req.params.hash;
     try {
+      console.log(`Looking up student ID for hash: ${hash}`);
       const studentId = await getStudentIdFromHash(hash);
       
       if (!studentId) {
-        return res.status(404).json({ message: 'Student ID not found for hash' });
+        console.log(`No student ID found for hash: ${hash}`);
+        return res.status(404).json({ 
+          message: 'Student ID not found for hash',
+          hash: hash 
+        });
       }
       
-      res.json({ studentId });
+      console.log(`Found student ID for hash ${hash}: ${studentId}`);
+      res.json({ 
+        studentId: studentId,
+        hash: hash 
+      });
     } catch (error) {
       console.error('Error getting student ID from hash:', error);
-      res.status(500).json({ message: 'Failed to retrieve student ID' });
+      res.status(500).json({ 
+        message: 'Failed to retrieve student ID',
+        hash: hash,
+        error: error instanceof Error ? error.message : String(error)
+      });
     }
   });
 
@@ -133,17 +146,35 @@ export function registerBlockchainRoutes(app: Express) {
   // Vote in election
   app.post('/api/blockchain/vote', isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const { electionId, candidateId } = req.body;
+      const { electionId, candidateHash } = req.body;
       
-      // This endpoint just confirms the voting request was received
-      // Actual voting happens client-side with MetaMask
+      console.log(`Recording vote in election ${electionId} for candidate hash ${candidateHash}`);
+      
+      // This endpoint confirms the voting request was received
+      // and records a backup of the vote in our database
+      // Actual voting already happened client-side with MetaMask
+      
+      // Get student ID from hash (if possible) for record-keeping
+      let studentId = 'unknown';
+      try {
+        const idResult = await getStudentIdFromHash(candidateHash);
+        if (idResult) {
+          studentId = idResult;
+        }
+      } catch (e) {
+        console.warn('Could not resolve candidate hash to student ID:', e);
+      }
       
       // Record the vote in our database for backup/verification
       if (req.user?.id) {
         await storage.recordVote(req.user.id, electionId);
+        console.log(`Vote recorded for user ${req.user.id} in election ${electionId} for candidate ${studentId}`);
       }
       
-      res.json({ success: true });
+      res.json({ 
+        success: true,
+        message: 'Vote recorded successfully'
+      });
     } catch (error: any) {
       console.error('Error recording vote:', error);
       res.status(500).json({ 
