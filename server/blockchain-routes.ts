@@ -18,9 +18,12 @@ export function registerBlockchainRoutes(app: Express) {
   app.get('/api/blockchain/contract-address', (req: Request, res: Response) => {
     try {
       const address = getContractAddress();
+      // Ensure we return proper JSON instead of HTML
+      res.setHeader('Content-Type', 'application/json');
       res.json({ address });
     } catch (error) {
       console.error('Error getting contract address:', error);
+      res.setHeader('Content-Type', 'application/json');
       res.status(500).json({ message: 'Contract address not configured' });
     }
   });
@@ -34,6 +37,7 @@ export function registerBlockchainRoutes(app: Express) {
       
       if (!studentId) {
         console.log(`No student ID found for hash: ${hash}`);
+        res.setHeader('Content-Type', 'application/json');
         return res.status(404).json({ 
           message: 'Student ID not found for hash',
           hash: hash 
@@ -41,6 +45,7 @@ export function registerBlockchainRoutes(app: Express) {
       }
       
       console.log(`Found student ID for hash ${hash}: ${studentId}`);
+      res.setHeader('Content-Type', 'application/json');
       res.json({ 
         studentId: studentId,
         hash: hash 
@@ -63,11 +68,13 @@ export function registerBlockchainRoutes(app: Express) {
       // Get election from database
       const election = await storage.getElection(electionId);
       if (!election) {
+        res.setHeader('Content-Type', 'application/json');
         return res.status(404).json({ message: 'Election not found' });
       }
       
       // Check if election already has a blockchain ID
       if (election.blockchainId !== null && election.blockchainId !== undefined) {
+        res.setHeader('Content-Type', 'application/json');
         return res.status(400).json({ 
           message: 'Election already deployed to blockchain',
           blockchainId: election.blockchainId
@@ -77,6 +84,7 @@ export function registerBlockchainRoutes(app: Express) {
       // Get candidates for this election
       const electionCandidates = await storage.getElectionCandidates(electionId);
       if (electionCandidates.length < 2) {
+        res.setHeader('Content-Type', 'application/json');
         return res.status(400).json({ 
           message: 'Election must have at least 2 candidates before deploying to blockchain' 
         });
@@ -128,11 +136,13 @@ export function registerBlockchainRoutes(app: Express) {
       // Check if election exists on blockchain
       const exists = await checkElectionExists(blockchainId);
       if (!exists) {
+        res.setHeader('Content-Type', 'application/json');
         return res.status(404).json({ message: 'Election not found on blockchain' });
       }
       
       // Get results
       const results = await getElectionResults(blockchainId);
+      res.setHeader('Content-Type', 'application/json');
       res.json(results);
     } catch (error: any) {
       console.error('Error getting election results:', error);
