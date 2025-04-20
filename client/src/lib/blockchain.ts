@@ -232,6 +232,14 @@ export async function getElectionResultsFromBlockchain(electionId: string | numb
  */
 export async function voteForCandidate(startTime: number, candidateHash: string) {
   try {
+    // First, ensure MetaMask is installed and accessible
+    if (typeof window === 'undefined' || !window.ethereum) {
+      throw new Error('MetaMask is not installed or not accessible');
+    }
+    
+    // Explicitly request account access to trigger MetaMask popup if not connected
+    await window.ethereum.request({ method: 'eth_requestAccounts' });
+    
     const contract = await getVotingContract(true); // Need signer for voting
     
     console.log(`Voting for candidate with hash ${candidateHash} in election ${startTime}`);
@@ -322,10 +330,13 @@ export async function voteForCandidate(startTime: number, candidateHash: string)
 export async function hasUserVoted(startTime: number) {
   try {
     const contract = await getVotingContract();
+    
+    // Try to get accounts, but don't force a connection popup for this read-only check
+    // Use eth_accounts instead of eth_requestAccounts to avoid prompting unnecessarily
     const accounts = await window.ethereum.request({ method: 'eth_accounts' });
     
     if (accounts.length === 0) {
-      return false; // Not connected
+      return false; // Not connected, but don't force connection for this check
     }
     
     return await contract.hasVoted(startTime, accounts[0]);
@@ -416,8 +427,8 @@ export async function deployElectionToBlockchain(electionId: number) {
         throw new Error('MetaMask is not installed or not accessible');
       }
       
-      // Get the current account
-      const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+      // Request account access - this will prompt the MetaMask popup if not connected
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
       if (accounts.length === 0) {
         throw new Error('Please connect to MetaMask first');
       }
