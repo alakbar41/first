@@ -92,6 +92,9 @@ export async function getStudentIdFromHash(hash: string): Promise<string | undef
 export function getContractAddress(): string | null {
   // Use Polygon Mainnet contract address
   const address = process.env.VOTING_CONTRACT_ADDRESS;
+  if (!address) {
+    console.warn('Voting contract address not found in environment variables');
+  }
   return address || null;
 }
 

@@ -232,8 +232,8 @@ export const mailer = {
       const fromEmail = testAccount ? testAccount.user : (process.env.EMAIL_USER || 'no-reply@ada.edu.az');
       const fromName = "ADA University Voting System";
       
-      // Generate a link to view the transaction on Ethereum Sepolia Explorer
-      const explorerUrl = `https://sepolia.etherscan.io/tx/${transactionHash}`;
+      // Generate a link to view the transaction on Polygon Mainnet Explorer
+      const explorerUrl = `https://polygonscan.com/tx/${transactionHash}`;
       
       const mailOptions = {
         from: `"${fromName}" <${fromEmail}>`,
