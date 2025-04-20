@@ -100,7 +100,7 @@ router.get('/metrics/faculty-participation', isAdmin, async (req: Request, res: 
         COALESCE(vc.voted_students, 0) as voted_students,
         CASE 
           WHEN fc.total_students > 0 THEN 
-            ROUND((COALESCE(vc.voted_students, 0)::float / fc.total_students::float) * 100, 2)
+            (COALESCE(vc.voted_students, 0)::float / fc.total_students::float) * 100
           ELSE 0
         END as participation_percentage
       FROM faculty_counts fc
@@ -210,34 +210,38 @@ router.get('/metrics/active-elections', isAdmin, async (req: Request, res: Respo
 
     const activeElections = await db.execute(activeElectionsQuery) as unknown as ActiveElection[];
     
-    // Get candidate vote counts for each active election
-    const result: (ActiveElection & { candidates: Candidate[] })[] = [];
+    // Handle the case where there might be no active elections
+    const result: (ActiveElection & { candidates: Candidate[], status: string })[] = [];
     
-    for (const election of activeElections) {
-      const candidateVotesQuery = sql`
-        SELECT 
-          c.id,
-          c.full_name,
-          c.student_id,
-          c.faculty,
-          COUNT(v.id) as vote_count
-        FROM candidates c
-        JOIN election_candidates ec ON c.id = ec.candidate_id
-        LEFT JOIN votes v ON v.candidate_id = c.id AND v.election_id = ${election.id}
-        WHERE ec.election_id = ${election.id}
-        GROUP BY c.id, c.full_name, c.student_id, c.faculty
-        ORDER BY vote_count DESC
-      `;
-      
-      const candidates = await db.execute(candidateVotesQuery) as unknown as Candidate[];
-      
-      result.push({
-        ...election,
-        candidates: candidates.map(c => ({
-          ...c,
-          faculty_name: getFacultyName(c.faculty)
-        }))
-      });
+    // Ensure activeElections is an array before iterating
+    if (Array.isArray(activeElections) && activeElections.length > 0) {
+      for (const election of activeElections) {
+        const candidateVotesQuery = sql`
+          SELECT 
+            c.id,
+            c.full_name,
+            c.student_id,
+            c.faculty,
+            COUNT(v.id) as vote_count
+          FROM candidates c
+          JOIN election_candidates ec ON c.id = ec.candidate_id
+          LEFT JOIN votes v ON v.candidate_id = c.id AND v.election_id = ${election.id}
+          WHERE ec.election_id = ${election.id}
+          GROUP BY c.id, c.full_name, c.student_id, c.faculty
+          ORDER BY vote_count DESC
+        `;
+        
+        const candidates = await db.execute(candidateVotesQuery) as unknown as Candidate[];
+        
+        result.push({
+          ...election,
+          status: 'active',
+          candidates: candidates.map(c => ({
+            ...c,
+            faculty_name: getFacultyName(c.faculty)
+          }))
+        });
+      }
     }
     
     res.json(result);
@@ -272,7 +276,7 @@ router.get('/metrics/participation-overview', isAdmin, async (req: Request, res:
         total_eligible_voters,
         CASE 
           WHEN total_eligible_voters > 0 THEN 
-            ROUND((voters::float / total_eligible_voters::float) * 100, 2)
+            (voters::float / total_eligible_voters::float) * 100
           ELSE 0
         END as participation_percentage
       FROM election_stats

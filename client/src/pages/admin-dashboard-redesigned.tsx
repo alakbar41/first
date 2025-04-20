@@ -389,10 +389,12 @@ const VotingTimeline = () => {
   });
 
   // Process data for timeline chart
-  const chartData = timelineData?.map(item => ({
-    hour: new Date(item.hour).toLocaleTimeString([], { hour: '2-digit', hour12: true }),
-    votes: item.vote_count
-  })) || [];
+  const chartData = Array.isArray(timelineData) 
+    ? timelineData.map(item => ({
+        hour: new Date(item.hour).toLocaleTimeString([], { hour: '2-digit', hour12: true }),
+        votes: item.vote_count
+      })) 
+    : [];
 
   return (
     <div className="bg-white rounded-lg shadow-sm overflow-hidden">
