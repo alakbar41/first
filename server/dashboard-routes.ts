@@ -83,7 +83,7 @@ router.get('/metrics/faculty-participation', isAdmin, async (req: Request, res: 
           u.faculty, 
           COUNT(*) as total_students
         FROM users u
-        WHERE u.role = 'student'
+        WHERE u.is_admin = false
           AND u.faculty NOT IN ('Administration') -- Exclude admin faculties
         GROUP BY u.faculty
       ),
@@ -93,7 +93,7 @@ router.get('/metrics/faculty-participation', isAdmin, async (req: Request, res: 
           COUNT(DISTINCT v.user_id) as voted_students
         FROM votes v
         JOIN users u ON v.user_id = u.id
-        WHERE u.role = 'student'
+        WHERE u.is_admin = false
           AND u.faculty NOT IN ('Administration') -- Exclude admin faculties
         ${electionId ? sql`AND v.election_id = ${electionId}` : sql``}
         GROUP BY u.faculty
