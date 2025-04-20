@@ -505,6 +505,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Candidate routes
+  // Route with specific path first (because order matters in Express)
+  app.get("/api/candidates/by-student-id/:studentId", async (req, res) => {
+    try {
+      const { studentId } = req.params;
+      
+      if (!studentId) {
+        return res.status(400).json({ message: "Student ID is required" });
+      }
+      
+      const candidate = await storage.getCandidateByStudentId(studentId);
+      
+      if (!candidate) {
+        return res.status(404).json({ message: "Candidate not found" });
+      }
+      
+      res.json(candidate);
+    } catch (error) {
+      console.error("Failed to fetch candidate by student ID:", error);
+      res.status(500).json({ message: "Failed to fetch candidate" });
+    }
+  });
+  
+  // Then general candidates route
   app.get("/api/candidates", async (req, res) => {
     try {
       const candidates = await storage.getCandidates();
@@ -514,6 +537,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Then the ID-specific route
   app.get("/api/candidates/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -843,12 +867,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Debug logging
       console.log(`Election ${election.id} access request - Status: ${election.status}, Viewing results: ${isViewingResults}, Is admin: ${isAdmin}`);
       
-      // Allow access to candidates for completed elections when viewing results
-      if (!isAdmin && 
-          !(election.status === 'active' || 
-            election.status === 'upcoming' || 
-            (election.status === 'completed' && isViewingResults))) {
-        // Students can only access active or upcoming elections, or completed elections when viewing results
+      // IMPORTANT: For any election that's completed, we'll get candidates from blockchain directly
+      // so we allow access to get the election details no matter what
+      if (election.status === 'completed') {
+        console.log(`Allowing access to completed election ${election.id} for results viewing`);
+      } 
+      // For active or upcoming elections, check normal permissions
+      else if (!isAdmin && !(election.status === 'active' || election.status === 'upcoming')) {
+        // Students can only access active or upcoming elections normally
         console.log(`Student tried to access candidates for election ${election.id} but was denied. Status: ${election.status}, Viewing results: ${isViewingResults}`);
         return res.status(404).json({ message: "Election not found" });
       }
