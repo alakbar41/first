@@ -14,7 +14,7 @@ import AdminElections from "@/pages/admin-elections"; // Admin elections page
 import AdminCandidates from "@/pages/admin-candidates";
 import TicketsPage from "@/pages/tickets-page";
 import AdminTickets from "@/pages/admin-tickets";
-import AdminArchitecture from "@/pages/admin-architecture";
+// Admin Architecture page has been removed
 import { SettingsPage } from "@/pages/settings";
 import { ProtectedRoute, AdminProtectedRoute } from "./lib/protected-route";
 import { FC, ReactNode } from 'react';
@@ -38,7 +38,7 @@ function Router() {
       <AdminProtectedRoute path="/admin/elections" component={AdminElections} />
       <AdminProtectedRoute path="/admin/candidates" component={AdminCandidates} />
       <AdminProtectedRoute path="/admin/tickets" component={AdminTickets} />
-      <AdminProtectedRoute path="/admin-architecture" component={AdminArchitecture} />
+      {/* Architecture route removed */}
       
       {/* Auth routes */}
       <Route path="/auth" component={AuthPage} />
