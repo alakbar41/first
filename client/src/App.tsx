@@ -34,6 +34,7 @@ function Router() {
       
       {/* Admin routes - using AdminProtectedRoute to ensure admin validation */}
       <AdminProtectedRoute path="/admin" component={AdminDashboard} />
+      <AdminProtectedRoute path="/admin/elections" component={AdminDashboard} />
       <AdminProtectedRoute path="/admin/candidates" component={AdminCandidates} />
       <AdminProtectedRoute path="/admin/tickets" component={AdminTickets} />
       <AdminProtectedRoute path="/admin-architecture" component={AdminArchitecture} />

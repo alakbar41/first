@@ -38,8 +38,8 @@ export function AdminSidebar({ user }: SidebarProps) {
     {
       title: "Elections",
       icon: Vote,
-      path: "/admin",
-      active: location === "/admin"
+      path: "/admin/elections",
+      active: location.includes("/admin/elections")
     },
     {
       title: "Candidates",
