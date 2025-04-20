@@ -154,12 +154,38 @@ const Calendar = () => {
 // Elections list component
 const ElectionsList = () => {
   // We're using participation overview to get proper status info
-  const { data: electionsData } = useQuery<ParticipationOverview[]>({
+  const { data: electionsData, isLoading } = useQuery<ParticipationOverview[]>({
     queryKey: ['/api/dashboard/metrics/participation-overview'],
   });
 
   // Make sure we have an array of elections
   const elections = Array.isArray(electionsData) ? electionsData : [];
+
+  // Calculate summary metrics
+  const electionStats = React.useMemo(() => {
+    const stats = {
+      total: elections.length,
+      active: elections.filter(e => e.status === 'active').length,
+      upcoming: elections.filter(e => e.status === 'upcoming').length,
+      completed: elections.filter(e => e.status === 'completed').length,
+      averageParticipation: 0,
+      highestParticipation: 0
+    };
+    
+    if (elections.length > 0) {
+      // Calculate average participation across all elections
+      const totalParticipation = elections.reduce((sum, election) => 
+        sum + election.participation_percentage, 0);
+      stats.averageParticipation = Math.round(totalParticipation / elections.length);
+      
+      // Find highest participation rate
+      stats.highestParticipation = Math.max(
+        ...elections.map(election => election.participation_percentage)
+      );
+    }
+    
+    return stats;
+  }, [elections]);
 
   // Map status to display values and colors
   const getStatusBadgeClass = (status: string) => {
@@ -174,23 +200,97 @@ const ElectionsList = () => {
         return 'bg-blue-100 text-blue-800';
     }
   };
+  
+  // Sort elections: active first, then upcoming, then completed
+  const sortedElections = React.useMemo(() => {
+    const statusPriority = { 'active': 0, 'upcoming': 1, 'completed': 2 };
+    
+    return [...elections].sort((a, b) => {
+      const priorityA = statusPriority[a.status as keyof typeof statusPriority] || 3;
+      const priorityB = statusPriority[b.status as keyof typeof statusPriority] || 3;
+      return priorityA - priorityB;
+    });
+  }, [elections]);
 
   return (
     <div className="bg-white rounded-lg shadow-sm overflow-hidden">
       <div className="px-4 py-3 border-b border-gray-100">
-        <h2 className="text-base font-medium text-gray-800">Elections</h2>
+        <h2 className="text-base font-medium text-gray-800">Elections Summary</h2>
       </div>
-      <div className="divide-y divide-gray-100">
-        {elections.length > 0 ? (
-          elections.map((election) => (
-            <div key={election.id} className={`p-3 flex items-center justify-between ${
-              election.status === 'active' ? 'hover:bg-purple-50' : 'hover:bg-gray-50'
-            } transition duration-150`}>
+      
+      {/* Summary stats section */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3 bg-gray-50 border-b border-gray-100">
+        <div className="text-center p-2">
+          <div className="text-xs text-gray-500">Total</div>
+          <div className="text-lg font-semibold text-gray-800">{electionStats.total}</div>
+        </div>
+        <div className="text-center p-2">
+          <div className="text-xs text-purple-600">Active</div>
+          <div className="text-lg font-semibold text-purple-800">{electionStats.active}</div>
+        </div>
+        <div className="text-center p-2">
+          <div className="text-xs text-green-600">Upcoming</div>
+          <div className="text-lg font-semibold text-green-800">{electionStats.upcoming}</div>
+        </div>
+        <div className="text-center p-2">
+          <div className="text-xs text-gray-500">Completed</div>
+          <div className="text-lg font-semibold text-gray-800">{electionStats.completed}</div>
+        </div>
+      </div>
+      
+      {/* Participation stats */}
+      <div className="p-3 border-b border-gray-100 bg-white">
+        <div className="flex items-center justify-between mb-1">
+          <div className="text-xs text-gray-500">Average Participation Rate</div>
+          <div className="text-xs font-medium text-gray-800">{electionStats.averageParticipation}%</div>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-1.5">
+          <div 
+            className="bg-purple-600 h-1.5 rounded-full" 
+            style={{ width: `${electionStats.averageParticipation}%` }}
+          ></div>
+        </div>
+      </div>
+      
+      {/* Elections list */}
+      <div className="divide-y divide-gray-100 max-h-[240px] overflow-y-auto">
+        {isLoading ? (
+          <div className="p-6 text-center">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-700 mx-auto"></div>
+            <p className="text-gray-500 text-xs mt-2">Loading elections...</p>
+          </div>
+        ) : sortedElections.length > 0 ? (
+          sortedElections.map((election) => (
+            <div 
+              key={election.id} 
+              className={`p-3 flex items-center justify-between ${
+                election.status === 'active' ? 'hover:bg-purple-50' : 'hover:bg-gray-50'
+              } transition duration-150`}
+            >
               <div className="flex-1">
-                <h3 className="text-sm font-medium text-gray-900">{election.name}</h3>
-                <span className={`text-xs px-2 py-0.5 rounded-full ${getStatusBadgeClass(election.status)}`}>
-                  {election.status.charAt(0).toUpperCase() + election.status.slice(1)}
-                </span>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-medium text-gray-900">{election.name}</h3>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${getStatusBadgeClass(election.status)}`}>
+                    {election.status.charAt(0).toUpperCase() + election.status.slice(1)}
+                  </span>
+                </div>
+                <div className="flex items-center mt-1 text-xs text-gray-500">
+                  <span className="mr-2">{election.position}</span>
+                  <span>
+                    {election.voters}/{election.total_eligible_voters} voted 
+                    ({election.participation_percentage}%)
+                  </span>
+                </div>
+                {/* Participation progress bar */}
+                <div className="w-full bg-gray-200 rounded-full h-1 mt-1">
+                  <div 
+                    className={`h-1 rounded-full ${
+                      election.status === 'active' ? 'bg-purple-600' : 
+                      election.status === 'upcoming' ? 'bg-green-500' : 'bg-gray-400'
+                    }`}
+                    style={{ width: `${election.participation_percentage}%` }}
+                  ></div>
+                </div>
               </div>
             </div>
           ))
@@ -199,6 +299,11 @@ const ElectionsList = () => {
             <p className="text-gray-500 text-sm">No elections available</p>
           </div>
         )}
+      </div>
+      
+      {/* Footer with data timestamp */}
+      <div className="px-3 py-2 text-xs text-gray-400 bg-gray-50 border-t border-gray-100">
+        Last updated: {new Date().toLocaleTimeString()}
       </div>
     </div>
   );
