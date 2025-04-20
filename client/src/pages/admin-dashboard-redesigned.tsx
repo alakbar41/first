@@ -804,6 +804,10 @@ export default function AdminDashboardRedesigned() {
   const totalVoters = Array.isArray(facultyData) 
     ? facultyData.reduce((sum, faculty) => sum + faculty.total_students, 0)
     : 0;
+    
+  // Debugging the faculty data and totalVoters calculation
+  console.log("Faculty Data:", facultyData);
+  console.log("Calculated Total Voters:", totalVoters);
   
   // Count new tickets
   const newTickets = Array.isArray(ticketsData) 
@@ -848,7 +852,10 @@ export default function AdminDashboardRedesigned() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Students</p>
-                    <h3 className="text-2xl font-bold text-gray-900">{totalVoters}</h3>
+                    <h3 className="text-2xl font-bold text-gray-900">
+                      {/* Display debugging info */}
+                      {totalVoters} (raw value)
+                    </h3>
                   </div>
                 </div>
               </CardContent>
