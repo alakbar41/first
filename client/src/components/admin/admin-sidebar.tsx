@@ -38,8 +38,8 @@ export function AdminSidebar({ user }: SidebarProps) {
     {
       title: "Elections",
       icon: Vote,
-      path: "/admin/elections",
-      active: location.includes("/admin/elections")
+      path: "/admin",
+      active: location === "/admin"
     },
     {
       title: "Candidates",
@@ -56,8 +56,8 @@ export function AdminSidebar({ user }: SidebarProps) {
     {
       title: "Voters",
       icon: FileText,
-      path: "/admin/voters",
-      active: location.includes("/admin/voters")
+      path: "/admin",
+      active: location === "/admin"
     },
     {
       title: "Architecture",
@@ -68,8 +68,8 @@ export function AdminSidebar({ user }: SidebarProps) {
     {
       title: "Settings",
       icon: Settings,
-      path: "/admin/settings",
-      active: location.includes("/admin/settings")
+      path: "/settings",
+      active: location === "/settings"
     }
   ];
 
