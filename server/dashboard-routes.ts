@@ -133,6 +133,73 @@ router.get('/metrics/faculty-participation', isAdmin, async (req: Request, res: 
   }
 });
 
+// Completed elections data for dashboard
+router.get('/metrics/completed-elections', isAdmin, async (req: Request, res: Response) => {
+  try {
+    // Get completed elections
+    const completedElectionsQuery = sql`
+      SELECT 
+        e.id,
+        e.name,
+        e.position,
+        e.blockchain_id,
+        COUNT(v.id) as vote_count,
+        (SELECT COUNT(*) FROM users WHERE role = 'student') as total_eligible_voters
+      FROM 
+        elections e
+      LEFT JOIN 
+        votes v ON e.id = v.election_id
+      WHERE 
+        e.status = 'completed'
+      GROUP BY 
+        e.id, e.name, e.position, e.blockchain_id
+      ORDER BY 
+        e.updated_at DESC
+    `;
+
+    const completedElections = await db.execute(completedElectionsQuery) as unknown as ActiveElection[];
+    
+    // Handle the case where there might be no completed elections
+    const result: (ActiveElection & { candidates: Candidate[], status: string })[] = [];
+    
+    // Ensure completedElections is an array before iterating
+    if (Array.isArray(completedElections) && completedElections.length > 0) {
+      for (const election of completedElections) {
+        const candidateVotesQuery = sql`
+          SELECT 
+            c.id,
+            c.full_name,
+            c.student_id,
+            c.faculty,
+            COUNT(v.id) as vote_count
+          FROM candidates c
+          JOIN election_candidates ec ON c.id = ec.candidate_id
+          LEFT JOIN votes v ON v.candidate_id = c.id AND v.election_id = ${election.id}
+          WHERE ec.election_id = ${election.id}
+          GROUP BY c.id, c.full_name, c.student_id, c.faculty
+          ORDER BY vote_count DESC
+        `;
+        
+        const candidates = await db.execute(candidateVotesQuery) as unknown as Candidate[];
+        
+        result.push({
+          ...election,
+          status: 'completed',
+          candidates: candidates.map(c => ({
+            ...c,
+            faculty_name: getFacultyName(c.faculty)
+          }))
+        });
+      }
+    }
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Error fetching completed election stats:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 // Time series voting data
 router.get('/metrics/voting-timeline', isAdmin, async (req: Request, res: Response) => {
   try {

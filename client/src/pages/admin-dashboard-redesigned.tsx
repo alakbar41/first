@@ -201,8 +201,8 @@ const ElectionsList = () => {
   );
 };
 
-// Candidate Analytics component
-const CandidateAnalytics = () => {
+// Live Election Results component
+const LiveElectionResults = () => {
   const [selectedElection, setSelectedElection] = useState<string>('');
   const { data: activeElections } = useQuery<ActiveElection[]>({
     queryKey: ['/api/dashboard/metrics/active-elections'],
@@ -226,19 +226,25 @@ const CandidateAnalytics = () => {
   return (
     <div className="bg-white rounded-lg shadow-sm overflow-hidden">
       <div className="px-4 py-3 flex justify-between items-center border-b border-gray-100">
-        <h2 className="text-base font-medium text-gray-800">Candidate Analytics</h2>
-        <Select value={selectedElection} onValueChange={setSelectedElection}>
-          <SelectTrigger className="w-[180px] h-8 text-xs">
-            <SelectValue placeholder="Select election" />
-          </SelectTrigger>
-          <SelectContent>
-            {activeElections?.map((election) => (
-              <SelectItem key={election.id} value={election.id.toString()}>
-                {election.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <h2 className="text-base font-medium text-gray-800">Live Election Results</h2>
+        <div className="flex items-center space-x-2">
+          <div className="flex items-center">
+            <span className="w-2 h-2 rounded-full bg-green-500 mr-1.5 animate-pulse"></span>
+            <span className="text-xs text-gray-500">Live</span>
+          </div>
+          <Select value={selectedElection} onValueChange={setSelectedElection}>
+            <SelectTrigger className="w-[180px] h-8 text-xs">
+              <SelectValue placeholder="Select active election" />
+            </SelectTrigger>
+            <SelectContent>
+              {activeElections?.map((election) => (
+                <SelectItem key={election.id} value={election.id.toString()}>
+                  {election.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
       <div className="p-4 h-72">
         {candidateData.length > 0 ? (
@@ -265,7 +271,7 @@ const CandidateAnalytics = () => {
           </ResponsiveContainer>
         ) : (
           <div className="h-full flex items-center justify-center">
-            <p className="text-gray-500 text-sm">No candidate data available</p>
+            <p className="text-gray-500 text-sm">No active elections available</p>
           </div>
         )}
       </div>
@@ -273,35 +279,35 @@ const CandidateAnalytics = () => {
   );
 };
 
-// Candidate Performance List
-const CandidatePerformanceList = () => {
+// Completed Elections Results component
+const CompletedElectionWinners = () => {
   const [selectedElection, setSelectedElection] = useState<string>('');
-  const { data: activeElections } = useQuery<ActiveElection[]>({
-    queryKey: ['/api/dashboard/metrics/active-elections'],
+  const { data: completedElections } = useQuery<ActiveElection[]>({
+    queryKey: ['/api/dashboard/metrics/completed-elections'],
   });
 
-  const filteredElection = activeElections?.find(e => e.id.toString() === selectedElection);
+  const filteredElection = completedElections?.find(e => e.id.toString() === selectedElection);
   const candidates = filteredElection?.candidates || [];
 
-  // Sort candidates by vote count (descending)
+  // Sort candidates by vote count (descending) to show winners first
   const sortedCandidates = [...candidates].sort((a, b) => b.vote_count - a.vote_count);
 
   useEffect(() => {
-    if (activeElections && activeElections.length > 0 && !selectedElection) {
-      setSelectedElection(activeElections[0].id.toString());
+    if (completedElections && completedElections.length > 0 && !selectedElection) {
+      setSelectedElection(completedElections[0].id.toString());
     }
-  }, [activeElections, selectedElection]);
+  }, [completedElections, selectedElection]);
 
   return (
     <div className="bg-white rounded-lg shadow-sm overflow-hidden">
       <div className="px-4 py-3 flex justify-between items-center border-b border-gray-100">
-        <h2 className="text-base font-medium text-gray-800">Candidate Performances</h2>
+        <h2 className="text-base font-medium text-gray-800">Election Winners</h2>
         <Select value={selectedElection} onValueChange={setSelectedElection}>
           <SelectTrigger className="w-[180px] h-8 text-xs">
-            <SelectValue placeholder="Select election" />
+            <SelectValue placeholder="Select completed election" />
           </SelectTrigger>
           <SelectContent>
-            {activeElections?.map((election) => (
+            {completedElections?.map((election) => (
               <SelectItem key={election.id} value={election.id.toString()}>
                 {election.name}
               </SelectItem>
@@ -312,25 +318,42 @@ const CandidatePerformanceList = () => {
       <div className="divide-y divide-gray-100">
         {sortedCandidates.length > 0 ? (
           sortedCandidates.map((candidate, index) => (
-            <div key={candidate.id} className="p-4 flex items-center justify-between">
+            <div key={candidate.id} 
+                className={`p-4 flex items-center justify-between ${
+                  index === 0 ? 'bg-purple-50' : 'bg-white'
+                }`}
+            >
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 flex-shrink-0 rounded-full bg-purple-100 flex items-center justify-center overflow-hidden">
-                  <span className="text-purple-700 font-medium">{candidate.full_name.slice(0, 2)}</span>
+                {index === 0 && (
+                  <div className="absolute -ml-2">
+                    <Trophy className="h-5 w-5 text-yellow-500" />
+                  </div>
+                )}
+                <div className={`w-10 h-10 flex-shrink-0 rounded-full ${
+                  index === 0 ? 'bg-purple-200' : 'bg-purple-100'
+                } flex items-center justify-center overflow-hidden`}>
+                  <span className={`${
+                    index === 0 ? 'text-purple-800' : 'text-purple-700'
+                  } font-medium`}>{candidate.full_name.slice(0, 2)}</span>
                 </div>
                 <div>
-                  <h3 className="text-sm font-medium text-gray-900">{candidate.full_name}</h3>
-                  <p className="text-xs text-gray-500">{candidate.faculty_name || candidate.faculty}</p>
+                  <h3 className={`text-sm font-medium ${
+                    index === 0 ? 'text-purple-900' : 'text-gray-900'
+                  }`}>{candidate.full_name}</h3>
+                  <p className="text-xs text-gray-500">
+                    {candidate.faculty_name || candidate.faculty}
+                    {index === 0 && <span className="ml-2 text-purple-700 font-medium">• Winner</span>}
+                  </p>
                 </div>
               </div>
-              <div className="text-sm font-medium">{candidate.vote_count} votes</div>
-              <Button variant="ghost" size="sm" className="p-0 h-8 w-8">
-                <ChevronDown className="h-4 w-4" />
-              </Button>
+              <div className={`text-sm font-medium ${
+                index === 0 ? 'text-purple-700' : ''
+              }`}>{candidate.vote_count} votes</div>
             </div>
           ))
         ) : (
           <div className="p-6 text-center">
-            <p className="text-gray-500 text-sm">No candidate data available</p>
+            <p className="text-gray-500 text-sm">No completed elections available</p>
           </div>
         )}
       </div>
@@ -338,7 +361,7 @@ const CandidatePerformanceList = () => {
   );
 };
 
-// Faculty distribution component
+// Faculty distribution component with enhanced details
 const FacultyDistribution = () => {
   const { data: facultyData } = useQuery<FacultyParticipation[]>({
     queryKey: ['/api/dashboard/metrics/faculty-participation'],
@@ -348,18 +371,23 @@ const FacultyDistribution = () => {
   const pieData = Array.isArray(facultyData) 
     ? facultyData.map(faculty => ({
         name: faculty.faculty_name || faculty.faculty,
-        value: faculty.total_students,
+        value: parseInt(faculty.total_students.toString()),
+        participation: faculty.participation_percentage,
         fill: `#${Math.floor(Math.random()*16777215).toString(16)}` // Random color
       }))
     : [];
 
   // Custom colors for pie chart
   const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088FE'];
+  
+  // Calculate total students
+  const totalStudents = pieData.reduce((sum, faculty) => sum + faculty.value, 0);
 
   return (
     <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-      <div className="px-4 py-3 border-b border-gray-100">
+      <div className="px-4 py-3 border-b border-gray-100 flex justify-between items-center">
         <h2 className="text-base font-medium text-gray-800">Faculty Distribution</h2>
+        <div className="text-xs text-gray-500">Total: {totalStudents} students</div>
       </div>
       <div className="p-4 h-72">
         {pieData.length > 0 ? (
@@ -379,7 +407,14 @@ const FacultyDistribution = () => {
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip formatter={(value) => [`${value} students`, 'Students']} />
+              <Tooltip 
+                formatter={(value, name, props) => {
+                  if (name === 'value') {
+                    return [`${value} students (${props.payload.participation.toFixed(1)}% voted)`, 'Students'];
+                  }
+                  return [value, name];
+                }}
+              />
               <Legend />
             </PieChart>
           </ResponsiveContainer>
@@ -389,45 +424,127 @@ const FacultyDistribution = () => {
           </div>
         )}
       </div>
+      
+      {/* Faculty breakdown table */}
+      <div className="px-4 py-2 border-t border-gray-100">
+        <h3 className="text-xs font-medium text-gray-500 mb-2">Faculty Breakdown</h3>
+        <div className="overflow-x-auto max-h-48">
+          <table className="w-full text-xs">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-2 py-1 text-left font-medium text-gray-500">Faculty</th>
+                <th className="px-2 py-1 text-right font-medium text-gray-500">Students</th>
+                <th className="px-2 py-1 text-right font-medium text-gray-500">Participation</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {Array.isArray(facultyData) && facultyData.map((faculty, index) => (
+                <tr key={index} className="hover:bg-gray-50">
+                  <td className="px-2 py-1 text-gray-700">{faculty.faculty_name || faculty.faculty}</td>
+                  <td className="px-2 py-1 text-right text-gray-700">{faculty.total_students}</td>
+                  <td className="px-2 py-1 text-right">
+                    <span className={`inline-block w-8 text-center rounded px-1 text-xs ${
+                      faculty.participation_percentage > 50 ? 'bg-green-100 text-green-800' : 
+                      faculty.participation_percentage > 25 ? 'bg-yellow-100 text-yellow-800' : 
+                      'bg-red-100 text-red-800'
+                    }`}>
+                      {faculty.participation_percentage.toFixed(0)}%
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 };
 
-// Voting Timeline component
+// Voting Timeline component with improved visualization
 const VotingTimeline = () => {
+  const [electionFilter, setElectionFilter] = useState<string>('all');
   const { data: timelineData } = useQuery<VoteTimeline[]>({
-    queryKey: ['/api/dashboard/metrics/voting-timeline'],
+    queryKey: ['/api/dashboard/metrics/voting-timeline', electionFilter !== 'all' ? electionFilter : null],
+  });
+  
+  const { data: electionOptions } = useQuery<ParticipationOverview[]>({
+    queryKey: ['/api/dashboard/metrics/participation-overview'],
   });
 
   // Process data for timeline chart
   const chartData = Array.isArray(timelineData) 
     ? timelineData.map(item => ({
-        hour: new Date(item.hour).toLocaleTimeString([], { hour: '2-digit', hour12: true }),
-        votes: item.vote_count
-      })) 
+        hour: new Date(item.hour).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }),
+        votes: item.vote_count,
+        timestamp: new Date(item.hour).getTime() // For sorting
+      })).sort((a, b) => a.timestamp - b.timestamp) // Ensure chronological order
     : [];
+    
+  // Format date for display
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  };
 
   return (
     <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-      <div className="px-4 py-3 border-b border-gray-100">
+      <div className="px-4 py-3 flex justify-between items-center border-b border-gray-100">
         <h2 className="text-base font-medium text-gray-800">Voting Timeline</h2>
+        <Select value={electionFilter} onValueChange={setElectionFilter}>
+          <SelectTrigger className="w-[180px] h-8 text-xs">
+            <SelectValue placeholder="Filter by election" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Elections</SelectItem>
+            {electionOptions?.map((election) => (
+              <SelectItem key={election.id} value={election.id.toString()}>
+                {election.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <div className="p-4 h-72">
         {chartData.length > 0 ? (
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData}>
+            <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id="colorVotes" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/>
+                  <stop offset="95%" stopColor="#8884d8" stopOpacity={0.2}/>
+                </linearGradient>
+              </defs>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="hour" />
               <YAxis />
               <Tooltip />
-              <Bar dataKey="votes" fill="#6d28d9" />
-            </BarChart>
+              <Legend />
+              <Area 
+                type="monotone" 
+                dataKey="votes" 
+                stroke="#8884d8" 
+                fillOpacity={1} 
+                fill="url(#colorVotes)" 
+                name="Votes"
+              />
+            </AreaChart>
           </ResponsiveContainer>
         ) : (
           <div className="h-full flex items-center justify-center">
             <p className="text-gray-500 text-sm">No voting timeline data available</p>
           </div>
         )}
+      </div>
+      <div className="px-4 py-2 border-t border-gray-100">
+        <div className="flex justify-between text-xs text-gray-500">
+          <span>Total votes: {chartData.reduce((sum, item) => sum + item.votes, 0)}</span>
+          {electionFilter !== 'all' && electionOptions?.find(e => e.id.toString() === electionFilter) && (
+            <span>
+              Election: {electionOptions.find(e => e.id.toString() === electionFilter)?.name}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );
