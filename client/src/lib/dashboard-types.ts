@@ -10,6 +10,8 @@ export type FacultyParticipation = {
 export type VoteTimeline = {
   hour: string;
   vote_count: number;
+  formatted_hour?: string;
+  day_of_week?: string;
 };
 
 export type BlockchainTransaction = {
