@@ -500,10 +500,10 @@ const FacultyDistribution = () => {
   );
 };
 
-// Voting Timeline component with improved visualization
+// Voting Timeline component with enhanced visualization and insights
 const VotingTimeline = () => {
   const [electionFilter, setElectionFilter] = useState<string>('all');
-  const { data: timelineData } = useQuery<VoteTimeline[]>({
+  const { data: timelineData, isLoading } = useQuery<VoteTimeline[]>({
     queryKey: ['/api/dashboard/metrics/voting-timeline', electionFilter !== 'all' ? electionFilter : null],
   });
   
@@ -514,41 +514,128 @@ const VotingTimeline = () => {
   // Ensure we have proper array data
   const electionOptions = Array.isArray(electionOptionsData) ? electionOptionsData : [];
 
-  // Process data for timeline chart
-  const chartData = Array.isArray(timelineData) 
-    ? timelineData.map(item => ({
-        hour: new Date(item.hour).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }),
-        votes: item.vote_count,
-        timestamp: new Date(item.hour).getTime() // For sorting
-      })).sort((a, b) => a.timestamp - b.timestamp) // Ensure chronological order
-    : [];
+  // Process data for timeline chart with enhanced formatting
+  const chartData = React.useMemo(() => {
+    if (!Array.isArray(timelineData) || timelineData.length === 0) return [];
     
-  // Format date for display
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  };
+    return timelineData.map(item => {
+      // Parse date from the timestamp
+      const date = new Date(item.hour);
+      return {
+        hour: item.formatted_hour || date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }),
+        votes: parseInt(String(item.vote_count)) || 0,
+        timestamp: date.getTime(), // For sorting
+        dayOfWeek: item.day_of_week?.trim() || date.toLocaleDateString([], {weekday: 'short'}),
+        fullDate: date.toLocaleDateString([], {month: 'short', day: 'numeric'})
+      };
+    }).sort((a, b) => a.timestamp - b.timestamp); // Ensure chronological order
+  }, [timelineData]);
+  
+  // Calculate peak voting times
+  const peakVotingTime = React.useMemo(() => {
+    if (chartData.length === 0) return null;
+    
+    const maxVotes = Math.max(...chartData.map(item => item.votes));
+    if (maxVotes === 0) return null;
+    
+    const peakTimes = chartData.filter(item => item.votes === maxVotes);
+    return peakTimes.length > 0 ? peakTimes : null;
+  }, [chartData]);
+  
+  // Generate insights about voting patterns
+  const votingInsights = React.useMemo(() => {
+    if (chartData.length === 0) return [];
+    
+    const insights = [];
+    
+    // Group by day of week to find which days have most votes
+    const dayGroups = chartData.reduce((acc, item) => {
+      const day = item.dayOfWeek;
+      if (!acc[day]) acc[day] = 0;
+      acc[day] += item.votes;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    // Find most active day
+    const mostActiveDayEntries = Object.entries(dayGroups).sort((a, b) => b[1] - a[1]);
+    const mostActiveDay = mostActiveDayEntries[0];
+    
+    if (mostActiveDay && mostActiveDay[1] > 0) {
+      insights.push(`Most votes occur on ${mostActiveDay[0]}`);
+    }
+    
+    // Check if there are clear peak times
+    if (peakVotingTime && peakVotingTime.length > 0 && peakVotingTime[0].votes > 0) {
+      insights.push(`Peak voting time: ${peakVotingTime[0].hour}`);
+    }
+    
+    // Look for voting trends (morning vs afternoon vs evening)
+    const morningVotes = chartData.filter(d => {
+      const hour = new Date(d.timestamp).getHours();
+      return hour >= 6 && hour < 12;
+    }).reduce((sum, d) => sum + d.votes, 0);
+    
+    const afternoonVotes = chartData.filter(d => {
+      const hour = new Date(d.timestamp).getHours();
+      return hour >= 12 && hour < 18;
+    }).reduce((sum, d) => sum + d.votes, 0);
+    
+    const eveningVotes = chartData.filter(d => {
+      const hour = new Date(d.timestamp).getHours();
+      return hour >= 18 || hour < 6;
+    }).reduce((sum, d) => sum + d.votes, 0);
+    
+    const maxTimeOfDay = Math.max(morningVotes, afternoonVotes, eveningVotes);
+    
+    if (maxTimeOfDay > 0) {
+      if (maxTimeOfDay === morningVotes) {
+        insights.push('Students prefer voting in the morning');
+      } else if (maxTimeOfDay === afternoonVotes) {
+        insights.push('Students prefer voting in the afternoon');
+      } else {
+        insights.push('Students prefer voting in the evening');
+      }
+    }
+    
+    return insights;
+  }, [chartData, peakVotingTime]);
+  
+  // Total votes cast
+  const totalVotes = React.useMemo(() => 
+    chartData.reduce((sum, item) => sum + item.votes, 0), 
+    [chartData]
+  );
 
   return (
     <div className="bg-white rounded-lg shadow-sm overflow-hidden">
       <div className="px-4 py-3 flex justify-between items-center border-b border-gray-100">
         <h2 className="text-base font-medium text-gray-800">Voting Timeline</h2>
-        <Select value={electionFilter} onValueChange={setElectionFilter}>
-          <SelectTrigger className="w-[180px] h-8 text-xs">
-            <SelectValue placeholder="Filter by election" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Elections</SelectItem>
-            {electionOptions.map((election) => (
-              <SelectItem key={election.id} value={election.id.toString()}>
-                {election.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <div className="text-xs text-gray-500">
+            <span className="font-medium">{totalVotes}</span> votes
+          </div>
+          <Select value={electionFilter} onValueChange={setElectionFilter}>
+            <SelectTrigger className="w-[180px] h-8 text-xs">
+              <SelectValue placeholder="Filter by election" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Elections</SelectItem>
+              {electionOptions.map((election) => (
+                <SelectItem key={election.id} value={election.id.toString()}>
+                  {election.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
+      
       <div className="p-4 h-72">
-        {chartData.length > 0 ? (
+        {isLoading ? (
+          <div className="h-full flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-700"></div>
+          </div>
+        ) : chartData.length > 0 ? (
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
               <defs>
@@ -557,10 +644,25 @@ const VotingTimeline = () => {
                   <stop offset="95%" stopColor="#8884d8" stopOpacity={0.2}/>
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="hour" />
-              <YAxis />
-              <Tooltip />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+              <XAxis 
+                dataKey="hour" 
+                tick={{ fontSize: 10 }}
+                tickFormatter={(value, index) => {
+                  // Show every nth tick to avoid crowding
+                  return index % 2 === 0 ? value : '';
+                }}
+              />
+              <YAxis allowDecimals={false} />
+              <Tooltip 
+                formatter={(value) => [`${value} votes`, 'Activity']}
+                labelFormatter={(label, payload) => {
+                  if (payload.length > 0) {
+                    return `${payload[0].payload.fullDate} at ${label}`;
+                  }
+                  return label;
+                }}
+              />
               <Legend />
               <Area 
                 type="monotone" 
@@ -568,7 +670,8 @@ const VotingTimeline = () => {
                 stroke="#8884d8" 
                 fillOpacity={1} 
                 fill="url(#colorVotes)" 
-                name="Votes"
+                name="Activity"
+                activeDot={{ r: 6 }}
               />
             </AreaChart>
           </ResponsiveContainer>
@@ -578,14 +681,43 @@ const VotingTimeline = () => {
           </div>
         )}
       </div>
-      <div className="px-4 py-2 border-t border-gray-100">
-        <div className="flex justify-between text-xs text-gray-500">
-          <span>Total votes: {chartData.reduce((sum, item) => sum + item.votes, 0)}</span>
-          {electionFilter !== 'all' && electionOptions.find(e => e.id.toString() === electionFilter) && (
-            <span>
-              Election: {electionOptions.find(e => e.id.toString() === electionFilter)?.name}
-            </span>
-          )}
+      
+      <div className="px-4 py-3 border-t border-gray-100">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <div>
+            <div className="text-xs text-gray-600 font-medium mb-1">Voting Insights</div>
+            {votingInsights.length > 0 ? (
+              <ul className="text-xs text-gray-500 space-y-1">
+                {votingInsights.map((insight, index) => (
+                  <li key={index} className="flex items-center">
+                    <span className="inline-block w-1.5 h-1.5 bg-purple-500 rounded-full mr-2 flex-shrink-0"></span>
+                    {insight}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-xs text-gray-500">Not enough voting data for insights</p>
+            )}
+          </div>
+          
+          <div>
+            {electionFilter !== 'all' && electionOptions.find(e => e.id.toString() === electionFilter) && (
+              <div className="text-xs text-gray-500">
+                <span className="text-gray-600 font-medium">Current filter: </span>
+                <span className="text-gray-900">
+                  {electionOptions.find(e => e.id.toString() === electionFilter)?.name}
+                </span>
+              </div>
+            )}
+            {peakVotingTime && peakVotingTime.length > 0 && (
+              <div className="text-xs text-gray-500 mt-1">
+                <span className="text-gray-600 font-medium">Peak activity: </span>
+                <span className="text-gray-900">
+                  {peakVotingTime[0].fullDate} at {peakVotingTime[0].hour}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
