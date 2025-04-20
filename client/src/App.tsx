@@ -5,17 +5,15 @@ import { Toaster } from "@/components/ui/toaster";
 import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth-page";
 import RegisterPage from "@/pages/register-page";
-import Dashboard from "@/pages/dashboard-redesigned"; // Using the redesigned dashboard
+import Dashboard from "@/pages/dashboard-redesigned"; // Student dashboard
 import Results from "@/pages/results";
 import Guidelines from "@/pages/guidelines";
 import VerifyVote from "@/pages/verify-vote";
-import AdminDashboard from "@/pages/admin-dashboard-new";
+import AdminDashboard from "@/pages/admin-dashboard-redesigned"; // Admin dashboard (renamed from AdminDashboardRedesigned)
 import AdminCandidates from "@/pages/admin-candidates";
 import TicketsPage from "@/pages/tickets-page";
 import AdminTickets from "@/pages/admin-tickets";
 import AdminArchitecture from "@/pages/admin-architecture";
-import AdminDashboardEnhanced from "@/pages/admin-dashboard-enhanced";
-import AdminDashboardRedesigned from "@/pages/admin-dashboard-redesigned";
 import { SettingsPage } from "@/pages/settings";
 import { ProtectedRoute, AdminProtectedRoute } from "./lib/protected-route";
 import { FC, ReactNode } from 'react';
@@ -35,15 +33,10 @@ function Router() {
       <ProtectedRoute path="/settings" component={SettingsPage} />
       
       {/* Admin routes - using AdminProtectedRoute to ensure admin validation */}
-      <AdminProtectedRoute path="/admin" component={AdminDashboardRedesigned} />
-      <AdminProtectedRoute path="/admin/elections" component={AdminDashboard} />
+      <AdminProtectedRoute path="/admin" component={AdminDashboard} />
       <AdminProtectedRoute path="/admin/candidates" component={AdminCandidates} />
       <AdminProtectedRoute path="/admin/tickets" component={AdminTickets} />
-      <AdminProtectedRoute path="/admin/voters" component={AdminDashboard} />
-      <AdminProtectedRoute path="/admin/settings" component={AdminDashboard} />
       <AdminProtectedRoute path="/admin-architecture" component={AdminArchitecture} />
-      <AdminProtectedRoute path="/admin/dashboard-enhanced" component={AdminDashboardEnhanced} />
-      <AdminProtectedRoute path="/admin/dashboard-new" component={AdminDashboardRedesigned} />
       
       {/* Auth routes */}
       <Route path="/auth" component={AuthPage} />
