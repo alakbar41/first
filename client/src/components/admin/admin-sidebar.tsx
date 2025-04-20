@@ -54,18 +54,6 @@ export function AdminSidebar({ user }: SidebarProps) {
       active: location.includes("/admin/tickets")
     },
     {
-      title: "Voters",
-      icon: FileText,
-      path: "/admin",
-      active: location === "/admin"
-    },
-    {
-      title: "Architecture",
-      icon: Network,
-      path: "/admin-architecture",
-      active: location === "/admin-architecture"
-    },
-    {
       title: "Settings",
       icon: Settings,
       path: "/settings",
