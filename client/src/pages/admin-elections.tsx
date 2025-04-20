@@ -8,13 +8,17 @@ import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { Election } from "@shared/schema";
 
 export default function AdminElections() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Fetch elections data
   const { data: elections = [] } = useQuery({
@@ -38,6 +42,68 @@ export default function AdminElections() {
         election.position.toLowerCase().includes(searchTerm.toLowerCase())
       )
     : elections;
+    
+  // Action handlers for ElectionsTable
+  const handleEdit = (electionId: number) => {
+    // Future implementation for edit page navigation
+    toast({
+      title: "Edit Election",
+      description: `Editing election #${electionId}...`,
+    });
+    navigate(`/admin/elections/edit/${electionId}`);
+  };
+  
+  const handleDelete = async (electionId: number) => {
+    if (window.confirm("Are you sure you want to delete this election? This action cannot be undone.")) {
+      try {
+        // First get the CSRF token
+        const csrfResponse = await fetch('/api/csrf-token');
+        const { csrfToken } = await csrfResponse.json();
+        
+        const response = await fetch(`/api/elections/${electionId}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken,
+          },
+        });
+        
+        if (response.ok) {
+          toast({
+            title: "Success",
+            description: "Election deleted successfully",
+          });
+          // Refresh data
+          queryClient.invalidateQueries({ queryKey: ['/api/elections'] });
+        } else {
+          const error = await response.json();
+          toast({
+            title: "Error",
+            description: error.message || "Failed to delete election",
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "An unexpected error occurred",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+  
+  const handleAddCandidates = (election: Election) => {
+    navigate(`/admin/elections/${election.id}/candidates/add`);
+  };
+  
+  const handleViewCandidates = (election: Election) => {
+    navigate(`/admin/elections/${election.id}/candidates`);
+  };
+  
+  const handleViewDetails = (election: Election) => {
+    navigate(`/admin/elections/${election.id}`);
+  };
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-900">
@@ -81,6 +147,11 @@ export default function AdminElections() {
             <CardContent>
               <ElectionsTable 
                 elections={filteredElections}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                onAddCandidates={handleAddCandidates}
+                onViewCandidates={handleViewCandidates}
+                onViewDetails={handleViewDetails}
               />
             </CardContent>
           </Card>
