@@ -3,6 +3,7 @@ import { db } from './db';
 import { sql } from 'drizzle-orm';
 import { isAdmin } from './routes';
 import { getFacultyName } from '../shared/constants';
+import { getElectionResults, checkElectionExists } from './blockchain';
 import { type QueryResult } from '@neondatabase/serverless';
 
 // Type definitions for our dashboard data
@@ -133,7 +134,7 @@ router.get('/metrics/faculty-participation', isAdmin, async (req: Request, res: 
   }
 });
 
-// Completed elections data for dashboard
+// Completed elections data for dashboard with blockchain results
 router.get('/metrics/completed-elections', isAdmin, async (req: Request, res: Response) => {
   try {
     // Get completed elections
@@ -154,7 +155,7 @@ router.get('/metrics/completed-elections', isAdmin, async (req: Request, res: Re
       GROUP BY 
         e.id, e.name, e.position, e.blockchain_id
       ORDER BY 
-        e.created_at DESC
+        e.id DESC
     `;
 
     const completedElections = await db.execute(completedElectionsQuery) as unknown as ActiveElection[];
@@ -165,30 +166,101 @@ router.get('/metrics/completed-elections', isAdmin, async (req: Request, res: Re
     // Ensure completedElections is an array before iterating
     if (Array.isArray(completedElections) && completedElections.length > 0) {
       for (const election of completedElections) {
-        const candidateVotesQuery = sql`
-          SELECT 
-            c.id,
-            c.full_name,
-            c.student_id,
-            c.faculty,
-            COUNT(v.id) as vote_count
-          FROM candidates c
-          JOIN election_candidates ec ON c.id = ec.candidate_id
-          LEFT JOIN votes v ON v.candidate_id = c.id AND v.election_id = ${election.id}
-          WHERE ec.election_id = ${election.id}
-          GROUP BY c.id, c.full_name, c.student_id, c.faculty
-          ORDER BY vote_count DESC
-        `;
+        let candidateResults: any[] = [];
         
-        const candidates = await db.execute(candidateVotesQuery) as unknown as Candidate[];
+        // First try to get results from blockchain if election has a blockchain ID
+        if (election.blockchain_id) {
+          try {
+            const blockchainId = Number(election.blockchain_id);
+            // Verify the election exists on blockchain
+            const exists = await checkElectionExists(blockchainId);
+            
+            if (exists) {
+              // Get blockchain results
+              const blockchainCandidateResults = await getElectionResults(blockchainId);
+              console.log(`Retrieved ${blockchainCandidateResults.length} candidates from blockchain for election ${election.id} (${blockchainId})`);
+              
+              // Now we need to match these results with candidate details from the database
+              const candidateDetails = await db.execute(sql`
+                SELECT 
+                  c.id,
+                  c.full_name,
+                  c.student_id,
+                  c.faculty,
+                  c.blockchain_hash
+                FROM candidates c
+                JOIN election_candidates ec ON c.id = ec.candidate_id
+                WHERE ec.election_id = ${election.id}
+              `) as unknown as any[];
+              
+              // Map blockchain results to candidate details
+              candidateResults = blockchainCandidateResults.map(blockchainCandidate => {
+                const matchingCandidate = Array.isArray(candidateDetails) && 
+                  candidateDetails.find(c => c.student_id === blockchainCandidate.studentId);
+                
+                if (matchingCandidate) {
+                  return {
+                    id: matchingCandidate.id,
+                    full_name: matchingCandidate.full_name,
+                    student_id: blockchainCandidate.studentId,
+                    faculty: matchingCandidate.faculty,
+                    vote_count: blockchainCandidate.voteCount,
+                    blockchain_hash: blockchainCandidate.hash,
+                    faculty_name: getFacultyName(matchingCandidate.faculty)
+                  };
+                } else {
+                  // If we can't find a matching candidate, use just the blockchain data
+                  return {
+                    id: 0,
+                    full_name: `Candidate (${blockchainCandidate.studentId})`,
+                    student_id: blockchainCandidate.studentId,
+                    faculty: 'Unknown',
+                    vote_count: blockchainCandidate.voteCount,
+                    blockchain_hash: blockchainCandidate.hash,
+                    faculty_name: 'Unknown'
+                  };
+                }
+              });
+              
+              // Sort by vote count
+              candidateResults.sort((a, b) => b.vote_count - a.vote_count);
+            }
+          } catch (blockchainError) {
+            console.error(`Error fetching blockchain results for election ${election.id}:`, blockchainError);
+            // If blockchain fetch fails, continue with database results
+          }
+        }
+        
+        // If we didn't get any results from the blockchain, fall back to database
+        if (candidateResults.length === 0) {
+          console.log(`Using database results for election ${election.id} as blockchain results were empty`);
+          const candidateVotesQuery = sql`
+            SELECT 
+              c.id,
+              c.full_name,
+              c.student_id,
+              c.faculty,
+              COUNT(v.id) as vote_count
+            FROM candidates c
+            JOIN election_candidates ec ON c.id = ec.candidate_id
+            LEFT JOIN votes v ON v.candidate_id = c.id AND v.election_id = ${election.id}
+            WHERE ec.election_id = ${election.id}
+            GROUP BY c.id, c.full_name, c.student_id, c.faculty
+            ORDER BY vote_count DESC
+          `;
+          
+          const candidates = await db.execute(candidateVotesQuery) as unknown as Candidate[];
+          
+          candidateResults = candidates.map(c => ({
+            ...c,
+            faculty_name: getFacultyName(c.faculty)
+          }));
+        }
         
         result.push({
           ...election,
           status: 'completed',
-          candidates: candidates.map(c => ({
-            ...c,
-            faculty_name: getFacultyName(c.faculty)
-          }))
+          candidates: candidateResults
         });
       }
     }
