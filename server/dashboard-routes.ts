@@ -331,6 +331,8 @@ router.get('/metrics/voting-timeline', isAdmin, async (req: Request, res: Respon
   try {
     const electionId = req.query.electionId ? parseInt(req.query.electionId as string) : null;
     
+    console.log(`Fetching voting timeline data for election ID: ${electionId || 'all elections'}`);
+    
     let query = sql`
       SELECT 
         DATE_TRUNC('hour', created_at) as hour,
@@ -341,7 +343,22 @@ router.get('/metrics/voting-timeline', isAdmin, async (req: Request, res: Respon
       ORDER BY hour
     `;
 
-    const voteTimeline = await db.execute(query) as unknown as VoteTimeline[];
+    console.log("Voting timeline query:", query.toString());
+    
+    const votesResult = await db.execute(query);
+    console.log("Voting timeline raw result:", JSON.stringify(votesResult, null, 2));
+    
+    // Properly handle the query result
+    let voteTimeline: VoteTimeline[] = [];
+    if (votesResult && typeof votesResult === 'object') {
+      if ('rows' in votesResult && Array.isArray(votesResult.rows)) {
+        voteTimeline = votesResult.rows as unknown as VoteTimeline[];
+      } else if (Array.isArray(votesResult)) {
+        voteTimeline = votesResult as unknown as VoteTimeline[];
+      }
+    }
+    
+    console.log("Voting timeline parsed:", JSON.stringify(voteTimeline, null, 2));
     
     res.json(voteTimeline);
   } catch (error) {
@@ -411,7 +428,23 @@ router.get('/metrics/active-elections', isAdmin, async (req: Request, res: Respo
       ORDER BY e.created_at DESC
     `;
 
-    const activeElections = await db.execute(activeElectionsQuery) as unknown as ActiveElection[];
+    // Add debug logging
+    console.log("Executing active elections query:", activeElectionsQuery.toString());
+    
+    const activeElectionsResult = await db.execute(activeElectionsQuery);
+    console.log("Active elections raw result:", JSON.stringify(activeElectionsResult, null, 2));
+    
+    // Ensure we properly handle the result
+    let activeElections: ActiveElection[] = [];
+    if (activeElectionsResult && typeof activeElectionsResult === 'object') {
+      if ('rows' in activeElectionsResult && Array.isArray(activeElectionsResult.rows)) {
+        activeElections = activeElectionsResult.rows as unknown as ActiveElection[];
+      } else if (Array.isArray(activeElectionsResult)) {
+        activeElections = activeElectionsResult as unknown as ActiveElection[];
+      }
+    }
+    
+    console.log("Active elections parsed:", JSON.stringify(activeElections, null, 2));
     
     // Handle the case where there might be no active elections
     const result: (ActiveElection & { candidates: Candidate[], status: string })[] = [];
