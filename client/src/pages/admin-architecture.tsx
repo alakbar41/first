@@ -122,7 +122,7 @@ export default function AdminArchitecture() {
                   <li><span className="font-semibold">Client Layer:</span> React.js with TypeScript frontend providing separate interfaces for students and administrators, with integrated MetaMask for blockchain interactions.</li>
                   <li><span className="font-semibold">Server Layer:</span> Node.js/Express backend handling API requests, authentication, and serving as the bridge between frontend and both database and blockchain.</li>
                   <li><span className="font-semibold">Data Layer:</span> PostgreSQL database storing user accounts, election metadata, candidate information, and voting tokens.</li>
-                  <li><span className="font-semibold">Blockchain Layer:</span> Ethereum Sepolia testnet providing immutable and transparent vote recording through smart contracts.</li>
+                  <li><span className="font-semibold">Blockchain Layer:</span> Polygon Mainnet providing immutable and transparent vote recording through smart contracts.</li>
                 </ul>
                 
                 <h3 className="text-xl font-bold mt-6 mb-3">Key Design Principles</h3>
@@ -333,7 +333,7 @@ Database Schema:
                       {/* Header */}
                       <text x="450" y="35" fontSize="22" textAnchor="middle" fontWeight="bold" fill="#4c1d95">ADA University Voting System - System Architecture</text>
                       <line x1="200" y1="45" x2="700" y2="45" stroke="#8b5cf6" strokeWidth="2" />
-                      <text x="450" y="65" fontSize="11" textAnchor="middle" fill="#64748b">A secure, transparent voting platform powered by Ethereum Sepolia blockchain technology</text>
+                      <text x="450" y="65" fontSize="11" textAnchor="middle" fill="#64748b">A secure, transparent voting platform powered by Polygon Mainnet blockchain technology</text>
                       
                       {/* System containers */}
                       <g>
@@ -463,11 +463,11 @@ Database Schema:
                         
                         {/* Blockchain section */}
                         <rect x="80" y="480" width="340" height="130" rx="5" fill="#ede9fe" stroke="#8b5cf6" strokeWidth="2" />
-                        <text x="250" y="500" fontSize="14" textAnchor="middle" fontWeight="bold" fill="#6d28d9">Ethereum Blockchain (Sepolia Testnet)</text>
+                        <text x="250" y="500" fontSize="14" textAnchor="middle" fontWeight="bold" fill="#6d28d9">Polygon Mainnet Blockchain</text>
                         
                         <rect x="100" y="520" width="140" height="70" rx="3" fill="white" stroke="#8b5cf6" strokeWidth="1.5" />
                         <text x="170" y="540" fontSize="12" textAnchor="middle" fontWeight="bold" fill="#6d28d9">Smart Contract</text>
-                        <text x="170" y="555" fontSize="9" textAnchor="middle" fill="#6d28d9">0xb74F07812B45dBEc4eC3E577194F6a798a060e5D</text>
+                        <text x="170" y="555" fontSize="9" textAnchor="middle" fill="#6d28d9">0xda3d2afDD74556fdfa0353D210C649EB09CefB0c</text>
                         <text x="170" y="570" fontSize="9" textAnchor="middle" fill="#6d28d9">Voting Logic & Election Data</text>
                         
                         <rect x="260" y="520" width="140" height="30" rx="3" fill="white" stroke="#8b5cf6" strokeWidth="1" />
@@ -538,14 +538,14 @@ Database Schema:
                 
                 <h3 className="text-2xl font-bold mt-8 mb-4 text-center">ADA Voting System Architecture</h3>
                 <p className="text-sm mb-6 text-center">
-                  Our implementation leverages Ethereum Sepolia testnet as a secure, transparent voting layer with strict verification protocols to ensure tamper-proof elections for ADA University.
+                  Our implementation leverages Polygon Mainnet as a secure, transparent voting layer with strict verification protocols to ensure tamper-proof elections for ADA University.
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
                   <div className="border rounded-lg p-6 bg-white shadow-sm">
                     <h3 className="text-lg font-bold mb-4 text-purple-900">Smart Contract Components</h3>
                     <p className="text-sm mb-3">
-                      The core voting logic is implemented in a Solidity smart contract deployed on the Ethereum Sepolia testnet with these key components:
+                      The core voting logic is implemented in a Solidity smart contract deployed on the Polygon Mainnet with these key components:
                     </p>
                     <ul className="list-disc pl-6 space-y-2 text-sm">
                       <li><span className="font-semibold">Distributed Ledger:</span> Immutable recording of all vote transactions across multiple nodes</li>
@@ -674,9 +674,9 @@ event ResultsFinalized(uint256 indexed electionId, uint256[] finalResults);
                 
                 <div className="bg-purple-50 border-l-4 border-purple-500 p-4 rounded-md mb-6">
                   <h4 className="text-md font-bold mb-2 text-purple-900">Current Deployment</h4>
-                  <p className="text-sm"><span className="font-semibold">Contract Address:</span> 0xb74F07812B45dBEc4eC3E577194F6a798a060e5D</p>
-                  <p className="text-sm"><span className="font-semibold">Network:</span> Ethereum Sepolia Testnet</p>
-                  <p className="text-sm"><span className="font-semibold">Compiler Version:</span> Solidity 0.8.17</p>
+                  <p className="text-sm"><span className="font-semibold">Contract Address:</span> 0xda3d2afDD74556fdfa0353D210C649EB09CefB0c</p>
+                  <p className="text-sm"><span className="font-semibold">Network:</span> Polygon Mainnet</p>
+                  <p className="text-sm"><span className="font-semibold">Compiler Version:</span> Solidity 0.8.20</p>
                   <p className="text-sm"><span className="font-semibold">Optimization:</span> 200 runs</p>
                 </div>
               </Card>
@@ -725,7 +725,7 @@ event ResultsFinalized(uint256 indexed electionId, uint256[] finalResults);
                       
                       {/* External Services */}
                       <rect x="440" y="290" width="120" height="60" rx="5" fill="#fef3c7" stroke="#f59e0b" strokeWidth="2" />
-                      <text x="500" y="320" fontSize="12" textAnchor="middle">Ethereum Sepolia</text>
+                      <text x="500" y="320" fontSize="12" textAnchor="middle">Polygon Mainnet</text>
                       <text x="500" y="335" fontSize="10" textAnchor="middle">Blockchain Network</text>
                       
                       {/* Lines */}
@@ -754,7 +754,7 @@ event ResultsFinalized(uint256 indexed electionId, uint256[] finalResults);
                       <li>Load-balanced app containers for horizontal scaling</li>
                       <li>Managed PostgreSQL database for reliability</li>
                       <li>Redis for distributed session management</li>
-                      <li>External connection to Ethereum Sepolia testnet</li>
+                      <li>External connection to Polygon Mainnet</li>
                       <li>Automated CI/CD pipeline for continuous deployment</li>
                     </ul>
                   </div>
@@ -808,7 +808,7 @@ DevOps Pipeline:
                   <li><span className="font-semibold">Redis:</span> Managed Redis instance, 1GB RAM</li>
                   <li><span className="font-semibold">Load Balancer:</span> DigitalOcean Load Balancer with SSL termination</li>
                   <li><span className="font-semibold">Storage:</span> Block storage for persistent data</li>
-                  <li><span className="font-semibold">Blockchain:</span> External connection to Ethereum Sepolia testnet</li>
+                  <li><span className="font-semibold">Blockchain:</span> External connection to Polygon Mainnet</li>
                   <li><span className="font-semibold">Backup:</span> Automated daily database backups</li>
                 </ul>
               </Card>
