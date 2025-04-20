@@ -44,7 +44,6 @@ export default function AdminTickets() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [selectedTicket, setSelectedTicket] = React.useState<any>(null);
-  const [responseText, setResponseText] = React.useState("");
   const [isResponseDialogOpen, setIsResponseDialogOpen] = React.useState(false);
   const [filter, setFilter] = React.useState("all");
 
@@ -67,7 +66,6 @@ export default function AdminTickets() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tickets"] });
       setIsResponseDialogOpen(false);
-      setResponseText("");
       toast({
         title: "Ticket Updated",
         description: "The ticket status has been updated successfully.",
@@ -82,17 +80,8 @@ export default function AdminTickets() {
     },
   });
 
-  // Handle response submission
-  const handleSubmitResponse = () => {
-    if (!responseText.trim()) {
-      toast({
-        title: "Response Required",
-        description: "Please enter a response before updating the ticket.",
-        variant: "destructive",
-      });
-      return;
-    }
-
+  // Handle ticket resolution
+  const handleResolveTicket = () => {
     updateTicketMutation.mutate({
       id: selectedTicket.id,
       status: "resolved",
@@ -282,13 +271,13 @@ export default function AdminTickets() {
         </main>
       </div>
 
-      {/* Response Dialog */}
+      {/* Resolve Confirmation Dialog */}
       <Dialog open={isResponseDialogOpen} onOpenChange={setIsResponseDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Resolve Ticket</DialogTitle>
             <DialogDescription>
-              Add a response to resolve this ticket. This will be saved and the ticket will be marked as resolved.
+              Are you sure you want to mark this ticket as resolved?
             </DialogDescription>
           </DialogHeader>
           
@@ -299,40 +288,24 @@ export default function AdminTickets() {
             </div>
           )}
           
-          <div className="space-y-4">
-            <div className="grid gap-2">
-              <label htmlFor="response" className="text-sm font-medium">
-                Your Response
-              </label>
-              <Textarea
-                id="response"
-                value={responseText}
-                onChange={(e) => setResponseText(e.target.value)}
-                placeholder="Enter your response here..."
-                className="min-h-[100px]"
-              />
-            </div>
-          </div>
-          
           <DialogFooter>
             <Button
               variant="outline"
               onClick={() => {
                 setIsResponseDialogOpen(false);
-                setResponseText("");
               }}
             >
               Cancel
             </Button>
             <Button
-              onClick={handleSubmitResponse}
-              disabled={updateTicketMutation.isPending || !responseText.trim()}
+              onClick={handleResolveTicket}
+              disabled={updateTicketMutation.isPending}
               className="bg-gradient-to-r from-purple-700 to-purple-500 hover:from-purple-800 hover:to-purple-600"
             >
               {updateTicketMutation.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
+                  Resolving...
                 </>
               ) : (
                 "Resolve Ticket"
