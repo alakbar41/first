@@ -154,7 +154,7 @@ router.get('/metrics/completed-elections', isAdmin, async (req: Request, res: Re
       GROUP BY 
         e.id, e.name, e.position, e.blockchain_id
       ORDER BY 
-        e.updated_at DESC
+        e.created_at DESC
     `;
 
     const completedElections = await db.execute(completedElectionsQuery) as unknown as ActiveElection[];

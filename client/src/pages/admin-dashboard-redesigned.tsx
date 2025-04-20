@@ -471,9 +471,12 @@ const VotingTimeline = () => {
     queryKey: ['/api/dashboard/metrics/voting-timeline', electionFilter !== 'all' ? electionFilter : null],
   });
   
-  const { data: electionOptions } = useQuery<ParticipationOverview[]>({
+  const { data: electionOptionsData } = useQuery<ParticipationOverview[]>({
     queryKey: ['/api/dashboard/metrics/participation-overview'],
   });
+
+  // Ensure we have proper array data
+  const electionOptions = Array.isArray(electionOptionsData) ? electionOptionsData : [];
 
   // Process data for timeline chart
   const chartData = Array.isArray(timelineData) 
@@ -500,7 +503,7 @@ const VotingTimeline = () => {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Elections</SelectItem>
-            {electionOptions?.map((election) => (
+            {electionOptions.map((election) => (
               <SelectItem key={election.id} value={election.id.toString()}>
                 {election.name}
               </SelectItem>
@@ -542,7 +545,7 @@ const VotingTimeline = () => {
       <div className="px-4 py-2 border-t border-gray-100">
         <div className="flex justify-between text-xs text-gray-500">
           <span>Total votes: {chartData.reduce((sum, item) => sum + item.votes, 0)}</span>
-          {electionFilter !== 'all' && electionOptions?.find(e => e.id.toString() === electionFilter) && (
+          {electionFilter !== 'all' && electionOptions.find(e => e.id.toString() === electionFilter) && (
             <span>
               Election: {electionOptions.find(e => e.id.toString() === electionFilter)?.name}
             </span>
