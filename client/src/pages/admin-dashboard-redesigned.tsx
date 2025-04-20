@@ -295,11 +295,29 @@ const CompletedElectionWinners = () => {
   // Sort candidates by vote count (descending) to show winners first
   const sortedCandidates = [...candidates].sort((a, b) => b.vote_count - a.vote_count);
 
+  // Handle tie detection
+  const highestVoteCount = sortedCandidates.length > 0 ? sortedCandidates[0].vote_count : 0;
+  
+  // Find all candidates that are tied for the highest vote count
+  const tiedWinners = sortedCandidates.filter(candidate => candidate.vote_count === highestVoteCount);
+  const hasTie = tiedWinners.length > 1;
+
   useEffect(() => {
     if (completedElections && completedElections.length > 0 && !selectedElection) {
       setSelectedElection(completedElections[0].id.toString());
     }
   }, [completedElections, selectedElection]);
+  
+  // Determine if a candidate is tied for the win based on index and vote count
+  const isWinnerOrTied = (candidate: any, index: number) => {
+    return candidate.vote_count === highestVoteCount;
+  };
+
+  // Debugging completedElections data
+  console.log('Completed Elections:', completedElections);
+  console.log('Selected Election:', filteredElection);
+  console.log('Candidates:', candidates);
+  console.log('Sorted Candidates:', sortedCandidates);
 
   return (
     <div className="bg-white rounded-lg shadow-sm overflow-hidden">
@@ -318,42 +336,60 @@ const CompletedElectionWinners = () => {
           </SelectContent>
         </Select>
       </div>
+      
+      {/* Election status summary if there's a tie */}
+      {hasTie && sortedCandidates.length > 0 && (
+        <div className="px-4 py-2 bg-amber-50 border-b border-amber-100">
+          <p className="text-xs text-amber-800 flex items-center">
+            <AlertCircle className="h-3 w-3 mr-1" />
+            Tie detected! {tiedWinners.length} candidates have the highest vote count ({highestVoteCount})
+          </p>
+        </div>
+      )}
+      
       <div className="divide-y divide-gray-100">
         {sortedCandidates.length > 0 ? (
-          sortedCandidates.map((candidate, index) => (
-            <div key={candidate.id} 
-                className={`p-4 flex items-center justify-between ${
-                  index === 0 ? 'bg-purple-50' : 'bg-white'
-                }`}
-            >
-              <div className="flex items-center space-x-3">
-                {index === 0 && (
-                  <div className="absolute -ml-2">
-                    <Trophy className="h-5 w-5 text-yellow-500" />
+          sortedCandidates.map((candidate, index) => {
+            const isWinner = isWinnerOrTied(candidate, index);
+            return (
+              <div key={candidate.id} 
+                  className={`p-4 flex items-center justify-between ${
+                    isWinner ? 'bg-purple-50' : 'bg-white'
+                  }`}
+              >
+                <div className="flex items-center space-x-3">
+                  {isWinner && (
+                    <div className="absolute -ml-2">
+                      <Trophy className="h-5 w-5 text-yellow-500" />
+                    </div>
+                  )}
+                  <div className={`w-10 h-10 flex-shrink-0 rounded-full ${
+                    isWinner ? 'bg-purple-200' : 'bg-purple-100'
+                  } flex items-center justify-center overflow-hidden`}>
+                    <span className={`${
+                      isWinner ? 'text-purple-800' : 'text-purple-700'
+                    } font-medium`}>{candidate.full_name.slice(0, 2)}</span>
                   </div>
-                )}
-                <div className={`w-10 h-10 flex-shrink-0 rounded-full ${
-                  index === 0 ? 'bg-purple-200' : 'bg-purple-100'
-                } flex items-center justify-center overflow-hidden`}>
-                  <span className={`${
-                    index === 0 ? 'text-purple-800' : 'text-purple-700'
-                  } font-medium`}>{candidate.full_name.slice(0, 2)}</span>
+                  <div>
+                    <h3 className={`text-sm font-medium ${
+                      isWinner ? 'text-purple-900' : 'text-gray-900'
+                    }`}>{candidate.full_name}</h3>
+                    <p className="text-xs text-gray-500">
+                      {candidate.faculty_name || candidate.faculty}
+                      {isWinner && (
+                        <span className="ml-2 text-purple-700 font-medium">
+                          {hasTie ? "• Tied for 1st" : "• Winner"}
+                        </span>
+                      )}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className={`text-sm font-medium ${
-                    index === 0 ? 'text-purple-900' : 'text-gray-900'
-                  }`}>{candidate.full_name}</h3>
-                  <p className="text-xs text-gray-500">
-                    {candidate.faculty_name || candidate.faculty}
-                    {index === 0 && <span className="ml-2 text-purple-700 font-medium">• Winner</span>}
-                  </p>
-                </div>
+                <div className={`text-sm font-medium ${
+                  isWinner ? 'text-purple-700' : ''
+                }`}>{candidate.vote_count} votes</div>
               </div>
-              <div className={`text-sm font-medium ${
-                index === 0 ? 'text-purple-700' : ''
-              }`}>{candidate.vote_count} votes</div>
-            </div>
-          ))
+            );
+          })
         ) : (
           <div className="p-6 text-center">
             <p className="text-gray-500 text-sm">No completed elections available</p>
