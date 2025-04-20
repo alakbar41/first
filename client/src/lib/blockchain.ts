@@ -410,7 +410,7 @@ export async function getAllCandidatesWithVotes(startTime: number): Promise<{ids
  */
 export async function deployElectionToBlockchain(electionId: number) {
   try {
-    // Basic MetaMask check - students will be taught to use Polygon Amoy beforehand
+    // Basic MetaMask check - students will be taught to use Ethereum Sepolia beforehand
     try {
       if (typeof window === 'undefined' || !window.ethereum) {
         throw new Error('MetaMask is not installed or not accessible');

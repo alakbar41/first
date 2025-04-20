@@ -167,7 +167,7 @@ export function PrivacySettings({ user }: PrivacySettingsProps) {
             <div className="p-4 bg-purple-50 rounded-md border border-purple-100">
               <h4 className="font-medium text-purple-800 mb-2">Blockchain Privacy Information</h4>
               <p className="text-sm text-purple-700 mb-3">
-                The ADA University Voting System uses Polygon Amoy blockchain technology
+                The ADA University Voting System uses Ethereum Sepolia blockchain technology
                 to ensure the integrity and anonymity of your votes.
               </p>
               <ul className="space-y-2 text-sm text-purple-700">

@@ -104,7 +104,7 @@ function securityHeaders(req: Request, res: Response, next: NextFunction) {
   }
   
   // Enhanced Content Security Policy
-  // More permissive CSP for Polygon blockchain connections
+  // More permissive CSP for Ethereum blockchain connections
   const cspDirectives = [
     // Default restriction - only allow from same origin
     "default-src 'self'",

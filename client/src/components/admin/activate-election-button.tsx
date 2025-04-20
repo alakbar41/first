@@ -191,7 +191,7 @@ export function ActivateElectionButton({
             } else {
               toast({
                 title: "Network Congestion",
-                description: "The Polygon Amoy testnet is experiencing high congestion. Please try again later or ensure you have enough testnet MATIC.",
+                description: "The Ethereum Sepolia testnet is experiencing high congestion. Please try again later or ensure you have enough testnet ETH.",
                 variant: "destructive",
               });
               return false;

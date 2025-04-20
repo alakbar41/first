@@ -210,7 +210,7 @@ export function StudentSidebar({ user }: SidebarProps) {
               </p>
               <p className="text-xs text-purple-700 leading-relaxed">
                 Click "Verify Your Vote" to access our verification tool where you can
-                check your vote's status on the Polygon Amoy blockchain.
+                check your vote's status on the Ethereum Sepolia blockchain.
               </p>
             </div>
           </nav>
