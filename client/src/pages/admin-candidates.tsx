@@ -168,12 +168,12 @@ export default function AdminCandidates() {
     : [];
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex min-h-screen h-full bg-gray-50">
       {/* Sidebar */}
       <AdminSidebar user={user} />
       
       {/* Main content */}
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto pb-12">
         <div className="px-6 py-4 bg-white border-b border-gray-200">
           <h1 className="text-xl font-semibold text-gray-800">Candidates Management</h1>
         </div>

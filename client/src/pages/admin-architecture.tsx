@@ -31,9 +31,9 @@ export default function AdminArchitecture() {
   }
 
   return (
-    <div className="grid grid-cols-[240px_1fr] h-screen bg-background">
+    <div className="grid grid-cols-[240px_1fr] min-h-screen h-full bg-background">
       <AdminSidebar user={user} />
-      <div className="overflow-auto p-6">
+      <div className="overflow-auto p-6 pb-12">
         <div className="max-w-[1200px] mx-auto">
           <h1 className="text-3xl font-bold tracking-tight mb-4">
             System Architecture
