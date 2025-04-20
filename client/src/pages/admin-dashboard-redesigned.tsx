@@ -838,7 +838,7 @@ export default function AdminDashboardRedesigned() {
         
         <div className="p-6 space-y-6">
           {/* Top metrics cards */}
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             {/* Students Card */}
             <Card className="overflow-hidden">
               <CardContent className="p-0">
@@ -862,23 +862,8 @@ export default function AdminDashboardRedesigned() {
                     <Bell className="h-6 w-6 text-white" />
                   </div>
                   <div>
-                    <p className="text-sm text-purple-200">Notifications</p>
+                    <p className="text-sm text-purple-200">Open Tickets</p>
                     <h3 className="text-2xl font-bold text-white">{openTickets}</h3>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Reports Card */}
-            <Card className="overflow-hidden">
-              <CardContent className="p-0">
-                <div className="flex items-center p-6">
-                  <div className="mr-6 h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
-                    <AlertCircle className="h-6 w-6 text-gray-500" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Reports</p>
-                    <h3 className="text-2xl font-bold text-gray-900">4</h3>
                   </div>
                 </div>
               </CardContent>
