@@ -805,8 +805,8 @@ export default function AdminDashboardRedesigned() {
     ? facultyData.reduce((sum, faculty) => sum + faculty.total_students, 0)
     : 0;
   
-  // Count open tickets
-  const openTickets = Array.isArray(ticketsData) 
+  // Count new tickets
+  const newTickets = Array.isArray(ticketsData) 
     ? ticketsData.filter((ticket: any) => ticket.status === 'open').length 
     : 0;
 
@@ -862,8 +862,8 @@ export default function AdminDashboardRedesigned() {
                     <Bell className="h-6 w-6 text-white" />
                   </div>
                   <div>
-                    <p className="text-sm text-purple-200">Open Tickets</p>
-                    <h3 className="text-2xl font-bold text-white">{openTickets}</h3>
+                    <p className="text-sm text-purple-200">New Tickets</p>
+                    <h3 className="text-2xl font-bold text-white">{newTickets}</h3>
                   </div>
                 </div>
               </CardContent>
