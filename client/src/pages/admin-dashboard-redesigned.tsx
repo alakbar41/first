@@ -222,33 +222,25 @@ const ElectionsList = () => {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3 bg-gray-50 border-b border-gray-100">
         <div className="text-center p-2">
           <div className="text-xs text-gray-500">Total</div>
-          <div className="text-lg font-semibold text-gray-800">{electionStats.total}</div>
+          <div className="text-lg font-semibold text-gray-800">{sortedElections.length}</div>
         </div>
         <div className="text-center p-2">
           <div className="text-xs text-purple-600">Active</div>
-          <div className="text-lg font-semibold text-purple-800">{electionStats.active}</div>
+          <div className="text-lg font-semibold text-purple-800">
+            {sortedElections.filter(e => e.status === 'active').length}
+          </div>
         </div>
         <div className="text-center p-2">
           <div className="text-xs text-green-600">Upcoming</div>
-          <div className="text-lg font-semibold text-green-800">{electionStats.upcoming}</div>
+          <div className="text-lg font-semibold text-green-800">
+            {sortedElections.filter(e => e.status === 'upcoming').length}
+          </div>
         </div>
         <div className="text-center p-2">
           <div className="text-xs text-gray-500">Completed</div>
-          <div className="text-lg font-semibold text-gray-800">{electionStats.completed}</div>
-        </div>
-      </div>
-      
-      {/* Participation stats */}
-      <div className="p-3 border-b border-gray-100 bg-white">
-        <div className="flex items-center justify-between mb-1">
-          <div className="text-xs text-gray-500">Average Participation Rate</div>
-          <div className="text-xs font-medium text-gray-800">{electionStats.averageParticipation}%</div>
-        </div>
-        <div className="w-full bg-gray-200 rounded-full h-1.5">
-          <div 
-            className="bg-purple-600 h-1.5 rounded-full" 
-            style={{ width: `${electionStats.averageParticipation}%` }}
-          ></div>
+          <div className="text-lg font-semibold text-gray-800">
+            {sortedElections.filter(e => e.status === 'completed').length}
+          </div>
         </div>
       </div>
       
