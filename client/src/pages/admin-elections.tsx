@@ -4,6 +4,10 @@ import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { SearchX } from "lucide-react";
 import { ElectionsTable } from "@/components/admin/elections-table";
 import { CreateElectionDialog } from "@/components/admin/create-election-dialog";
+import { EditElectionDialog } from "@/components/admin/edit-election-dialog";
+import { ViewElectionDetailsDialog } from "@/components/admin/view-election-details-dialog";
+import { AddCandidatesToElectionDialog } from "@/components/admin/add-candidates-to-election-dialog";
+import { ViewElectionCandidatesDialog } from "@/components/admin/view-election-candidates-dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +21,11 @@ export default function AdminElections() {
   const [, navigate] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isViewDetailsDialogOpen, setIsViewDetailsDialogOpen] = useState(false);
+  const [isAddCandidatesDialogOpen, setIsAddCandidatesDialogOpen] = useState(false);
+  const [isViewCandidatesDialogOpen, setIsViewCandidatesDialogOpen] = useState(false);
+  const [selectedElection, setSelectedElection] = useState<Election | undefined>(undefined);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -45,12 +54,18 @@ export default function AdminElections() {
     
   // Action handlers for ElectionsTable
   const handleEdit = (electionId: number) => {
-    // Future implementation for edit page navigation
-    toast({
-      title: "Edit Election",
-      description: `Editing election #${electionId}...`,
-    });
-    navigate(`/admin/elections/edit/${electionId}`);
+    // Find the election to edit
+    const electionToEdit = elections.find((e: any) => e.id === electionId);
+    if (electionToEdit) {
+      setSelectedElection(electionToEdit);
+      setIsEditDialogOpen(true);
+    } else {
+      toast({
+        title: "Error",
+        description: "Election not found",
+        variant: "destructive",
+      });
+    }
   };
   
   const handleDelete = async (electionId: number) => {
@@ -94,15 +109,18 @@ export default function AdminElections() {
   };
   
   const handleAddCandidates = (election: Election) => {
-    navigate(`/admin/elections/${election.id}/candidates/add`);
+    setSelectedElection(election);
+    setIsAddCandidatesDialogOpen(true);
   };
   
   const handleViewCandidates = (election: Election) => {
-    navigate(`/admin/elections/${election.id}/candidates`);
+    setSelectedElection(election);
+    setIsViewCandidatesDialogOpen(true);
   };
   
   const handleViewDetails = (election: Election) => {
-    navigate(`/admin/elections/${election.id}`);
+    setSelectedElection(election);
+    setIsViewDetailsDialogOpen(true);
   };
 
   return (
@@ -137,6 +155,34 @@ export default function AdminElections() {
             <CreateElectionDialog
               open={isCreateDialogOpen}
               onOpenChange={setIsCreateDialogOpen}
+            />
+            
+            {/* Edit Election Dialog */}
+            <EditElectionDialog
+              open={isEditDialogOpen}
+              onOpenChange={setIsEditDialogOpen}
+              election={selectedElection}
+            />
+            
+            {/* View Election Details Dialog */}
+            <ViewElectionDetailsDialog
+              open={isViewDetailsDialogOpen}
+              onOpenChange={setIsViewDetailsDialogOpen}
+              election={selectedElection}
+            />
+            
+            {/* Add Candidates to Election Dialog */}
+            <AddCandidatesToElectionDialog
+              open={isAddCandidatesDialogOpen}
+              onOpenChange={setIsAddCandidatesDialogOpen}
+              election={selectedElection}
+            />
+            
+            {/* View Election Candidates Dialog */}
+            <ViewElectionCandidatesDialog
+              open={isViewCandidatesDialogOpen}
+              onOpenChange={setIsViewCandidatesDialogOpen}
+              election={selectedElection}
             />
           </div>
 
