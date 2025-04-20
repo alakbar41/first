@@ -218,17 +218,41 @@ export default function Results() {
                     </div>
                   ) : (
                     /* Winner announcement for elections with votes */
-                    candidatesWithVotes.length > 0 && (
+                    candidatesWithVotes.length > 0 && (() => {
+                      // Check for tie condition
+                      const highestVoteCount = candidatesWithVotes.length > 0 ? candidatesWithVotes[0].voteCount : 0;
+                      const tiedWinners = candidatesWithVotes.filter(candidate => candidate.voteCount === highestVoteCount);
+                      const hasTie = tiedWinners.length > 1;
+                      
+                      // For President/VP elections, check for ties in the pairs
+                      const tiedPairs = isPresidentVPElection && candidatePairs.length > 0 
+                        ? candidatePairs.filter(pair => pair.voteCount === candidatePairs[0].voteCount) 
+                        : [];
+                      const hasTieInPairs = tiedPairs.length > 1;
+                      
+                      return (
                       <Card className="mb-6 overflow-hidden bg-gradient-to-r from-purple-50 to-indigo-50 border-purple-200">
                         <CardHeader className="pb-2">
                           <div className="flex items-center">
                             <Trophy className="h-5 w-5 text-yellow-500 mr-2" />
-                            <CardTitle>Election Winner</CardTitle>
+                            <CardTitle>{hasTie || hasTieInPairs ? "Election Results" : "Election Winner"}</CardTitle>
                           </div>
                           <CardDescription>
                             Final results verified by Polygon Mainnet blockchain
                           </CardDescription>
                         </CardHeader>
+                        
+                        {/* Show tie notification if applicable */}
+                        {(hasTie || hasTieInPairs) && (
+                          <div className="px-6 py-2 bg-amber-50 border-y border-amber-100">
+                            <div className="flex items-center text-sm text-amber-800">
+                              <AlertCircle className="h-4 w-4 mr-2" />
+                              <span>
+                                Tie detected! {tiedWinners.length} candidates have the highest vote count ({highestVoteCount})
+                              </span>
+                            </div>
+                          </div>
+                        )}
                         <CardContent>
                           {isPresidentVPElection && candidatePairs.length > 0 ? (
                             <div className="flex items-center">
@@ -316,7 +340,8 @@ export default function Results() {
                           </div>
                         </CardContent>
                       </Card>
-                    )
+                      );
+                    })()
                   )}
                   
                   {!isLoadingBlockchain && (
