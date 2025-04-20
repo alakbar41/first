@@ -45,29 +45,32 @@ export default function Results() {
     },
   });
 
-  if (!user) {
-    navigate("/auth");
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p>Redirecting to login...</p>
-      </div>
-    );
-  }
-
-  // Admin users should be redirected to their dashboard
-  if (user.isAdmin) {
-    navigate("/admin");
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p>Redirecting to admin dashboard...</p>
-      </div>
-    );
-  }
-
   // Get the selected election
-  const selectedElection = selectedElectionId 
-    ? pastElections?.find(e => e.id.toString() === selectedElectionId)
-    : pastElections?.[0];
+  const selectedElection = useMemo(() => {
+    if (!pastElections || pastElections.length === 0) return undefined;
+    
+    return selectedElectionId 
+      ? pastElections.find(e => e.id.toString() === selectedElectionId)
+      : pastElections[0];
+  }, [pastElections, selectedElectionId]);
+  
+  // Redirect logic inside useEffect
+  useEffect(() => {
+    if (!user) {
+      navigate("/auth");
+    } else if (user.isAdmin) {
+      navigate("/admin");
+    }
+  }, [user, navigate]);
+  
+  // If not authenticated or admin, show loading
+  if (!user || user.isAdmin) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p>Redirecting...</p>
+      </div>
+    );
+  }
     
   // Fetch blockchain results whenever selected election changes
   useEffect(() => {
