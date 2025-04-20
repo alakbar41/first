@@ -427,17 +427,19 @@ const CompletedElectionWinners = () => {
                   }`}
               >
                 <div className="flex items-center space-x-3">
-                  {isWinner && (
-                    <div className="absolute -ml-2">
-                      <Trophy className="h-5 w-5 text-yellow-500" />
+                  <div className="relative">
+                    {isWinner && (
+                      <div className="absolute -left-2 top-1/2 -translate-y-1/2">
+                        <Trophy className="h-5 w-5 text-yellow-500" />
+                      </div>
+                    )}
+                    <div className={`w-10 h-10 flex-shrink-0 rounded-full ${
+                      isWinner ? 'bg-purple-200' : 'bg-purple-100'
+                    } flex items-center justify-center overflow-hidden`}>
+                      <span className={`${
+                        isWinner ? 'text-purple-800' : 'text-purple-700'
+                      } font-medium`}>{candidate.full_name.slice(0, 2)}</span>
                     </div>
-                  )}
-                  <div className={`w-10 h-10 flex-shrink-0 rounded-full ${
-                    isWinner ? 'bg-purple-200' : 'bg-purple-100'
-                  } flex items-center justify-center overflow-hidden`}>
-                    <span className={`${
-                      isWinner ? 'text-purple-800' : 'text-purple-700'
-                    } font-medium`}>{candidate.full_name.slice(0, 2)}</span>
                   </div>
                   <div>
                     <h3 className={`text-sm font-medium ${
