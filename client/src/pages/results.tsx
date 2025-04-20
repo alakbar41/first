@@ -214,7 +214,7 @@ export default function Results() {
                   {isLoadingBlockchain ? (
                     <div className="flex justify-center items-center h-64">
                       <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-700"></div>
-                      <span className="ml-3 text-gray-600">Loading blockchain data from Ethereum Sepolia...</span>
+                      <span className="ml-3 text-gray-600">Loading blockchain data from Polygon Mainnet...</span>
                     </div>
                   ) : (
                     /* Winner announcement for elections with votes */
@@ -226,7 +226,7 @@ export default function Results() {
                             <CardTitle>Election Winner</CardTitle>
                           </div>
                           <CardDescription>
-                            Final results verified by Ethereum Sepolia blockchain
+                            Final results verified by Polygon Mainnet blockchain
                           </CardDescription>
                         </CardHeader>
                         <CardContent>

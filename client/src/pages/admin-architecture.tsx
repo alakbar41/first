@@ -100,7 +100,7 @@ export default function AdminArchitecture() {
                       <text x="630" y="300" fontSize="16" textAnchor="middle" fontWeight="bold">Blockchain Layer</text>
                       
                       <rect x="560" y="320" width="140" height="70" rx="5" fill="#fff" stroke="#c4b5fd" strokeWidth="1" />
-                      <text x="630" y="355" textAnchor="middle" fontSize="12">Ethereum Sepolia</text>
+                      <text x="630" y="355" textAnchor="middle" fontSize="12">Polygon Mainnet</text>
                       
                       {/* Connection lines */}
                       <line x1="260" y1="165" x2="330" y2="165" stroke="#000" strokeWidth="1" strokeDasharray="5,5" />
