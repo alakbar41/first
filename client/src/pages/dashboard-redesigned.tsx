@@ -19,10 +19,6 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("all");
   const [selectedElection, setSelectedElection] = useState<Election | null>(null);
   
-  const handleLogout = () => {
-    logoutMutation.mutate();
-  };
-
   // Fetch all elections
   const { data: elections, isLoading } = useQuery<Election[]>({
     queryKey: ["/api/elections"],
@@ -32,9 +28,22 @@ export default function Dashboard() {
       return response.json();
     },
   });
+  
+  // Handle redirects in useEffect instead of during render
+  useEffect(() => {
+    if (!user) {
+      navigate("/auth");
+    } else if (user.isAdmin) {
+      navigate("/admin");
+    }
+  }, [user, navigate]);
+  
+  const handleLogout = () => {
+    logoutMutation.mutate();
+  };
 
+  // Loading state or redirecting states
   if (!user) {
-    navigate("/auth");
     return (
       <div className="flex items-center justify-center min-h-screen">
         <p>Redirecting to login...</p>
@@ -44,7 +53,6 @@ export default function Dashboard() {
 
   // Admin users should be redirected to their dashboard
   if (user.isAdmin) {
-    navigate("/admin");
     return (
       <div className="flex items-center justify-center min-h-screen">
         <p>Redirecting to admin dashboard...</p>

@@ -458,8 +458,14 @@ export default function AdminDashboardRedesigned() {
     ? ticketsData.filter((ticket: any) => ticket.status === 'open').length 
     : 0;
 
+  // Handle redirects with useEffect
+  useEffect(() => {
+    if (user && !user.isAdmin) {
+      navigate('/');
+    }
+  }, [user, navigate]);
+
   if (!user?.isAdmin) {
-    navigate('/');
     return (
       <div className="flex items-center justify-center min-h-screen">
         <p>Redirecting...</p>
