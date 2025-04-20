@@ -153,38 +153,25 @@ const Calendar = () => {
 
 // Elections list component
 const ElectionsList = () => {
-  // We're using participation overview to get proper status info
-  const { data: electionsData, isLoading } = useQuery<ParticipationOverview[]>({
-    queryKey: ['/api/dashboard/metrics/participation-overview'],
+  // Directly fetch all elections from the API
+  const { data: electionsData, isLoading } = useQuery<any[]>({
+    queryKey: ['/api/elections'],
   });
 
   // Make sure we have an array of elections
   const elections = Array.isArray(electionsData) ? electionsData : [];
 
+  // Log the data to see what's available
+  console.log("Elections data for summary:", elections);
+
   // Calculate summary metrics
   const electionStats = React.useMemo(() => {
-    const stats = {
+    return {
       total: elections.length,
       active: elections.filter(e => e.status === 'active').length,
       upcoming: elections.filter(e => e.status === 'upcoming').length,
       completed: elections.filter(e => e.status === 'completed').length,
-      averageParticipation: 0,
-      highestParticipation: 0
     };
-    
-    if (elections.length > 0) {
-      // Calculate average participation across all elections
-      const totalParticipation = elections.reduce((sum, election) => 
-        sum + election.participation_percentage, 0);
-      stats.averageParticipation = Math.round(totalParticipation / elections.length);
-      
-      // Find highest participation rate
-      stats.highestParticipation = Math.max(
-        ...elections.map(election => election.participation_percentage)
-      );
-    }
-    
-    return stats;
   }, [elections]);
 
   // Map status to display values and colors
@@ -203,6 +190,8 @@ const ElectionsList = () => {
   
   // Sort elections: active first, then upcoming, then completed
   const sortedElections = React.useMemo(() => {
+    if (elections.length === 0) return [];
+    
     const statusPriority = { 'active': 0, 'upcoming': 1, 'completed': 2 };
     
     return [...elections].sort((a, b) => {
@@ -222,25 +211,19 @@ const ElectionsList = () => {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3 bg-gray-50 border-b border-gray-100">
         <div className="text-center p-2">
           <div className="text-xs text-gray-500">Total</div>
-          <div className="text-lg font-semibold text-gray-800">{sortedElections.length}</div>
+          <div className="text-lg font-semibold text-gray-800">{electionStats.total}</div>
         </div>
         <div className="text-center p-2">
           <div className="text-xs text-purple-600">Active</div>
-          <div className="text-lg font-semibold text-purple-800">
-            {sortedElections.filter(e => e.status === 'active').length}
-          </div>
+          <div className="text-lg font-semibold text-purple-800">{electionStats.active}</div>
         </div>
         <div className="text-center p-2">
           <div className="text-xs text-green-600">Upcoming</div>
-          <div className="text-lg font-semibold text-green-800">
-            {sortedElections.filter(e => e.status === 'upcoming').length}
-          </div>
+          <div className="text-lg font-semibold text-green-800">{electionStats.upcoming}</div>
         </div>
         <div className="text-center p-2">
           <div className="text-xs text-gray-500">Completed</div>
-          <div className="text-lg font-semibold text-gray-800">
-            {sortedElections.filter(e => e.status === 'completed').length}
-          </div>
+          <div className="text-lg font-semibold text-gray-800">{electionStats.completed}</div>
         </div>
       </div>
       
@@ -251,45 +234,43 @@ const ElectionsList = () => {
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-700 mx-auto"></div>
             <p className="text-gray-500 text-xs mt-2">Loading elections...</p>
           </div>
-        ) : sortedElections.length > 0 ? (
-          sortedElections.map((election) => (
-            <div 
-              key={election.id} 
-              className={`p-3 flex items-center justify-between ${
-                election.status === 'active' ? 'hover:bg-purple-50' : 'hover:bg-gray-50'
-              } transition duration-150`}
-            >
-              <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-medium text-gray-900">{election.name}</h3>
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${getStatusBadgeClass(election.status)}`}>
-                    {election.status.charAt(0).toUpperCase() + election.status.slice(1)}
-                  </span>
-                </div>
-                <div className="flex items-center mt-1 text-xs text-gray-500">
-                  <span className="mr-2">{election.position}</span>
-                  <span>
-                    {election.voters}/{election.total_eligible_voters} voted 
-                    ({election.participation_percentage}%)
-                  </span>
-                </div>
-                {/* Participation progress bar */}
-                <div className="w-full bg-gray-200 rounded-full h-1 mt-1">
-                  <div 
-                    className={`h-1 rounded-full ${
-                      election.status === 'active' ? 'bg-purple-600' : 
-                      election.status === 'upcoming' ? 'bg-green-500' : 'bg-gray-400'
-                    }`}
-                    style={{ width: `${election.participation_percentage}%` }}
-                  ></div>
+        ) : (
+          <>
+            {sortedElections.map((election) => (
+              <div 
+                key={election.id} 
+                className={`p-3 flex items-center justify-between ${
+                  election.status === 'active' ? 'hover:bg-purple-50' : 'hover:bg-gray-50'
+                } transition duration-150`}
+              >
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-medium text-gray-900">{election.name}</h3>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${getStatusBadgeClass(election.status)}`}>
+                      {election.status.charAt(0).toUpperCase() + election.status.slice(1)}
+                    </span>
+                  </div>
+                  <div className="flex items-center mt-1 text-xs text-gray-500">
+                    <span className="mr-2">{election.position}</span>
+                    <span>
+                      {election.voters}/{election.total_eligible_voters} voted 
+                      ({election.participation_percentage}%)
+                    </span>
+                  </div>
+                  {/* Participation progress bar */}
+                  <div className="w-full bg-gray-200 rounded-full h-1 mt-1">
+                    <div 
+                      className={`h-1 rounded-full ${
+                        election.status === 'active' ? 'bg-purple-600' : 
+                        election.status === 'upcoming' ? 'bg-green-500' : 'bg-gray-400'
+                      }`}
+                      style={{ width: `${election.participation_percentage}%` }}
+                    ></div>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))
-        ) : (
-          <div className="p-6 text-center">
-            <p className="text-gray-500 text-sm">No elections available</p>
-          </div>
+            ))}
+          </>
         )}
       </div>
       
