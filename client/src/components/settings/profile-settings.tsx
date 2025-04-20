@@ -63,26 +63,9 @@ export function ProfileSettings({ user }: ProfileSettingsProps) {
       
       <Separator />
       
-      <div className="grid gap-6 grid-cols-1 md:grid-cols-6">
-        {/* Avatar Section */}
-        <Card className="col-span-6 md:col-span-2">
-          <CardHeader>
-            <CardTitle>Profile Picture</CardTitle>
-            <CardDescription>This is your public profile picture visible to others.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center">
-            <Avatar className="w-24 h-24 mb-4">
-              <AvatarFallback className="text-xl bg-purple-100 text-purple-700">
-                {getInitials(user?.email)}
-              </AvatarFallback>
-            </Avatar>
-            <Button disabled className="w-full mb-2">Upload Picture</Button>
-            <Button variant="outline" disabled className="w-full">Remove</Button>
-          </CardContent>
-        </Card>
-
+      <div className="grid gap-6 grid-cols-1">
         {/* General Information */}
-        <Card className="col-span-6 md:col-span-4">
+        <Card className="col-span-6">
           <CardHeader>
             <CardTitle>General Information</CardTitle>
             <CardDescription>
