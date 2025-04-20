@@ -124,10 +124,10 @@ export default function AdminElections() {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-900">
+    <div className="flex min-h-screen h-full bg-gray-50 dark:bg-gray-900">
       <AdminSidebar user={user} />
       
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto pb-12">
         <main className="p-6">
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Elections Management</h1>
