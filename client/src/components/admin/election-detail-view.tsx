@@ -71,8 +71,8 @@ export function AdminElectionDetailView({ election, className = "" }: ElectionDe
       } 
       // Insufficient funds detection
       else if (errorMessage.includes("insufficient funds")) {
-        errorTitle = "Insufficient MATIC balance";
-        errorMessage = "Your wallet has insufficient MATIC tokens to complete this transaction. Please add MATIC tokens to your wallet on the Polygon Amoy testnet.";
+        errorTitle = "Insufficient ETH balance";
+        errorMessage = "Your wallet has insufficient ETH tokens to complete this transaction. Please add ETH tokens to your wallet on the Ethereum Sepolia testnet.";
       } 
       // Already deployed
       else if (errorMessage.includes("Election already exists") || errorMessage.includes("already deployed")) {

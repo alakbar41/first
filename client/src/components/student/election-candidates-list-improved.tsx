@@ -476,7 +476,7 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
           } else if (blockchainError.message?.includes("balance")) {
             toast({
               title: "Insufficient Balance",
-              description: "Not enough funds for gas. Please add more MATIC to your wallet.",
+              description: "Not enough funds for gas. Please add more ETH to your wallet.",
               variant: "destructive",
             });
           } else {

@@ -297,7 +297,7 @@ export async function voteForCandidate(startTime: number, candidateHash: string)
         } else if (innerError.includes('underpriced')) {
           throw new Error('Transaction failed: Gas price too low. Please increase gas price in MetaMask settings.');
         } else if (innerError.includes('balance')) {
-          throw new Error('Transaction failed: Not enough funds for gas. Please add more MATIC to your wallet.');
+          throw new Error('Transaction failed: Not enough funds for gas. Please add more ETH to your wallet.');
         } else {
           // More general error for other JSON-RPC issues
           console.log('MetaMask error details:', error);
@@ -430,9 +430,9 @@ export async function deployElectionToBlockchain(electionId: number) {
       const provider = new ethers.BrowserProvider(window.ethereum);
       const balance = await provider.getBalance(accounts[0]);
       
-      // Convert balance to MATIC (from wei)
-      const balanceInMatic = ethers.formatEther(balance);
-      console.log(`Current account balance: ${balanceInMatic} MATIC`);
+      // Convert balance to ETH (from wei)
+      const balanceInEth = ethers.formatEther(balance);
+      console.log(`Current account balance: ${balanceInEth} ETH`);
     } catch (error: unknown) {
       console.error('Error checking network or balance:', error);
       const errorMessage = error instanceof Error 

@@ -38,8 +38,8 @@ export default function VerifyVote() {
     
     setIsVerifying(true);
     
-    // Open the transaction in Polygon Amoy Explorer
-    window.open(`https://amoy.polygonscan.com/tx/${transactionHash.trim()}`, '_blank');
+    // Open the transaction in Ethereum Sepolia Explorer
+    window.open(`https://sepolia.etherscan.io/tx/${transactionHash.trim()}`, '_blank');
     
     // Reset after a short delay
     setTimeout(() => {
@@ -69,7 +69,7 @@ export default function VerifyVote() {
                   Blockchain Vote Verification
                 </CardTitle>
                 <CardDescription>
-                  Confirm your vote is securely recorded on the Polygon Amoy blockchain
+                  Confirm your vote is securely recorded on the Ethereum Sepolia blockchain
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
@@ -83,8 +83,8 @@ export default function VerifyVote() {
                   <AlertCircleIcon className="h-4 w-4" />
                   <AlertTitle>How it works</AlertTitle>
                   <AlertDescription className="mt-2">
-                    <p className="mb-2">Each vote is recorded as a transaction on the Polygon Amoy blockchain. After voting, you'll receive an email with your transaction hash.</p>
-                    <p>Enter this hash below to view your transaction details on Polygon's blockchain explorer. This confirms your vote was recorded immutably.</p>
+                    <p className="mb-2">Each vote is recorded as a transaction on the Ethereum Sepolia blockchain. After voting, you'll receive an email with your transaction hash.</p>
+                    <p>Enter this hash below to view your transaction details on Ethereum's blockchain explorer. This confirms your vote was recorded immutably.</p>
                   </AlertDescription>
                 </Alert>
                 
@@ -125,12 +125,12 @@ export default function VerifyVote() {
                   <span className="font-medium">Coming soon:</span> Automatic transaction hash delivery to your email
                 </p>
                 <a 
-                  href="https://amoy.polygonscan.com" 
+                  href="https://sepolia.etherscan.io" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="text-purple-600 hover:text-purple-800 text-sm font-medium flex items-center"
                 >
-                  <span>Polygon Explorer</span>
+                  <span>Ethereum Explorer</span>
                   <ExternalLinkIcon className="ml-1 h-3.5 w-3.5" />
                 </a>
               </CardFooter>
