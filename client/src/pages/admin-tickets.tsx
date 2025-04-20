@@ -145,7 +145,7 @@ export default function AdminTickets() {
                       <SelectItem value="open">
                         <span className="flex items-center">
                           <AlertCircle className="mr-2 h-4 w-4 text-red-500" />
-                          Open ({ticketCounts.open})
+                          New ({ticketCounts.open})
                         </span>
                       </SelectItem>
                       <SelectItem value="in_progress">
@@ -220,7 +220,7 @@ export default function AdminTickets() {
                         }`}
                         onClick={() => setFilter("open")}
                       >
-                        Open ({ticketCounts.open})
+                        New ({ticketCounts.open})
                       </button>
                       <button
                         className={`mr-2 inline-block py-2 px-4 text-sm font-medium ${
@@ -351,7 +351,7 @@ function TicketCard({ ticket, onMarkInProgress, onResolve, isPending }: TicketCa
             </div>
           </div>
           {ticket.status === "open" && (
-            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">Open</Badge>
+            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">New</Badge>
           )}
           {ticket.status === "in_progress" && (
             <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">In Progress</Badge>
