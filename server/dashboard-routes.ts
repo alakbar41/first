@@ -657,7 +657,7 @@ router.get('/metrics/tickets', isAdmin, async (req: Request, res: Response) => {
     
     // Transform results into a more convenient format
     const result = {
-      open: 0,
+      open: 0,  // Using "open" in code but displaying as "new" in UI
       in_progress: 0,
       resolved: 0,
       total: 0
