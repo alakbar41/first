@@ -108,7 +108,17 @@ router.get('/metrics/faculty-participation', isAdmin, async (req: Request, res: 
       ORDER BY fc.faculty
     `;
 
-    const facultyParticipation = await db.execute(query) as unknown as FacultyParticipation[];
+    const queryResult = await db.execute(query);
+    console.log('Faculty participation query result:', JSON.stringify(queryResult, null, 2));
+    
+    // Ensure we have an array to work with
+    const facultyParticipation = Array.isArray(queryResult) 
+      ? queryResult 
+      : queryResult && typeof queryResult === 'object' && 'rows' in queryResult 
+        ? queryResult.rows || []
+        : [];
+    
+    console.log('Faculty array to map:', JSON.stringify(facultyParticipation, null, 2));
     
     // Add faculty names for display purposes
     const result = facultyParticipation.map(row => ({

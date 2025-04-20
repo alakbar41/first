@@ -151,9 +151,12 @@ const Calendar = () => {
 // Elections list component
 const ElectionsList = () => {
   // We're using participation overview to get proper status info
-  const { data: elections } = useQuery<ParticipationOverview[]>({
+  const { data: electionsData } = useQuery<ParticipationOverview[]>({
     queryKey: ['/api/dashboard/metrics/participation-overview'],
   });
+
+  // Make sure we have an array of elections
+  const elections = Array.isArray(electionsData) ? electionsData : [];
 
   // Map status to display values and colors
   const getStatusBadgeClass = (status: string) => {
@@ -175,18 +178,24 @@ const ElectionsList = () => {
         <h2 className="text-base font-medium text-gray-800">Elections</h2>
       </div>
       <div className="divide-y divide-gray-100">
-        {elections?.map((election) => (
-          <div key={election.id} className={`p-3 flex items-center justify-between ${
-            election.status === 'active' ? 'hover:bg-purple-50' : 'hover:bg-gray-50'
-          } transition duration-150`}>
-            <div className="flex-1">
-              <h3 className="text-sm font-medium text-gray-900">{election.name}</h3>
-              <span className={`text-xs px-2 py-0.5 rounded-full ${getStatusBadgeClass(election.status)}`}>
-                {election.status.charAt(0).toUpperCase() + election.status.slice(1)}
-              </span>
+        {elections.length > 0 ? (
+          elections.map((election) => (
+            <div key={election.id} className={`p-3 flex items-center justify-between ${
+              election.status === 'active' ? 'hover:bg-purple-50' : 'hover:bg-gray-50'
+            } transition duration-150`}>
+              <div className="flex-1">
+                <h3 className="text-sm font-medium text-gray-900">{election.name}</h3>
+                <span className={`text-xs px-2 py-0.5 rounded-full ${getStatusBadgeClass(election.status)}`}>
+                  {election.status.charAt(0).toUpperCase() + election.status.slice(1)}
+                </span>
+              </div>
             </div>
+          ))
+        ) : (
+          <div className="p-6 text-center">
+            <p className="text-gray-500 text-sm">No elections available</p>
           </div>
-        ))}
+        )}
       </div>
     </div>
   );
@@ -336,11 +345,13 @@ const FacultyDistribution = () => {
   });
 
   // Prepare data for pie chart
-  const pieData = facultyData?.map(faculty => ({
-    name: faculty.faculty_name || faculty.faculty,
-    value: faculty.total_students,
-    fill: `#${Math.floor(Math.random()*16777215).toString(16)}` // Random color
-  })) || [];
+  const pieData = Array.isArray(facultyData) 
+    ? facultyData.map(faculty => ({
+        name: faculty.faculty_name || faculty.faculty,
+        value: faculty.total_students,
+        fill: `#${Math.floor(Math.random()*16777215).toString(16)}` // Random color
+      }))
+    : [];
 
   // Custom colors for pie chart
   const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088FE'];
@@ -438,7 +449,9 @@ export default function AdminDashboardRedesigned() {
   });
 
   // Calculate metrics
-  const totalVoters = facultyData?.reduce((sum, faculty) => sum + faculty.total_students, 0) || 0;
+  const totalVoters = Array.isArray(facultyData) 
+    ? facultyData.reduce((sum, faculty) => sum + faculty.total_students, 0)
+    : 0;
   
   // Count open tickets
   const openTickets = Array.isArray(ticketsData) 
