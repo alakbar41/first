@@ -218,24 +218,18 @@ export default function Results() {
                     </div>
                   ) : (
                     /* Winner announcement for elections with votes */
-                    candidatesWithVotes.length > 0 && (() => {
-                      // Check for tie condition
-                      const highestVoteCount = candidatesWithVotes.length > 0 ? candidatesWithVotes[0].voteCount : 0;
-                      const tiedWinners = candidatesWithVotes.filter(candidate => candidate.voteCount === highestVoteCount);
-                      const hasTie = tiedWinners.length > 1;
-                      
-                      // For President/VP elections, check for ties in the pairs
-                      const tiedPairs = isPresidentVPElection && candidatePairs.length > 0 
-                        ? candidatePairs.filter(pair => pair.voteCount === candidatePairs[0].voteCount) 
-                        : [];
-                      const hasTieInPairs = tiedPairs.length > 1;
-                      
-                      return (
+                    candidatesWithVotes.length > 0 && (
                       <Card className="mb-6 overflow-hidden bg-gradient-to-r from-purple-50 to-indigo-50 border-purple-200">
                         <CardHeader className="pb-2">
                           <div className="flex items-center">
                             <Trophy className="h-5 w-5 text-yellow-500 mr-2" />
-                            <CardTitle>{hasTie || hasTieInPairs ? "Election Results" : "Election Winner"}</CardTitle>
+                            {/* Check for tie condition for display */}
+                            <CardTitle>
+                              {candidatesWithVotes.length > 1 && 
+                               candidatesWithVotes[0].voteCount === candidatesWithVotes[1].voteCount
+                                ? "Election Results - Tie Detected"
+                                : "Election Winner"}
+                            </CardTitle>
                           </div>
                           <CardDescription>
                             Final results verified by Polygon Mainnet blockchain
@@ -243,16 +237,18 @@ export default function Results() {
                         </CardHeader>
                         
                         {/* Show tie notification if applicable */}
-                        {(hasTie || hasTieInPairs) && (
+                        {candidatesWithVotes.length > 1 && 
+                         candidatesWithVotes[0].voteCount === candidatesWithVotes[1].voteCount && (
                           <div className="px-6 py-2 bg-amber-50 border-y border-amber-100">
                             <div className="flex items-center text-sm text-amber-800">
                               <AlertCircle className="h-4 w-4 mr-2" />
                               <span>
-                                Tie detected! {tiedWinners.length} candidates have the highest vote count ({highestVoteCount})
+                                Tie detected! Multiple candidates have the highest vote count ({candidatesWithVotes[0].voteCount})
                               </span>
                             </div>
                           </div>
                         )}
+                        
                         <CardContent>
                           {isPresidentVPElection && candidatePairs.length > 0 ? (
                             <div className="flex items-center">
@@ -280,6 +276,12 @@ export default function Results() {
                                 <h3 className="text-lg font-bold flex items-center">
                                   {candidatePairs[0].fullName}
                                   <Award className="ml-2 h-5 w-5 text-yellow-500" />
+                                  {candidatePairs.length > 1 && 
+                                   candidatePairs[0].voteCount === candidatePairs[1].voteCount && (
+                                    <span className="ml-2 text-xs font-normal bg-amber-100 text-amber-800 px-2 py-1 rounded-full">
+                                      Tied for 1st
+                                    </span>
+                                  )}
                                 </h3>
                                 {candidatePairs[0].runningMate && (
                                   <p className="text-sm text-gray-600">
@@ -321,6 +323,12 @@ export default function Results() {
                                 <h3 className="text-lg font-bold flex items-center">
                                   {candidatesWithVotes[0].fullName}
                                   <Award className="ml-2 h-5 w-5 text-yellow-500" />
+                                  {candidatesWithVotes.length > 1 && 
+                                   candidatesWithVotes[0].voteCount === candidatesWithVotes[1].voteCount && (
+                                    <span className="ml-2 text-xs font-normal bg-amber-100 text-amber-800 px-2 py-1 rounded-full">
+                                      Tied for 1st
+                                    </span>
+                                  )}
                                 </h3>
                                 <p className="text-sm text-gray-600">{candidatesWithVotes[0].position}</p>
                                 <div className="mt-2 flex items-center text-sm">
@@ -334,14 +342,64 @@ export default function Results() {
                             </div>
                           ) : null}
                           
+                          {/* Display other tied candidates if applicable */}
+                          {candidatesWithVotes.length > 1 && 
+                           candidatesWithVotes[0].voteCount === candidatesWithVotes[1].voteCount && (
+                            <div className="mt-6 pt-4 border-t border-gray-100">
+                              <h4 className="text-sm font-medium text-gray-500 mb-3">Other candidates tied for first place:</h4>
+                              {candidatesWithVotes.slice(1).map((candidate, index) => 
+                                candidate.voteCount === candidatesWithVotes[0].voteCount && (
+                                  <div key={candidate.id} className="flex items-center mt-4">
+                                    <div className="flex-shrink-0 mr-4">
+                                      {candidate.pictureUrl ? (
+                                        <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-yellow-300">
+                                          <img 
+                                            src={candidate.pictureUrl} 
+                                            alt={candidate.fullName} 
+                                            className="w-full h-full object-cover"
+                                            onError={(e) => {
+                                              const target = e.target as HTMLImageElement;
+                                              target.style.display = 'none';
+                                            }}
+                                          />
+                                        </div>
+                                      ) : (
+                                        <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center border-2 border-yellow-300">
+                                          <UserCircle className="text-gray-400 w-8 h-8" />
+                                        </div>
+                                      )}
+                                    </div>
+                                    
+                                    <div>
+                                      <h3 className="text-base font-bold flex items-center">
+                                        {candidate.fullName}
+                                        <Award className="ml-2 h-4 w-4 text-yellow-500" />
+                                        <span className="ml-2 text-xs font-normal bg-amber-100 text-amber-800 px-2 py-1 rounded-full">
+                                          Tied for 1st
+                                        </span>
+                                      </h3>
+                                      <p className="text-sm text-gray-600">{candidate.position}</p>
+                                      <div className="mt-1 flex items-center text-sm">
+                                        <span className="font-semibold text-purple-700 mr-2">{candidate.voteCount} votes</span>
+                                        <span className="text-gray-600">({candidate.percentage}% of total)</span>
+                                        <Badge className="ml-3 bg-purple-100 text-purple-800 hover:bg-purple-200">
+                                          {getFacultyName(candidate.faculty)}
+                                        </Badge>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )
+                              )}
+                            </div>
+                          )}
+                          
                           <div className="mt-4 flex items-center text-xs text-gray-500">
                             <Database className="h-3 w-3 mr-1 text-purple-500" />
                             <span>All vote counts securely recorded on the blockchain</span>
                           </div>
                         </CardContent>
                       </Card>
-                      );
-                    })()
+                    )
                   )}
                   
                   {!isLoadingBlockchain && (
@@ -490,7 +548,7 @@ export default function Results() {
                                   <div className="text-xs text-gray-500 mt-4 text-center">
                                     <span className="flex items-center justify-center">
                                       <Database className="h-3 w-3 mr-1" />
-                                      Data verified by Ethereum Sepolia blockchain
+                                      Data verified by Polygon Mainnet blockchain
                                     </span>
                                   </div>
                                 </div>
@@ -524,14 +582,42 @@ export default function Results() {
                                         )}
                                       </div>
                                       <div className="flex-grow">
-                                        <div className="text-sm font-medium text-gray-900 mb-1">
-                                          {candidate.fullName}
-                                          {index === 0 && <Trophy className="inline-block h-4 w-4 text-yellow-500 ml-1" />}
+                                        <div className="flex items-center mb-1">
+                                          <div className="text-sm font-medium text-gray-900 mr-2">
+                                            {candidate.fullName}
+                                            {/* Highlight tied winners or single winner */}
+                                            {index === 0 && (
+                                              <>
+                                                <Trophy className="inline-block h-4 w-4 text-yellow-500 ml-1" />
+                                                {candidatesWithVotes.length > 1 && 
+                                                 candidatesWithVotes[0].voteCount === candidatesWithVotes[1].voteCount && (
+                                                  <span className="ml-1 text-xs font-normal bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full">
+                                                    Tied
+                                                  </span>
+                                                )}
+                                              </>
+                                            )}
+                                            {/* Show tie badge for other tied candidates */}
+                                            {index > 0 && candidate.voteCount === candidatesWithVotes[0].voteCount && (
+                                              <>
+                                                <Trophy className="inline-block h-4 w-4 text-yellow-500 ml-1" />
+                                                <span className="ml-1 text-xs font-normal bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full">
+                                                  Tied
+                                                </span>
+                                              </>
+                                            )}
+                                          </div>
+                                          {candidate.position && (
+                                            <Badge variant="outline" className="border-gray-300 text-gray-600 text-xs">
+                                              {candidate.position}
+                                            </Badge>
+                                          )}
                                         </div>
                                         <div className="w-full bg-gray-200 rounded-full h-6 overflow-hidden">
                                           <div 
                                             className={`h-full flex items-center rounded-full pl-2 ${
                                               index === 0 ? "bg-purple-600" : 
+                                              candidate.voteCount === candidatesWithVotes[0].voteCount ? "bg-purple-600" :
                                               index === 1 ? "bg-purple-400" : 
                                               "bg-purple-300"
                                             }`}
@@ -551,52 +637,59 @@ export default function Results() {
                                   ))}
                                 </div>
                                 
-                                {/* Bar Chart for standard election results */}
+                                {/* Pie Chart for standard election results */}
                                 <div className="flex flex-col items-center justify-center">
-                                  <h3 className="text-sm font-medium text-gray-600 mb-4">Vote Comparison</h3>
+                                  <h3 className="text-sm font-medium text-gray-600 mb-4">Vote Distribution</h3>
                                   <ResponsiveContainer width="100%" height={220}>
-                                    <BarChart
-                                      data={candidatesWithVotes.map((candidate, index) => ({
-                                        name: candidate.fullName.split(' ')[0],
-                                        votes: candidate.voteCount,
-                                        faculty: getFacultyName(candidate.faculty),
-                                        fullName: candidate.fullName,
-                                        isWinner: index === 0
-                                      }))}
-                                      margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                                    >
-                                      <CartesianGrid strokeDasharray="3 3" />
-                                      <XAxis dataKey="name" />
-                                      <YAxis />
-                                      <Tooltip
-                                        formatter={(value: any, name: string, props: any) => [
-                                          `${value} votes`,
-                                          `${props.payload.fullName} (${props.payload.faculty})`
-                                        ]}
-                                      />
-                                      <Legend />
-                                      <Bar 
-                                        dataKey="votes" 
-                                        name="Votes" 
-                                        fill="#7c3aed"
-                                        label={{ 
-                                          position: 'top',
-                                          formatter: (value: any) => `${value}`
-                                        }}
+                                    <PieChart>
+                                      <Pie
+                                        data={candidatesWithVotes.map((candidate, index) => ({
+                                          name: candidate.fullName,
+                                          value: candidate.voteCount,
+                                          faculty: getFacultyName(candidate.faculty),
+                                          isWinner: index === 0 || (candidate.voteCount === candidatesWithVotes[0].voteCount)
+                                        }))}
+                                        cx="50%"
+                                        cy="50%"
+                                        labelLine={false}
+                                        outerRadius={80}
+                                        fill="#8884d8"
+                                        dataKey="value"
+                                        nameKey="name"
                                       >
-                                        {candidatesWithVotes.map((entry, index) => (
+                                        {candidatesWithVotes.map((candidate, index) => (
                                           <Cell 
                                             key={`cell-${index}`} 
-                                            fill={index === 0 ? "#7c3aed" : index === 1 ? "#a78bfa" : "#c4b5fd"}
+                                            fill={
+                                              (index === 0 || candidate.voteCount === candidatesWithVotes[0].voteCount) 
+                                                ? "#7c3aed" 
+                                                : index === 1 
+                                                  ? "#a78bfa" 
+                                                  : "#c4b5fd"
+                                            }
                                           />
                                         ))}
-                                      </Bar>
-                                    </BarChart>
+                                      </Pie>
+                                      <Tooltip 
+                                        formatter={(value: number, name: string, props: any) => [
+                                          `${value} votes (${props.payload.payload.isWinner ? 'Winner' : ''})`,
+                                          `${name} - ${props.payload.payload.faculty}`
+                                        ]}
+                                      />
+                                      <Legend formatter={(value, entry: any) => {
+                                        const isWinner = entry.payload.isWinner;
+                                        return (
+                                          <span className="text-xs">
+                                            {value} {isWinner && <Trophy className="inline-block h-3 w-3 text-yellow-500 ml-1" />}
+                                          </span>
+                                        );
+                                      }} />
+                                    </PieChart>
                                   </ResponsiveContainer>
                                   <div className="text-xs text-gray-500 mt-4 text-center">
                                     <span className="flex items-center justify-center">
                                       <Database className="h-3 w-3 mr-1" />
-                                      Vote data secured by Ethereum blockchain
+                                      Data verified by Polygon Mainnet blockchain
                                     </span>
                                   </div>
                                 </div>
@@ -607,105 +700,84 @@ export default function Results() {
                       </TabsContent>
                       
                       <TabsContent value="table" className="space-y-4">
-                        <Card className="p-6">
-                          <h2 className="text-lg font-semibold text-gray-800 mb-1">
-                            {selectedElection.name} - Detailed Results
-                          </h2>
-                          <div className="flex items-center text-sm text-green-600 mb-4">
-                            <div className="bg-green-100 p-1 rounded-full mr-2">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                              </svg>
-                            </div>
-                            <span>{totalVotes} total votes verified by the blockchain</span>
-                          </div>
-                          
+                        <Card>
                           {candidatesWithVotes.length > 0 ? (
                             <div className="overflow-x-auto border rounded-md">
-                              <table className="min-w-full divide-y divide-gray-200">
-                                <thead className="bg-gray-50">
-                                  <tr>
-                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                      Rank
-                                    </th>
-                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                      Candidate
-                                    </th>
-                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                      Faculty
-                                    </th>
-                                    <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                      Votes
-                                    </th>
-                                    <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                      Percentage
-                                    </th>
+                              <table className="w-full">
+                                <thead>
+                                  <tr className="bg-gray-50 border-b">
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rank</th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Candidate</th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Position</th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Faculty</th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Votes</th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Percentage</th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                   </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
-                                  {candidatesWithVotes.map((candidate, index) => (
-                                    <tr key={candidate.id} className={index === 0 ? "bg-purple-50" : ""}>
-                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {index + 1}{index === 0 && <Trophy className="inline-block ml-1 h-4 w-4 text-yellow-500" />}
-                                      </td>
-                                      <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="flex items-center">
-                                          <div className="flex-shrink-0 h-10 w-10 relative">
-                                            {candidate.pictureUrl ? (
-                                              <img 
-                                                className="h-10 w-10 rounded-full"
-                                                src={candidate.pictureUrl}
-                                                alt=""
-                                                onError={(e) => {
-                                                  const target = e.target as HTMLImageElement;
-                                                  target.style.display = 'none';
-                                                }}
-                                              />
-                                            ) : (
-                                              <div className="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center">
-                                                <UserCircle className="h-6 w-6 text-purple-500" />
-                                              </div>
-                                            )}
-                                          </div>
-                                          <div className="ml-4">
-                                            <div className="text-sm font-medium text-gray-900">
-                                              {candidate.fullName}
-                                            </div>
-                                            <div className="text-sm text-gray-500">
-                                              {candidate.studentId}
-                                            </div>
-                                          </div>
-                                        </div>
-                                      </td>
-                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {getFacultyName(candidate.faculty)}
-                                      </td>
-                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium">
-                                        {candidate.voteCount}
-                                      </td>
-                                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                          ${index === 0 
-                                            ? "bg-green-100 text-green-800" 
-                                            : index === 1 
-                                              ? "bg-blue-100 text-blue-800" 
-                                              : "bg-gray-100 text-gray-800"}`}>
-                                          {candidate.percentage}%
-                                        </span>
-                                      </td>
-                                    </tr>
-                                  ))}
+                                  {isPresidentVPElection && candidatePairs.length > 0 ? (
+                                    candidatePairs.map((candidate, index) => (
+                                      <tr key={candidate.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                        <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{index + 1}</td>
+                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 font-medium">
+                                          {candidate.fullName}
+                                        </td>
+                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                                          President
+                                          {candidate.runningMate && (
+                                            <span className="block text-xs text-gray-400">
+                                              with {candidate.runningMate.fullName} as VP
+                                            </span>
+                                          )}
+                                        </td>
+                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{getFacultyName(candidate.faculty)}</td>
+                                        <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{candidate.voteCount}</td>
+                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{candidate.percentage}%</td>
+                                        <td className="px-4 py-3 whitespace-nowrap">
+                                          {index === 0 && (!candidatePairs[1] || candidatePairs[0].voteCount > candidatePairs[1].voteCount) ? (
+                                            <Badge className="bg-green-100 text-green-800 hover:bg-green-200">Winner</Badge>
+                                          ) : (index === 0 || (candidatePairs[0].voteCount === candidate.voteCount)) ? (
+                                            <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-200">Tied</Badge>
+                                          ) : (
+                                            <Badge variant="outline" className="text-gray-600">Runner-up</Badge>
+                                          )}
+                                        </td>
+                                      </tr>
+                                    ))
+                                  ) : (
+                                    candidatesWithVotes.map((candidate, index) => (
+                                      <tr key={candidate.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                        <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{index + 1}</td>
+                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 font-medium">
+                                          {candidate.fullName}
+                                        </td>
+                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{candidate.position}</td>
+                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{getFacultyName(candidate.faculty)}</td>
+                                        <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{candidate.voteCount}</td>
+                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{candidate.percentage}%</td>
+                                        <td className="px-4 py-3 whitespace-nowrap">
+                                          {index === 0 && (!candidatesWithVotes[1] || candidatesWithVotes[0].voteCount > candidatesWithVotes[1].voteCount) ? (
+                                            <Badge className="bg-green-100 text-green-800 hover:bg-green-200">Winner</Badge>
+                                          ) : (index === 0 || (candidatesWithVotes[0].voteCount === candidate.voteCount)) ? (
+                                            <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-200">Tied</Badge>
+                                          ) : (
+                                            <Badge variant="outline" className="text-gray-600">Runner-up</Badge>
+                                          )}
+                                        </td>
+                                      </tr>
+                                    ))
+                                  )}
                                 </tbody>
                               </table>
                             </div>
                           ) : (
-                            <div className="flex items-center justify-center h-64 border rounded-md">
-                              <div className="text-center p-4">
-                                <ListOrderedIcon className="h-16 w-16 mx-auto text-gray-400 mb-4" />
-                                <p className="text-gray-500">
-                                  No voting results available for this election yet.
-                                </p>
-                              </div>
+                            <div className="text-center py-12">
+                              <ChartBarIcon className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                              <h3 className="text-lg font-medium text-gray-900 mb-2">No Results Available</h3>
+                              <p className="text-gray-500">
+                                There are no voting results for this election yet.
+                              </p>
                             </div>
                           )}
                         </Card>
@@ -714,365 +786,21 @@ export default function Results() {
                   )}
                 </>
               ) : (
-                <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6 text-center">
-                  <p className="text-gray-500">No completed elections found.</p>
+                <div className="text-center py-12 bg-white rounded-lg border border-gray-200 shadow-sm">
+                  <AlertCircle className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Election Selected</h3>
+                  <p className="text-gray-500">
+                    Please select an election from the dropdown above to view results.
+                  </p>
                 </div>
               )}
             </div>
           ) : (
-            <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6 text-center">
-              <p className="text-gray-500">No completed elections found.</p>
-            </div>
-          )}
-        </div>
-      </main>
-    </div>
-  );
-
-  return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Sidebar */}
-      <StudentSidebar user={user} />
-      
-      {/* Main content */}
-      <main className="flex-1 overflow-y-auto">
-        <div className="px-6 py-4 bg-white border-b border-gray-200">
-          <h1 className="text-xl font-semibold text-gray-800">Election Results</h1>
-        </div>
-        
-        <div className="p-6">
-          {isLoading ? (
-            <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-700"></div>
-            </div>
-          ) : pastElections && pastElections.length > 0 ? (
-            <div className="space-y-6">
-              {/* Election selector */}
-              <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Select Election
-                </label>
-                <Select 
-                  value={selectedElectionId || pastElections[0]?.id.toString()} 
-                  onValueChange={setSelectedElectionId}
-                >
-                  <SelectTrigger className="w-full md:w-80">
-                    <SelectValue placeholder="Choose an election..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {pastElections.map(election => (
-                      <SelectItem key={election.id} value={election.id.toString()}>
-                        {election.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              {selectedElection ? (
-                <Tabs defaultValue="charts" className="space-y-4">
-                  <TabsList>
-                    <TabsTrigger value="charts" className="flex items-center">
-                      <ChartBarIcon className="mr-2 h-4 w-4" />
-                      Charts
-                    </TabsTrigger>
-                    <TabsTrigger value="table" className="flex items-center">
-                      <ListOrderedIcon className="mr-2 h-4 w-4" />
-                      Detailed Results
-                    </TabsTrigger>
-                  </TabsList>
-                  
-                  <TabsContent value="charts" className="space-y-4">
-                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
-                      <h2 className="text-lg font-semibold text-gray-800 mb-1">
-                        {selectedElection.name} - Results Visualization
-                      </h2>
-                      <div className="flex items-center text-sm text-green-600 mb-4">
-                        <div className="bg-green-100 p-1 rounded-full mr-2">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                          </svg>
-                        </div>
-                        <span>Vote counts are verified by the system</span>
-                      </div>
-                      
-                      <div className="h-80 bg-white rounded-md border border-gray-200 p-4">
-                        {candidatesWithVotes.length === 0 ? (
-                          <div className="h-full flex items-center justify-center">
-                            <div className="text-center p-4">
-                              <ChartBarIcon className="h-16 w-16 mx-auto text-gray-400 mb-4" />
-                              <p className="text-gray-500">
-                                No voting results available for this election yet.
-                              </p>
-                            </div>
-                          </div>
-                        ) : isPresidentVPElection && candidatePairs.length > 0 ? (
-                          // President/VP election results visualization
-                          <div className="h-full flex flex-col justify-center space-y-6">
-                            {candidatePairs.map((candidate, index) => (
-                              <div key={candidate.id} className="flex items-center space-x-4">
-                                <div className="w-8 text-right text-gray-600 text-sm font-medium">
-                                  {index + 1}
-                                </div>
-                                <div className="w-16 flex-shrink-0">
-                                  {candidate.pictureUrl ? (
-                                    <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-purple-100">
-                                      <img 
-                                        src={candidate.pictureUrl} 
-                                        alt={candidate.fullName} 
-                                        className="w-full h-full object-cover"
-                                        onError={(e) => {
-                                          const target = e.target as HTMLImageElement;
-                                          target.style.display = 'none';
-                                        }}
-                                      />
-                                    </div>
-                                  ) : (
-                                    <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
-                                      <UserCircle className="text-gray-400 w-8 h-8" />
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="flex-grow">
-                                  <div className="flex items-center mb-1">
-                                    <div className="text-sm font-medium text-gray-900 mr-2">
-                                      {candidate.fullName}
-                                      {index === 0 && <span className="text-yellow-500 ml-1">👑</span>}
-                                    </div>
-                                    {candidate.runningMate && (
-                                      <Badge variant="outline" className="border-purple-300 text-purple-600 text-xs">
-                                        with {candidate.runningMate.fullName}
-                                      </Badge>
-                                    )}
-                                  </div>
-                                  <div className="w-full bg-gray-200 rounded-full h-6 overflow-hidden">
-                                    <div 
-                                      className={`h-full flex items-center rounded-full pl-2 ${
-                                        index === 0 ? "bg-purple-600" : 
-                                        index === 1 ? "bg-purple-400" : 
-                                        "bg-purple-300"
-                                      }`}
-                                      style={{ width: `${candidate.percentage}%` }}
-                                    >
-                                      <span className="text-xs font-medium text-white">
-                                        {candidate.percentage}%
-                                      </span>
-                                    </div>
-                                  </div>
-                                  <div className="flex justify-between mt-1 text-xs text-gray-500">
-                                    <span>0</span>
-                                    <span>{candidate.voteCount} votes</span>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          // Standard election results visualization
-                          <div className="h-full flex flex-col justify-center space-y-4">
-                            {candidatesWithVotes.map((candidate, index) => (
-                              <div key={candidate.id} className="flex items-center space-x-4">
-                                <div className="w-8 text-right text-gray-600 text-sm font-medium">
-                                  {index + 1}
-                                </div>
-                                <div className="w-16 flex-shrink-0">
-                                  {candidate.pictureUrl ? (
-                                    <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-purple-100">
-                                      <img 
-                                        src={candidate.pictureUrl} 
-                                        alt={candidate.fullName} 
-                                        className="w-full h-full object-cover"
-                                        onError={(e) => {
-                                          const target = e.target as HTMLImageElement;
-                                          target.style.display = 'none';
-                                        }}
-                                      />
-                                    </div>
-                                  ) : (
-                                    <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
-                                      <UserCircle className="text-gray-400 w-8 h-8" />
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="flex-grow">
-                                  <div className="text-sm font-medium text-gray-900 mb-1">
-                                    {candidate.fullName}
-                                    {index === 0 && <span className="text-yellow-500 ml-1">👑</span>}
-                                  </div>
-                                  <div className="w-full bg-gray-200 rounded-full h-6 overflow-hidden">
-                                    <div 
-                                      className={`h-full flex items-center rounded-full pl-2 ${
-                                        index === 0 ? "bg-purple-600" : 
-                                        index === 1 ? "bg-purple-400" : 
-                                        "bg-purple-300"
-                                      }`}
-                                      style={{ width: `${candidate.percentage}%` }}
-                                    >
-                                      <span className="text-xs font-medium text-white">
-                                        {candidate.percentage}%
-                                      </span>
-                                    </div>
-                                  </div>
-                                  <div className="flex justify-between mt-1 text-xs text-gray-500">
-                                    <span>0</span>
-                                    <span>{candidate.voteCount} votes</span>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </TabsContent>
-                  
-                  <TabsContent value="table" className="space-y-4">
-                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
-                      <h2 className="text-lg font-semibold text-gray-800 mb-1">
-                        {selectedElection.name} - Detailed Results
-                      </h2>
-                      <div className="flex items-center text-sm text-green-600 mb-4">
-                        <div className="bg-green-100 p-1 rounded-full mr-2">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                          </svg>
-                        </div>
-                        <span>Vote counts are verified by the system</span>
-                      </div>
-                      
-                      <div className="overflow-hidden border border-gray-200 rounded-md">
-                        {candidatesWithVotes.length === 0 ? (
-                          <div className="text-center py-12">
-                            <p className="text-gray-500">No voting results available for this election yet.</p>
-                          </div>
-                        ) : (
-                          <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                              <tr>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  Rank
-                                </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  Candidate
-                                </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  Position
-                                </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  Faculty
-                                </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  Votes
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                              {isPresidentVPElection && candidatePairs.length > 0 ? 
-                                // Display President/VP pairs
-                                candidatePairs.map((candidate, index) => (
-                                  <tr key={candidate.id} className={index === 0 ? "bg-purple-50" : ""}>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                      <div className="flex items-center">
-                                        <span className={`flex items-center justify-center w-8 h-8 rounded-full ${
-                                          index === 0 ? "bg-purple-600 text-white" : 
-                                          index === 1 ? "bg-purple-400 text-white" : 
-                                          index === 2 ? "bg-purple-300 text-white" : "bg-gray-200 text-gray-700"
-                                        }`}>
-                                          {index === 0 ? <Trophy className="h-4 w-4" /> : (index + 1)}
-                                        </span>
-                                      </div>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                      <div className="flex flex-col">
-                                        <div className="text-sm font-medium text-gray-900 flex items-center">
-                                          {candidate.fullName} {index === 0 && <Trophy className="ml-1 h-4 w-4 text-yellow-500" />}
-                                          {candidate.runningMate && (
-                                            <Badge variant="outline" className="ml-2 border-purple-300 text-purple-600">
-                                              with VP
-                                            </Badge>
-                                          )}
-                                        </div>
-                                        {candidate.runningMate && (
-                                          <div className="text-sm text-gray-500 mt-1">
-                                            Running mate: {candidate.runningMate.fullName}
-                                          </div>
-                                        )}
-                                      </div>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
-                                        {candidate.position}
-                                      </span>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                      {getFacultyName(candidate.faculty)}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                      <div className="flex flex-col space-y-1">
-                                        <div className="text-sm font-medium text-gray-900">
-                                          {candidate.voteCount} votes ({candidate.percentage}%)
-                                        </div>
-                                        <Progress value={candidate.percentage} className="h-2" />
-                                      </div>
-                                    </td>
-                                  </tr>
-                                ))
-                                : 
-                                // Standard candidate display for Senator elections
-                                candidatesWithVotes.map((candidate, index) => (
-                                  <tr key={candidate.id} className={index === 0 ? "bg-purple-50" : ""}>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                      <div className="flex items-center">
-                                        <span className={`flex items-center justify-center w-8 h-8 rounded-full ${
-                                          index === 0 ? "bg-purple-600 text-white" : 
-                                          index === 1 ? "bg-purple-400 text-white" : 
-                                          index === 2 ? "bg-purple-300 text-white" : "bg-gray-200 text-gray-700"
-                                        }`}>
-                                          {index === 0 ? <Trophy className="h-4 w-4" /> : (index + 1)}
-                                        </span>
-                                      </div>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                      <div className="text-sm font-medium text-gray-900 flex items-center">
-                                        {candidate.fullName} {index === 0 && <Trophy className="ml-1 h-4 w-4 text-yellow-500" />}
-                                      </div>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
-                                        {candidate.position}
-                                      </span>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                      {getFacultyName(candidate.faculty)}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                      <div className="flex flex-col space-y-1">
-                                        <div className="text-sm font-medium text-gray-900">
-                                          {candidate.voteCount} votes ({candidate.percentage}%)
-                                        </div>
-                                        <Progress value={candidate.percentage} className="h-2" />
-                                      </div>
-                                    </td>
-                                  </tr>
-                                ))
-                              }
-                            </tbody>
-                          </table>
-                        )}
-                      </div>
-                    </div>
-                  </TabsContent>
-                </Tabs>
-              ) : (
-                <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-8 text-center">
-                  <p className="text-gray-500">No completed elections found.</p>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-8 text-center">
+            <div className="text-center py-12 bg-white rounded-lg border border-gray-200 shadow-sm">
+              <TrendingUp className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No Completed Elections</h3>
               <p className="text-gray-500">
-                No completed elections yet. Check back after an election has ended.
+                There are no completed elections to display results for.
               </p>
             </div>
           )}
