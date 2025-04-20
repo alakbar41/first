@@ -90,7 +90,8 @@ export async function getStudentIdFromHash(hash: string): Promise<string | undef
  * Returns null if not configured, instead of throwing an error
  */
 export function getContractAddress(): string | null {
-  const address = process.env.VOTING_CONTRACT_ADDRESS;
+  // First check for Sepolia address, fall back to original Polygon address if not available
+  const address = process.env.VOTING_CONTRACT_ADDRESS_SEPOLIA || process.env.VOTING_CONTRACT_ADDRESS;
   return address || null;
 }
 
@@ -98,9 +99,10 @@ export function getContractAddress(): string | null {
  * Get provider from environment variables
  */
 export function getProvider() {
-  const rpcUrl = process.env.POLYGON_RPC_URL;
+  // First check for Sepolia RPC URL, fall back to Polygon if not available
+  const rpcUrl = process.env.SEPOLIA_RPC_URL || process.env.POLYGON_RPC_URL;
   if (!rpcUrl) {
-    throw new Error('Polygon RPC URL not configured in environment variables');
+    throw new Error('RPC URL not configured in environment variables');
   }
   return new ethers.JsonRpcProvider(rpcUrl);
 }

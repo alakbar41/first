@@ -29,8 +29,9 @@ export function registerBlockchainRoutes(app: Express) {
   // Get contract address
   app.get('/api/blockchain/contract-address', (req: Request, res: Response) => {
     try {
-      // Check if the contract address is in env vars directly
-      const contractAddress = process.env.VOTING_CONTRACT_ADDRESS;
+      // Check if the contract address is in env vars
+      // First try Sepolia, then fall back to Polygon
+      const contractAddress = process.env.VOTING_CONTRACT_ADDRESS_SEPOLIA || process.env.VOTING_CONTRACT_ADDRESS;
       
       if (!contractAddress) {
         res.setHeader('Content-Type', 'application/json');
@@ -40,12 +41,15 @@ export function registerBlockchainRoutes(app: Express) {
         });
       }
       
+      // Determine which network we're using
+      const network = process.env.SEPOLIA_RPC_URL ? 'sepolia' : 'amoy';
+      
       // Return the contract address
       res.setHeader('Content-Type', 'application/json');
       res.json({ 
         contractAddress,
         isConfigured: true,
-        network: process.env.POLYGON_NETWORK || 'amoy'
+        network
       });
     } catch (error) {
       console.error('Error getting contract address:', error);
