@@ -482,20 +482,15 @@ export async function deployElectionToBlockchain(electionId: number) {
       const chainId = await window.ethereum.request({ method: 'eth_chainId' });
       console.log(`Current chain ID: ${chainId}`);
       
-      // Valid chainIds for our system 
       // Polygon Mainnet: 0x89 (137 in decimal)
-      // Polygon Amoy Testnet: 0x13882 (80002 in decimal)
-      const validChainIds = ['0x89', '0x13882'];
-      
-      if (!validChainIds.includes(chainId)) {
-        // Ask user to switch to Polygon network
+      if (chainId !== '0x89') {
+        // Ask user to switch to Polygon Mainnet
         try {
-          // Try to switch to Amoy testnet (current deployment)
           await window.ethereum.request({
             method: 'wallet_switchEthereumChain',
-            params: [{ chainId: '0x13882' }], // Polygon Amoy
+            params: [{ chainId: '0x89' }], // Polygon Mainnet
           });
-          console.log('Successfully switched to Polygon Amoy testnet');
+          console.log('Successfully switched to Polygon Mainnet');
         } catch (switchError: any) {
           // This error code indicates that the chain has not been added to MetaMask
           if (switchError.code === 4902) {
@@ -503,23 +498,23 @@ export async function deployElectionToBlockchain(electionId: number) {
               await window.ethereum.request({
                 method: 'wallet_addEthereumChain',
                 params: [{
-                  chainId: '0x13882',
-                  chainName: 'Polygon Amoy Testnet',
+                  chainId: '0x89',
+                  chainName: 'Polygon Mainnet',
                   nativeCurrency: {
                     name: 'MATIC',
                     symbol: 'MATIC',
                     decimals: 18
                   },
-                  rpcUrls: ['https://rpc-amoy.polygon.technology'],
-                  blockExplorerUrls: ['https://amoy.polygonscan.com/']
+                  rpcUrls: ['https://polygon-rpc.com/'],
+                  blockExplorerUrls: ['https://polygonscan.com/']
                 }]
               });
-              console.log('Added Polygon Amoy testnet to MetaMask');
+              console.log('Added Polygon Mainnet to MetaMask');
             } catch (addError) {
-              throw new Error('Could not add Polygon network to MetaMask. Please add it manually.');
+              throw new Error('Could not add Polygon Mainnet network to MetaMask. Please add it manually.');
             }
           } else {
-            throw new Error('Please switch to Polygon network in MetaMask to continue');
+            throw new Error('Please switch to Polygon Mainnet in MetaMask to continue');
           }
         }
       }

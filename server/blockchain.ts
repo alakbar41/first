@@ -90,11 +90,8 @@ export async function getStudentIdFromHash(hash: string): Promise<string | undef
  * Returns null if not configured, instead of throwing an error
  */
 export function getContractAddress(): string | null {
-  // Use Polygon Mainnet contract address
-  const address = process.env.VOTING_CONTRACT_ADDRESS;
-  if (!address) {
-    console.warn('Voting contract address not found in environment variables');
-  }
+  // Use the updated Polygon Mainnet contract address
+  const address = "0xda3d2afDD74556fdfa0353D210C649EB09CefB0c"; // Hardcoded from user input
   return address || null;
 }
 
@@ -103,10 +100,7 @@ export function getContractAddress(): string | null {
  */
 export function getProvider() {
   // Use Polygon Mainnet RPC URL
-  const rpcUrl = process.env.POLYGON_RPC_URL;
-  if (!rpcUrl) {
-    throw new Error('Polygon RPC URL not configured in environment variables');
-  }
+  const rpcUrl = "https://polygon-mainnet.g.alchemy.com/v2/nu7SxuncXVNOwUCOV3BdhlECLrdp1sJH"; // Hardcoded from user input
   return new ethers.JsonRpcProvider(rpcUrl);
 }
 
