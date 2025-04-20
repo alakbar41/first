@@ -727,24 +727,10 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                     
                     <div className="flex justify-center sm:justify-end gap-2">
                       {hasVotedInElection ? (
-                        <>
-                          <Button disabled className="w-full sm:w-auto bg-green-500 hover:bg-green-600 shadow-md text-xs sm:text-sm">
-                            <Check className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                            Voted Successfully
-                          </Button>
-                          <Button 
-                            onClick={() => {
-                              toast({
-                                title: "Reset Vote",
-                                description: "The vote reset feature has been disabled in this version.",
-                                variant: "default",
-                              });
-                            }}
-                            className="text-xs sm:text-sm bg-gray-500 hover:bg-gray-600"
-                          >
-                            Reset Vote
-                          </Button>
-                        </>
+                        <Button disabled className="w-full sm:w-auto bg-green-500 hover:bg-green-600 shadow-md text-xs sm:text-sm">
+                          <Check className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                          Voted Successfully
+                        </Button>
                       ) : (
                         <>
                           <Button
@@ -848,24 +834,10 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
                       </div>
                     
                       {hasVotedInElection ? (
-                        <div className="flex flex-col sm:flex-row w-full gap-2">
-                          <Button disabled className="w-full bg-green-500 hover:bg-green-600 shadow-md text-xs sm:text-sm">
-                            <Check className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                            Voted Successfully
-                          </Button>
-                          <Button 
-                            onClick={() => {
-                              toast({
-                                title: "Reset Vote",
-                                description: "The vote reset feature has been disabled in this version.",
-                                variant: "default",
-                              });
-                            }}
-                            className="text-xs sm:text-sm bg-gray-500 hover:bg-gray-600"
-                          >
-                            Reset Vote
-                          </Button>
-                        </div>
+                        <Button disabled className="w-full bg-green-500 hover:bg-green-600 shadow-md text-xs sm:text-sm">
+                          <Check className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                          Voted Successfully
+                        </Button>
                       ) : (
                         <>
                           {/* Vote button - now active with blockchain voting */}

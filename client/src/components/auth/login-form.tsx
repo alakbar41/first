@@ -15,7 +15,7 @@ const formSchema = z.object({
     (email) => email.endsWith('@ada.edu.az') || email.includes('@admin'),
     { message: "Students must use ADA University email" }
   ),
-  password: z.string().min(1, "Password is required"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
   userType: z.enum(["student", "admin"])
 });
 
