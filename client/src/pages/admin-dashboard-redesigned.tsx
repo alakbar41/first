@@ -11,7 +11,8 @@ import {
   Users,
   Bell,
   AlertCircle,
-  ChevronDown
+  ChevronDown,
+  Trophy
 } from 'lucide-react';
 import {
   Select,
@@ -31,7 +32,9 @@ import {
   PieChart,
   Pie,
   Cell,
-  Legend
+  Legend,
+  AreaChart,
+  Area
 } from 'recharts';
 import { FacultyParticipation, VoteTimeline, ActiveElection, ParticipationOverview, Candidate } from '@/lib/dashboard-types';
 
@@ -652,8 +655,8 @@ export default function AdminDashboardRedesigned() {
 
           {/* Charts Row */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <CandidateAnalytics />
-            <CandidatePerformanceList />
+            <LiveElectionResults />
+            <CompletedElectionWinners />
           </div>
 
           {/* Bottom Row - Distribution & Timeline */}
