@@ -9,7 +9,8 @@ import Dashboard from "@/pages/dashboard-redesigned"; // Student dashboard
 import Results from "@/pages/results";
 import Guidelines from "@/pages/guidelines";
 import VerifyVote from "@/pages/verify-vote";
-import AdminDashboard from "@/pages/admin-dashboard-redesigned"; // Admin dashboard (renamed from AdminDashboardRedesigned)
+import AdminDashboard from "@/pages/admin-dashboard-redesigned"; // Admin dashboard
+import AdminElections from "@/pages/admin-elections"; // Admin elections page
 import AdminCandidates from "@/pages/admin-candidates";
 import TicketsPage from "@/pages/tickets-page";
 import AdminTickets from "@/pages/admin-tickets";
@@ -34,7 +35,7 @@ function Router() {
       
       {/* Admin routes - using AdminProtectedRoute to ensure admin validation */}
       <AdminProtectedRoute path="/admin" component={AdminDashboard} />
-      <AdminProtectedRoute path="/admin/elections" component={AdminDashboard} />
+      <AdminProtectedRoute path="/admin/elections" component={AdminElections} />
       <AdminProtectedRoute path="/admin/candidates" component={AdminCandidates} />
       <AdminProtectedRoute path="/admin/tickets" component={AdminTickets} />
       <AdminProtectedRoute path="/admin-architecture" component={AdminArchitecture} />
