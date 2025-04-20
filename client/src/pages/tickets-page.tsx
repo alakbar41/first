@@ -285,7 +285,7 @@ export default function TicketsPage() {
                             </CardDescription>
                           </div>
                           {ticket.status === "open" && (
-                            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">Open</Badge>
+                            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">New</Badge>
                           )}
                           {ticket.status === "in_progress" && (
                             <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">In Progress</Badge>
