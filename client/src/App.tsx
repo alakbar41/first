@@ -15,6 +15,7 @@ import TicketsPage from "@/pages/tickets-page";
 import AdminTickets from "@/pages/admin-tickets";
 import AdminArchitecture from "@/pages/admin-architecture";
 import AdminDashboardEnhanced from "@/pages/admin-dashboard-enhanced";
+import AdminDashboardRedesigned from "@/pages/admin-dashboard-redesigned";
 import { SettingsPage } from "@/pages/settings";
 import { ProtectedRoute, AdminProtectedRoute } from "./lib/protected-route";
 import { FC, ReactNode } from 'react';
@@ -34,7 +35,7 @@ function Router() {
       <ProtectedRoute path="/settings" component={SettingsPage} />
       
       {/* Admin routes - using AdminProtectedRoute to ensure admin validation */}
-      <AdminProtectedRoute path="/admin" component={AdminDashboardEnhanced} />
+      <AdminProtectedRoute path="/admin" component={AdminDashboardRedesigned} />
       <AdminProtectedRoute path="/admin/elections" component={AdminDashboard} />
       <AdminProtectedRoute path="/admin/candidates" component={AdminCandidates} />
       <AdminProtectedRoute path="/admin/tickets" component={AdminTickets} />
@@ -42,6 +43,7 @@ function Router() {
       <AdminProtectedRoute path="/admin/settings" component={AdminDashboard} />
       <AdminProtectedRoute path="/admin-architecture" component={AdminArchitecture} />
       <AdminProtectedRoute path="/admin/dashboard-enhanced" component={AdminDashboardEnhanced} />
+      <AdminProtectedRoute path="/admin/dashboard-new" component={AdminDashboardRedesigned} />
       
       {/* Auth routes */}
       <Route path="/auth" component={AuthPage} />

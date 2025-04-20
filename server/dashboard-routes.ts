@@ -288,6 +288,44 @@ router.get('/metrics/participation-overview', isAdmin, async (req: Request, res:
   }
 });
 
+// Ticket metrics
+router.get('/metrics/tickets', isAdmin, async (req: Request, res: Response) => {
+  try {
+    const query = sql`
+      SELECT 
+        status,
+        COUNT(*) as count
+      FROM tickets
+      GROUP BY status
+    `;
+
+    const ticketCounts = await db.execute(query) as unknown as Array<{status: string, count: string}>;
+    
+    // Transform results into a more convenient format
+    const result = {
+      open: 0,
+      in_progress: 0,
+      resolved: 0,
+      total: 0
+    };
+    
+    // With drizzle-orm, the result should be an array
+    if (Array.isArray(ticketCounts)) {
+      ticketCounts.forEach(row => {
+        if (row.status in result) {
+          result[row.status as keyof typeof result] = parseInt(row.count);
+        }
+        result.total += parseInt(row.count);
+      });
+    }
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Error fetching ticket metrics:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 export function registerDashboardRoutes(app: any) {
   app.use('/api/dashboard', router);
 }

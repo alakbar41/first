@@ -43,6 +43,7 @@ export type ActiveElection = {
   vote_count: number;
   total_eligible_voters: number;
   candidates?: Candidate[];
+  status?: string; // Add status field
 };
 
 export type BlockchainStats = {
