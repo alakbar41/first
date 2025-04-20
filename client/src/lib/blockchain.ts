@@ -466,7 +466,7 @@ export async function getAllCandidatesWithVotes(startTime: number): Promise<{ids
  */
 export async function deployElectionToBlockchain(electionId: number) {
   try {
-    // Basic MetaMask check - students will be taught to use Ethereum Sepolia beforehand
+    // Check for MetaMask and ensure we're on Polygon Mainnet (chainId: 0x89)
     try {
       if (typeof window === 'undefined' || !window.ethereum) {
         throw new Error('MetaMask is not installed or not accessible');
@@ -478,17 +478,54 @@ export async function deployElectionToBlockchain(electionId: number) {
         throw new Error('Please connect to MetaMask first');
       }
       
-      // Just log the chain ID for informational purposes without validation
+      // Get the current chain ID and validate it's Polygon Mainnet
       const chainId = await window.ethereum.request({ method: 'eth_chainId' });
       console.log(`Current chain ID: ${chainId}`);
       
-      // Create a provider to check and log balance info (no validation)
+      // Polygon Mainnet chainId is 0x89 (137 in decimal)
+      if (chainId !== '0x89') {
+        // Ask user to switch to Polygon Mainnet
+        try {
+          await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: '0x89' }], // Polygon Mainnet
+          });
+          console.log('Successfully switched to Polygon Mainnet');
+        } catch (switchError: any) {
+          // This error code indicates that the chain has not been added to MetaMask
+          if (switchError.code === 4902) {
+            try {
+              await window.ethereum.request({
+                method: 'wallet_addEthereumChain',
+                params: [{
+                  chainId: '0x89',
+                  chainName: 'Polygon Mainnet',
+                  nativeCurrency: {
+                    name: 'MATIC',
+                    symbol: 'MATIC',
+                    decimals: 18
+                  },
+                  rpcUrls: ['https://polygon-rpc.com/'],
+                  blockExplorerUrls: ['https://polygonscan.com/']
+                }]
+              });
+              console.log('Added Polygon Mainnet to MetaMask');
+            } catch (addError) {
+              throw new Error('Could not add Polygon Mainnet network to MetaMask. Please add it manually.');
+            }
+          } else {
+            throw new Error('Please switch to Polygon Mainnet in MetaMask to continue');
+          }
+        }
+      }
+      
+      // Create a provider to check and log balance info
       const provider = new ethers.BrowserProvider(window.ethereum);
       const balance = await provider.getBalance(accounts[0]);
       
-      // Convert balance to ETH (from wei)
-      const balanceInEth = ethers.formatEther(balance);
-      console.log(`Current account balance: ${balanceInEth} ETH`);
+      // Convert balance to MATIC (from wei)
+      const balanceInMatic = ethers.formatEther(balance);
+      console.log(`Current account balance: ${balanceInMatic} MATIC`);
     } catch (error: unknown) {
       console.error('Error checking network or balance:', error);
       const errorMessage = error instanceof Error 
