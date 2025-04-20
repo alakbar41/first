@@ -544,7 +544,6 @@ const FacultyDistribution = () => {
               <tr>
                 <th className="px-2 py-1 text-left font-medium text-gray-500">Faculty</th>
                 <th className="px-2 py-1 text-right font-medium text-gray-500">Students</th>
-                <th className="px-2 py-1 text-right font-medium text-gray-500">Participation</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -552,15 +551,6 @@ const FacultyDistribution = () => {
                 <tr key={index} className="hover:bg-gray-50">
                   <td className="px-2 py-1 text-gray-700">{faculty.faculty_name || faculty.faculty}</td>
                   <td className="px-2 py-1 text-right text-gray-700">{faculty.total_students}</td>
-                  <td className="px-2 py-1 text-right">
-                    <span className={`inline-block w-8 text-center rounded px-1 text-xs ${
-                      faculty.participation_percentage > 50 ? 'bg-green-100 text-green-800' : 
-                      faculty.participation_percentage > 25 ? 'bg-yellow-100 text-yellow-800' : 
-                      'bg-red-100 text-red-800'
-                    }`}>
-                      {faculty.participation_percentage.toFixed(0)}%
-                    </span>
-                  </td>
                 </tr>
               ))}
             </tbody>
