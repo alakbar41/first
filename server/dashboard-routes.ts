@@ -148,7 +148,7 @@ router.get('/metrics/completed-elections', isAdmin, async (req: Request, res: Re
         e.position,
         e.blockchain_id,
         COUNT(v.id) as vote_count,
-        (SELECT COUNT(*) FROM users WHERE role = 'student' AND faculty NOT IN ('Administration')) as total_eligible_voters
+        (SELECT COUNT(*) FROM users WHERE is_admin = false AND faculty NOT IN ('Administration')) as total_eligible_voters
       FROM 
         elections e
       LEFT JOIN 
@@ -441,7 +441,7 @@ router.get('/metrics/active-elections', isAdmin, async (req: Request, res: Respo
         e.position,
         e.blockchain_id,
         COUNT(DISTINCT v.user_id) as vote_count,
-        (SELECT COUNT(*) FROM users WHERE role = 'student' AND faculty NOT IN ('Administration')) as total_eligible_voters
+        (SELECT COUNT(*) FROM users WHERE is_admin = false AND faculty NOT IN ('Administration')) as total_eligible_voters
       FROM elections e
       LEFT JOIN votes v ON e.id = v.election_id
       WHERE e.status = 'active' OR e.status = 'upcoming'
@@ -612,7 +612,7 @@ router.get('/metrics/participation-overview', isAdmin, async (req: Request, res:
           e.position,
           e.status,
           COUNT(DISTINCT v.user_id) as voters,
-          (SELECT COUNT(*) FROM users WHERE role = 'student' AND faculty NOT IN ('Administration')) as total_eligible_voters
+          (SELECT COUNT(*) FROM users WHERE is_admin = false AND faculty NOT IN ('Administration')) as total_eligible_voters
         FROM elections e
         LEFT JOIN votes v ON e.id = v.election_id
         GROUP BY e.id, e.name, e.position, e.status
