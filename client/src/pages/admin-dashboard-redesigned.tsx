@@ -800,9 +800,9 @@ export default function AdminDashboardRedesigned() {
     enabled: user?.isAdmin === true,
   });
 
-  // Calculate metrics
+  // Calculate metrics - making sure to parse string values to integers
   const totalVoters = Array.isArray(facultyData) 
-    ? facultyData.reduce((sum, faculty) => sum + faculty.total_students, 0)
+    ? facultyData.reduce((sum, faculty) => sum + parseInt(faculty.total_students.toString()), 0)
     : 0;
     
   // Debugging the faculty data and totalVoters calculation
@@ -852,10 +852,7 @@ export default function AdminDashboardRedesigned() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Students</p>
-                    <h3 className="text-2xl font-bold text-gray-900">
-                      {/* Display debugging info */}
-                      {totalVoters} (raw value)
-                    </h3>
+                    <h3 className="text-2xl font-bold text-gray-900">{totalVoters}</h3>
                   </div>
                 </div>
               </CardContent>

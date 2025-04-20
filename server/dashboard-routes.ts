@@ -466,10 +466,15 @@ router.get('/metrics/active-elections', isAdmin, async (req: Request, res: Respo
     }
     
     // Get the election statuses to include in the result
-    const electionStatusesQuery = sql`
-      SELECT id, status FROM elections 
-      WHERE id IN (${sql.join(activeElections.map(e => e.id))})
-    `;
+    let electionStatusesQuery = sql`SELECT id, status FROM elections WHERE false`;
+    
+    // Only build the query if we have active elections
+    if (activeElections.length > 0) {
+      electionStatusesQuery = sql`
+        SELECT id, status FROM elections 
+        WHERE id IN (${sql.join(activeElections.map(e => e.id))})
+      `;
+    }
     const electionStatuses = await db.execute(electionStatusesQuery);
     const statusMap = new Map();
     
