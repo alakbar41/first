@@ -109,11 +109,11 @@ function securityHeaders(req: Request, res: Response, next: NextFunction) {
     // Default restriction - only allow from same origin
     "default-src 'self'",
     
-    // Allow connections to WebSockets, API endpoints, and Polygon RPC
-    "connect-src 'self' ws: wss: https://*.polygon.technology https://rpc-amoy.polygon.technology https://*.polygon-amoy.infura.io wss://*.polygon-amoy.infura.io https://polygonscan.com https://amoy.polygonscan.com https://polygon-amoy.infura.io",
+    // Allow connections to WebSockets, API endpoints, and Ethereum RPC
+    "connect-src 'self' ws: wss: https://*.ethereum.org https://*.sepolia.infura.io wss://*.sepolia.infura.io https://etherscan.io https://sepolia.etherscan.io https://*.sepolia.infura.io",
     
     // Allow images from our domain, data URLs, and blobs
-    "img-src 'self' data: blob: https://polygonscan.com https://amoy.polygonscan.com",
+    "img-src 'self' data: blob: https://etherscan.io https://sepolia.etherscan.io",
     
     // Allow styles from our domain and inline (needed for shadcn)
     "style-src 'self' 'unsafe-inline'",

@@ -100,7 +100,7 @@ export default function AdminArchitecture() {
                       <text x="630" y="300" fontSize="16" textAnchor="middle" fontWeight="bold">Blockchain Layer</text>
                       
                       <rect x="560" y="320" width="140" height="70" rx="5" fill="#fff" stroke="#c4b5fd" strokeWidth="1" />
-                      <text x="630" y="355" textAnchor="middle" fontSize="12">Polygon Amoy</text>
+                      <text x="630" y="355" textAnchor="middle" fontSize="12">Ethereum Sepolia</text>
                       
                       {/* Connection lines */}
                       <line x1="260" y1="165" x2="330" y2="165" stroke="#000" strokeWidth="1" strokeDasharray="5,5" />
@@ -122,7 +122,7 @@ export default function AdminArchitecture() {
                   <li><span className="font-semibold">Client Layer:</span> React.js with TypeScript frontend providing separate interfaces for students and administrators, with integrated MetaMask for blockchain interactions.</li>
                   <li><span className="font-semibold">Server Layer:</span> Node.js/Express backend handling API requests, authentication, and serving as the bridge between frontend and both database and blockchain.</li>
                   <li><span className="font-semibold">Data Layer:</span> PostgreSQL database storing user accounts, election metadata, candidate information, and voting tokens.</li>
-                  <li><span className="font-semibold">Blockchain Layer:</span> Polygon Amoy testnet providing immutable and transparent vote recording through smart contracts.</li>
+                  <li><span className="font-semibold">Blockchain Layer:</span> Ethereum Sepolia testnet providing immutable and transparent vote recording through smart contracts.</li>
                 </ul>
                 
                 <h3 className="text-xl font-bold mt-6 mb-3">Key Design Principles</h3>
@@ -333,7 +333,7 @@ Database Schema:
                       {/* Header */}
                       <text x="450" y="35" fontSize="22" textAnchor="middle" fontWeight="bold" fill="#4c1d95">ADA University Voting System - System Architecture</text>
                       <line x1="200" y1="45" x2="700" y2="45" stroke="#8b5cf6" strokeWidth="2" />
-                      <text x="450" y="65" fontSize="11" textAnchor="middle" fill="#64748b">A secure, transparent voting platform powered by Polygon Amoy blockchain technology</text>
+                      <text x="450" y="65" fontSize="11" textAnchor="middle" fill="#64748b">A secure, transparent voting platform powered by Ethereum Sepolia blockchain technology</text>
                       
                       {/* System containers */}
                       <g>
@@ -463,7 +463,7 @@ Database Schema:
                         
                         {/* Blockchain section */}
                         <rect x="80" y="480" width="340" height="130" rx="5" fill="#ede9fe" stroke="#8b5cf6" strokeWidth="2" />
-                        <text x="250" y="500" fontSize="14" textAnchor="middle" fontWeight="bold" fill="#6d28d9">Polygon Blockchain (Amoy Testnet)</text>
+                        <text x="250" y="500" fontSize="14" textAnchor="middle" fontWeight="bold" fill="#6d28d9">Ethereum Blockchain (Sepolia Testnet)</text>
                         
                         <rect x="100" y="520" width="140" height="70" rx="3" fill="white" stroke="#8b5cf6" strokeWidth="1.5" />
                         <text x="170" y="540" fontSize="12" textAnchor="middle" fontWeight="bold" fill="#6d28d9">Smart Contract</text>
@@ -538,14 +538,14 @@ Database Schema:
                 
                 <h3 className="text-2xl font-bold mt-8 mb-4 text-center">ADA Voting System Architecture</h3>
                 <p className="text-sm mb-6 text-center">
-                  Our implementation leverages Polygon Amoy testnet as a secure, transparent voting layer with strict verification protocols to ensure tamper-proof elections for ADA University.
+                  Our implementation leverages Ethereum Sepolia testnet as a secure, transparent voting layer with strict verification protocols to ensure tamper-proof elections for ADA University.
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
                   <div className="border rounded-lg p-6 bg-white shadow-sm">
                     <h3 className="text-lg font-bold mb-4 text-purple-900">Smart Contract Components</h3>
                     <p className="text-sm mb-3">
-                      The core voting logic is implemented in a Solidity smart contract deployed on the Polygon Amoy testnet with these key components:
+                      The core voting logic is implemented in a Solidity smart contract deployed on the Ethereum Sepolia testnet with these key components:
                     </p>
                     <ul className="list-disc pl-6 space-y-2 text-sm">
                       <li><span className="font-semibold">Distributed Ledger:</span> Immutable recording of all vote transactions across multiple nodes</li>
@@ -564,7 +564,7 @@ Database Schema:
                     </p>
                     <ul className="list-disc pl-6 space-y-2 text-sm">
                       <li><span className="font-semibold">Relay Nodes:</span> Dedicated blockchain nodes that facilitate transaction propagation and verification</li>
-                      <li><span className="font-semibold">Consensus Mechanism:</span> Polygon's Proof-of-Stake with Byzantine Fault Tolerance for rapid transaction validation</li>
+                      <li><span className="font-semibold">Consensus Mechanism:</span> Ethereum's Proof-of-Stake with validator attestations for secure transaction validation</li>
                       <li><span className="font-semibold">P2P Network:</span> Decentralized peer connections ensure no single point of failure</li>
                       <li><span className="font-semibold">Cross-Validator Communication:</span> Multiple validator nodes cross-check transaction validity</li>
                       <li><span className="font-semibold">Secure Channels:</span> Encrypted communication paths between voters and blockchain</li>
