@@ -86,17 +86,27 @@ export default function Results() {
         setIsLoadingBlockchain(true);
         setBlockchainError(null);
         
-        console.log(`Fetching blockchain results for election ${selectedElection.id}`);
-        const results = await getElectionResultsFromBlockchain(selectedElection.id);
+        console.log(`Fetching blockchain results for election ${selectedElection.id} (blockchain ID: ${selectedElection.blockchainId})`);
         
-        if (results.error) {
-          console.warn(`Error fetching blockchain results: ${results.error}`);
-          setBlockchainError(results.error);
-          setCandidatesWithVotes([]);
+        // Approach is different based on whether election has blockchain ID or not
+        if (selectedElection.blockchainId) {
+          // This election is on the blockchain, we can get the results directly
+          const results = await getElectionResultsFromBlockchain(selectedElection.id);
+          
+          if (results.error) {
+            console.warn(`Error fetching blockchain results: ${results.error}`);
+            setBlockchainError(results.error);
+            setCandidatesWithVotes([]);
+          } else {
+            console.log(`Received ${results.candidates.length} candidates with votes from blockchain`);
+            setCandidatesWithVotes(results.candidates);
+            setTotalVotes(results.totalVotes);
+          }
         } else {
-          console.log(`Received ${results.candidates.length} candidates with votes from blockchain`);
-          setCandidatesWithVotes(results.candidates);
-          setTotalVotes(results.totalVotes);
+          // No blockchain ID, so we can't get blockchain results
+          setBlockchainError("This election has not been deployed to the blockchain");
+          setCandidatesWithVotes([]);
+          setTotalVotes(0);
         }
       } catch (error) {
         console.error("Error fetching blockchain results:", error);

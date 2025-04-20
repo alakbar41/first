@@ -840,13 +840,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const isAdmin = req.isAuthenticated() && req.user && req.user.isAdmin === true;
       const isViewingResults = req.query.view === 'results';
       
+      // Debug logging
+      console.log(`Election ${election.id} access request - Status: ${election.status}, Viewing results: ${isViewingResults}, Is admin: ${isAdmin}`);
+      
       // Allow access to candidates for completed elections when viewing results
       if (!isAdmin && 
           !(election.status === 'active' || 
             election.status === 'upcoming' || 
             (election.status === 'completed' && isViewingResults))) {
         // Students can only access active or upcoming elections, or completed elections when viewing results
-        console.log(`Student tried to access candidates for election ${election.id} but was denied. Status: ${election.status}`);
+        console.log(`Student tried to access candidates for election ${election.id} but was denied. Status: ${election.status}, Viewing results: ${isViewingResults}`);
         return res.status(404).json({ message: "Election not found" });
       }
       

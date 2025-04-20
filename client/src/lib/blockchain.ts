@@ -156,55 +156,99 @@ export async function getElectionResultsFromBlockchain(electionId: string | numb
     }
     
     const blockchainId = parseInt(election.blockchainId);
-    
-    // Step 3: Get all candidates for this election
-    // Add view=results parameter to allow access to completed elections
-    const candidatesResponse = await fetch(`/api/elections/${electionId}/candidates?view=results`);
-    if (!candidatesResponse.ok) {
-      throw new Error(`Failed to fetch candidates for election ${electionId}`);
-    }
-    
-    const electionCandidates = await candidatesResponse.json();
-    
-    // Step 4: Get candidate details
-    const candidateDetailsPromises = electionCandidates.map(async (ec: any) => {
-      // Get full candidate details
-      const detailsResponse = await fetch(`/api/candidates/${ec.candidateId}`);
-      if (!detailsResponse.ok) return null;
-      
-      return detailsResponse.json();
-    });
-    
-    const candidateDetails = await Promise.all(candidateDetailsPromises);
-    const validCandidateDetails = candidateDetails.filter(c => c !== null);
-    
-    // Step 5: Get vote counts from the blockchain
+
+    // Step 3: Get vote counts directly from the blockchain
     const contract = await getVotingContract();
+    
+    // Get all candidates with their vote counts from the blockchain
+    console.log(`Getting all candidates with votes from blockchain for election ${blockchainId}`);
     const blockchainResults = await contract.getAllCandidatesWithVotes(blockchainId);
     
+    console.log(`Received ${blockchainResults.ids.length} blockchain candidates for election ${blockchainId}`);
+    if (blockchainResults.ids.length === 0) {
+      return { 
+        election, 
+        candidates: [], 
+        totalVotes: 0, 
+        error: "No candidates found on the blockchain for this election" 
+      };
+    }
+
     // Create a mapping of candidate ID hashes to vote counts
     const voteCountMap = new Map();
     blockchainResults.ids.forEach((hash: string, index: number) => {
       voteCountMap.set(hash, Number(blockchainResults.voteCounts[index]));
     });
     
-    // Step 6: Match blockchain data with candidate details
+    // Calculate total votes
     const totalVotes = blockchainResults.voteCounts.reduce(
       (sum: number, count: any) => sum + Number(count), 0
     );
     
+    // Step 4: Get candidate details by fetching from the API using the blockchain hashes
     const candidatesWithVotes = await Promise.all(
-      validCandidateDetails.map(async (candidate) => {
-        // Convert the student ID to a bytes32 hash that the blockchain uses
-        const hash = studentIdToBytes32(candidate.studentId);
-        const voteCount = voteCountMap.get(hash) || 0;
-        
-        return {
-          ...candidate,
-          voteCount,
-          percentage: totalVotes > 0 ? Math.round((voteCount / totalVotes) * 100) : 0,
-          hash
-        };
+      blockchainResults.ids.map(async (hash: string, index: number) => {
+        try {
+          // Get student ID from the bytes32 hash
+          const studentIdResponse = await fetch(`/api/blockchain/student-id-from-hash/${hash}`);
+          
+          if (!studentIdResponse.ok) {
+            throw new Error(`Failed to get student ID for hash: ${hash}`);
+          }
+          
+          const { studentId } = await studentIdResponse.json();
+          
+          if (!studentId) {
+            console.warn(`No student ID found for hash ${hash}`);
+            return {
+              id: index,
+              fullName: `Candidate ${index + 1}`,
+              studentId: 'Unknown',
+              faculty: 'Unknown',
+              position: 'Unknown',
+              voteCount: Number(blockchainResults.voteCounts[index]),
+              percentage: totalVotes > 0 ? Math.round((Number(blockchainResults.voteCounts[index]) / totalVotes) * 100) : 0,
+              hash
+            };
+          }
+          
+          // Try to get more details from the candidate API
+          const candidateResponse = await fetch(`/api/candidates/by-student-id/${studentId}`);
+          
+          if (candidateResponse.ok) {
+            const candidate = await candidateResponse.json();
+            return {
+              ...candidate,
+              voteCount: Number(blockchainResults.voteCounts[index]),
+              percentage: totalVotes > 0 ? Math.round((Number(blockchainResults.voteCounts[index]) / totalVotes) * 100) : 0,
+              hash
+            };
+          } else {
+            // If we can't get candidate details, at least return what we know
+            return {
+              id: index,
+              fullName: `Candidate ${index + 1}`,
+              studentId: studentId,
+              faculty: 'Unknown',
+              position: 'Unknown',
+              voteCount: Number(blockchainResults.voteCounts[index]),
+              percentage: totalVotes > 0 ? Math.round((Number(blockchainResults.voteCounts[index]) / totalVotes) * 100) : 0,
+              hash
+            };
+          }
+        } catch (error) {
+          console.error(`Error processing candidate hash ${hash}:`, error);
+          return {
+            id: index,
+            fullName: `Candidate ${index + 1}`,
+            studentId: 'Unknown',
+            faculty: 'Unknown',
+            position: 'Unknown',
+            voteCount: Number(blockchainResults.voteCounts[index]),
+            percentage: totalVotes > 0 ? Math.round((Number(blockchainResults.voteCounts[index]) / totalVotes) * 100) : 0,
+            hash
+          };
+        }
       })
     );
     
