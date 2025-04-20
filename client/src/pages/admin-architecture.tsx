@@ -675,7 +675,7 @@ event ResultsFinalized(uint256 indexed electionId, uint256[] finalResults);
                 <div className="bg-purple-50 border-l-4 border-purple-500 p-4 rounded-md mb-6">
                   <h4 className="text-md font-bold mb-2 text-purple-900">Current Deployment</h4>
                   <p className="text-sm"><span className="font-semibold">Contract Address:</span> 0xb74F07812B45dBEc4eC3E577194F6a798a060e5D</p>
-                  <p className="text-sm"><span className="font-semibold">Network:</span> Polygon Amoy Testnet</p>
+                  <p className="text-sm"><span className="font-semibold">Network:</span> Ethereum Sepolia Testnet</p>
                   <p className="text-sm"><span className="font-semibold">Compiler Version:</span> Solidity 0.8.17</p>
                   <p className="text-sm"><span className="font-semibold">Optimization:</span> 200 runs</p>
                 </div>
@@ -725,7 +725,7 @@ event ResultsFinalized(uint256 indexed electionId, uint256[] finalResults);
                       
                       {/* External Services */}
                       <rect x="440" y="290" width="120" height="60" rx="5" fill="#fef3c7" stroke="#f59e0b" strokeWidth="2" />
-                      <text x="500" y="320" fontSize="12" textAnchor="middle">Polygon Amoy</text>
+                      <text x="500" y="320" fontSize="12" textAnchor="middle">Ethereum Sepolia</text>
                       <text x="500" y="335" fontSize="10" textAnchor="middle">Blockchain Network</text>
                       
                       {/* Lines */}
@@ -754,7 +754,7 @@ event ResultsFinalized(uint256 indexed electionId, uint256[] finalResults);
                       <li>Load-balanced app containers for horizontal scaling</li>
                       <li>Managed PostgreSQL database for reliability</li>
                       <li>Redis for distributed session management</li>
-                      <li>External connection to Polygon Amoy testnet</li>
+                      <li>External connection to Ethereum Sepolia testnet</li>
                       <li>Automated CI/CD pipeline for continuous deployment</li>
                     </ul>
                   </div>
@@ -808,7 +808,7 @@ DevOps Pipeline:
                   <li><span className="font-semibold">Redis:</span> Managed Redis instance, 1GB RAM</li>
                   <li><span className="font-semibold">Load Balancer:</span> DigitalOcean Load Balancer with SSL termination</li>
                   <li><span className="font-semibold">Storage:</span> Block storage for persistent data</li>
-                  <li><span className="font-semibold">Blockchain:</span> External connection to Polygon Amoy testnet</li>
+                  <li><span className="font-semibold">Blockchain:</span> External connection to Ethereum Sepolia testnet</li>
                   <li><span className="font-semibold">Backup:</span> Automated daily database backups</li>
                 </ul>
               </Card>
