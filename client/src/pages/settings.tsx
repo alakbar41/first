@@ -54,14 +54,14 @@ export function SettingsPage() {
   }
   
   return (
-    <div className="flex min-h-screen h-full bg-gray-50 overflow-hidden">
+    <div className="flex h-screen bg-gray-50 overflow-hidden">
       <SettingsSidebar
         user={user || null}
         activeSetting={activeSetting}
         setActiveSetting={setActiveSetting}
       />
       
-      <main className="flex-1 overflow-y-auto bg-white p-8 pb-12">
+      <main className="flex-1 overflow-y-auto bg-white p-8">
         {renderSettingsContent()}
       </main>
     </div>

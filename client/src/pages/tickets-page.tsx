@@ -107,12 +107,12 @@ export default function TicketsPage() {
   };
 
   return (
-    <div className="flex min-h-screen h-full bg-gray-50">
+    <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
       <StudentSidebar user={user} />
       
       {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden pb-12">
+      <div className="flex-1 flex flex-col overflow-hidden">
         <main className="flex-1 overflow-y-auto bg-gradient-to-br from-purple-50 to-white">
           {/* Header section with gradient */}
           <div className="bg-gradient-to-r from-purple-700 to-purple-500 pb-6">
