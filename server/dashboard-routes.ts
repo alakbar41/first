@@ -336,14 +336,32 @@ router.get('/metrics/voting-timeline', isAdmin, async (req: Request, res: Respon
     
     console.log(`Fetching voting timeline data for election ID: ${electionId || 'all elections'}`);
     
+    // Get voting data broken down by hour, ensuring we have continuous data points
+    // even for hours with no votes
     let query = sql`
+      WITH time_series AS (
+        SELECT generate_series(
+          DATE_TRUNC('hour', (SELECT MIN(created_at) FROM votes)),
+          DATE_TRUNC('hour', NOW()),
+          '1 hour'::interval
+        ) AS hour
+      ),
+      vote_counts AS (
+        SELECT 
+          DATE_TRUNC('hour', created_at) as hour,
+          COUNT(*) as vote_count
+        FROM votes
+        ${electionId ? sql`WHERE election_id = ${electionId}` : sql``}
+        GROUP BY hour
+      )
       SELECT 
-        DATE_TRUNC('hour', created_at) as hour,
-        COUNT(*) as vote_count
-      FROM votes
-      ${electionId ? sql`WHERE election_id = ${electionId}` : sql``}
-      GROUP BY hour
-      ORDER BY hour
+        ts.hour,
+        COALESCE(vc.vote_count, 0) as vote_count,
+        to_char(ts.hour, 'HH12:MI AM') as formatted_hour,
+        to_char(ts.hour, 'Day') as day_of_week
+      FROM time_series ts
+      LEFT JOIN vote_counts vc ON ts.hour = vc.hour
+      ORDER BY ts.hour
     `;
 
     console.log("Voting timeline query:", query.toString());
