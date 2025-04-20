@@ -350,7 +350,7 @@ export async function voteForCandidate(startTime: number, candidateHash: string)
         } else if (innerError.includes('underpriced')) {
           throw new Error('Transaction failed: Gas price too low. Please increase gas price in MetaMask settings.');
         } else if (innerError.includes('balance')) {
-          throw new Error('Transaction failed: Not enough funds for gas. Please add more ETH to your wallet.');
+          throw new Error('Transaction failed: Not enough funds for gas. Please add more MATIC to your wallet.');
         } else {
           // More general error for other JSON-RPC issues
           console.log('MetaMask error details:', error);
