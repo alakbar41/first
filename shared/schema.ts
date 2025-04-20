@@ -39,7 +39,12 @@ export function getFacultyCode(facultyName: string): string {
 
 // Function to get faculty full name from code
 export function getFacultyName(facultyCode: string): string {
-  // First check if it's a code
+  // Keep SITE as is
+  if (facultyCode === 'SITE') {
+    return 'SITE';
+  }
+  
+  // For other codes, look up the full name
   if (FACULTY_CODES.includes(facultyCode as any)) {
     return FACULTY_ABBREVIATIONS[facultyCode as keyof typeof FACULTY_ABBREVIATIONS];
   }
