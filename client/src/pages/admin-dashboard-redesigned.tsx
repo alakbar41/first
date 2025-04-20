@@ -252,24 +252,15 @@ const ElectionsList = () => {
                   </div>
                   <div className="flex items-center mt-1 text-xs text-gray-500">
                     <span className="mr-2">{election.position}</span>
-                    <span>
-                      {election.voters}/{election.total_eligible_voters} voted 
-                      ({election.participation_percentage}%)
-                    </span>
-                  </div>
-                  {/* Participation progress bar */}
-                  <div className="w-full bg-gray-200 rounded-full h-1 mt-1">
-                    <div 
-                      className={`h-1 rounded-full ${
-                        election.status === 'active' ? 'bg-purple-600' : 
-                        election.status === 'upcoming' ? 'bg-green-500' : 'bg-gray-400'
-                      }`}
-                      style={{ width: `${election.participation_percentage}%` }}
-                    ></div>
                   </div>
                 </div>
               </div>
             ))}
+            {sortedElections.length === 0 && !isLoading && (
+              <div className="p-6 flex items-center justify-center">
+                <p className="text-gray-400 text-xs italic">Loading election data...</p>
+              </div>
+            )}
           </>
         )}
       </div>
