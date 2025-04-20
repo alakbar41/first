@@ -29,16 +29,8 @@ export function registerBlockchainRoutes(app: Express) {
   // Get contract address
   app.get('/api/blockchain/contract-address', (req: Request, res: Response) => {
     try {
-      // Check if the contract address is in env vars for Polygon mainnet
-      const contractAddress = process.env.VOTING_CONTRACT_ADDRESS;
-      
-      if (!contractAddress) {
-        res.setHeader('Content-Type', 'application/json');
-        return res.status(404).json({ 
-          message: 'Contract address not configured',
-          isConfigured: false 
-        });
-      }
+      // Use the hardcoded contract address for Polygon mainnet
+      const contractAddress = "0xda3d2afDD74556fdfa0353D210C649EB09CefB0c";
       
       // Return the contract address with network information
       res.setHeader('Content-Type', 'application/json');
