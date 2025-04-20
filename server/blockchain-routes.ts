@@ -45,7 +45,7 @@ export function registerBlockchainRoutes(app: Express) {
       res.json({ 
         contractAddress,
         isConfigured: true,
-        network: 'polygon-mainnet'
+        network: 'polygon-amoy'
       });
     } catch (error) {
       console.error('Error getting contract address:', error);
