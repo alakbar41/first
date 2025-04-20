@@ -39,9 +39,14 @@ export default function Results() {
       const response = await fetch("/api/elections");
       if (!response.ok) throw new Error("Failed to fetch elections");
       const elections = await response.json();
-      return elections.filter((election: Election) => 
-        new Date(election.endDate) < new Date()
+
+      // Filter for completed elections or those that have ended
+      const completedElections = elections.filter((election: Election) => 
+        election.status === 'completed' || new Date(election.endDate) < new Date()
       );
+      
+      // Sort elections by name to ensure consistent ordering
+      return completedElections.sort((a: Election, b: Election) => a.name.localeCompare(b.name));
     },
   });
 

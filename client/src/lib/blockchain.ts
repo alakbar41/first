@@ -158,7 +158,8 @@ export async function getElectionResultsFromBlockchain(electionId: string | numb
     const blockchainId = parseInt(election.blockchainId);
     
     // Step 3: Get all candidates for this election
-    const candidatesResponse = await fetch(`/api/elections/${electionId}/candidates`);
+    // Add view=results parameter to allow access to completed elections
+    const candidatesResponse = await fetch(`/api/elections/${electionId}/candidates?view=results`);
     if (!candidatesResponse.ok) {
       throw new Error(`Failed to fetch candidates for election ${electionId}`);
     }
