@@ -423,7 +423,7 @@ router.get('/metrics/active-elections', isAdmin, async (req: Request, res: Respo
         (SELECT COUNT(*) FROM users WHERE role = 'student') as total_eligible_voters
       FROM elections e
       LEFT JOIN votes v ON e.id = v.election_id
-      WHERE e.status = 'active'
+      WHERE e.status = 'active' OR e.status = 'upcoming'
       GROUP BY e.id, e.name, e.position, e.blockchain_id
       ORDER BY e.created_at DESC
     `;
@@ -435,7 +435,7 @@ router.get('/metrics/active-elections', isAdmin, async (req: Request, res: Respo
     console.log("Active elections raw result:", JSON.stringify(activeElectionsResult, null, 2));
     
     // Ensure we properly handle the result
-    let activeElections: ActiveElection[] = [];
+    let activeElections: (ActiveElection & { status: string })[] = [];
     if (activeElectionsResult && typeof activeElectionsResult === 'object') {
       if ('rows' in activeElectionsResult && Array.isArray(activeElectionsResult.rows)) {
         activeElections = activeElectionsResult.rows as unknown as ActiveElection[];
@@ -444,35 +444,128 @@ router.get('/metrics/active-elections', isAdmin, async (req: Request, res: Respo
       }
     }
     
-    console.log("Active elections parsed:", JSON.stringify(activeElections, null, 2));
+    // Get the election statuses to include in the result
+    const electionStatusesQuery = sql`
+      SELECT id, status FROM elections 
+      WHERE id IN (${sql.join(activeElections.map(e => e.id))})
+    `;
+    const electionStatuses = await db.execute(electionStatusesQuery);
+    const statusMap = new Map();
     
-    // Handle the case where there might be no active elections
+    if (electionStatuses && typeof electionStatuses === 'object') {
+      if ('rows' in electionStatuses && Array.isArray(electionStatuses.rows)) {
+        electionStatuses.rows.forEach((row: any) => statusMap.set(row.id, row.status));
+      } else if (Array.isArray(electionStatuses)) {
+        electionStatuses.forEach((row: any) => statusMap.set(row.id, row.status));
+      }
+    }
+    
+    console.log("Active/upcoming elections parsed:", JSON.stringify(activeElections, null, 2));
+    console.log("Election statuses:", JSON.stringify([...statusMap.entries()], null, 2));
+    
+    // Handle the case where there might be no active/upcoming elections
     const result: (ActiveElection & { candidates: Candidate[], status: string })[] = [];
     
     // Ensure activeElections is an array before iterating
     if (Array.isArray(activeElections) && activeElections.length > 0) {
       for (const election of activeElections) {
-        const candidateVotesQuery = sql`
-          SELECT 
-            c.id,
-            c.full_name,
-            c.student_id,
-            c.faculty,
-            COUNT(v.id) as vote_count
-          FROM candidates c
-          JOIN election_candidates ec ON c.id = ec.candidate_id
-          LEFT JOIN votes v ON v.candidate_id = c.id AND v.election_id = ${election.id}
-          WHERE ec.election_id = ${election.id}
-          GROUP BY c.id, c.full_name, c.student_id, c.faculty
-          ORDER BY vote_count DESC
-        `;
+        console.log(`Processing election ${election.id} (${election.name})`);
         
-        const candidates = await db.execute(candidateVotesQuery) as unknown as Candidate[];
+        // Check if the election has blockchain data
+        let candidateResults: Candidate[] = [];
+        
+        if (election.blockchain_id) {
+          console.log(`Election ${election.id} has blockchain_id ${election.blockchain_id}, checking blockchain data`);
+          try {
+            // Try to get data from blockchain if it exists there
+            const exists = await checkElectionExists(election.blockchain_id);
+            if (exists) {
+              console.log(`Election ${election.id} exists on blockchain, fetching results`);
+              const blockchainResults = await getElectionResults(election.blockchain_id);
+              if (Array.isArray(blockchainResults) && blockchainResults.length > 0) {
+                // Get candidate details from database for matching
+                const candidateDetailsQuery = sql`
+                  SELECT 
+                    c.id, c.full_name, c.student_id, c.faculty, c.blockchain_hash
+                  FROM candidates c
+                  JOIN election_candidates ec ON c.id = ec.candidate_id
+                  WHERE ec.election_id = ${election.id}
+                `;
+                
+                const candidateDetailsResult = await db.execute(candidateDetailsQuery);
+                let candidateDetails: any[] = [];
+                
+                if (candidateDetailsResult && typeof candidateDetailsResult === 'object') {
+                  if ('rows' in candidateDetailsResult && Array.isArray(candidateDetailsResult.rows)) {
+                    candidateDetails = candidateDetailsResult.rows;
+                  } else if (Array.isArray(candidateDetailsResult)) {
+                    candidateDetails = candidateDetailsResult;
+                  }
+                }
+                
+                console.log(`Found ${candidateDetails.length} candidates in database for election ${election.id}`);
+                
+                // Map blockchain candidates to database candidates
+                for (const blockchainCandidate of blockchainResults) {
+                  console.log(`Processing blockchain candidate:`, JSON.stringify(blockchainCandidate, null, 2));
+                  
+                  // Find matching candidate in database
+                  const dbCandidate = candidateDetails.find((c: any) => 
+                    c.student_id === blockchainCandidate.studentId || 
+                    c.blockchain_hash === blockchainCandidate.hash
+                  );
+                  
+                  if (dbCandidate) {
+                    candidateResults.push({
+                      id: dbCandidate.id,
+                      full_name: dbCandidate.full_name,
+                      student_id: dbCandidate.student_id,
+                      faculty: dbCandidate.faculty,
+                      vote_count: blockchainCandidate.voteCount,
+                      faculty_name: getFacultyName(dbCandidate.faculty)
+                    });
+                  }
+                }
+              }
+            }
+          } catch (error) {
+            console.error(`Error fetching blockchain data for election ${election.id}:`, error);
+          }
+        }
+        
+        // If we couldn't get data from blockchain or there was no blockchain ID, 
+        // fall back to database
+        if (candidateResults.length === 0) {
+          console.log(`Using database for election ${election.id} candidate votes`);
+          const candidateVotesQuery = sql`
+            SELECT 
+              c.id,
+              c.full_name,
+              c.student_id,
+              c.faculty,
+              COUNT(v.id) as vote_count
+            FROM candidates c
+            JOIN election_candidates ec ON c.id = ec.candidate_id
+            LEFT JOIN votes v ON v.candidate_id = c.id AND v.election_id = ${election.id}
+            WHERE ec.election_id = ${election.id}
+            GROUP BY c.id, c.full_name, c.student_id, c.faculty
+            ORDER BY vote_count DESC
+          `;
+          
+          const candidatesResult = await db.execute(candidateVotesQuery);
+          if (candidatesResult && typeof candidatesResult === 'object') {
+            if ('rows' in candidatesResult && Array.isArray(candidatesResult.rows)) {
+              candidateResults = candidatesResult.rows as unknown as Candidate[];
+            } else if (Array.isArray(candidatesResult)) {
+              candidateResults = candidatesResult as unknown as Candidate[];
+            }
+          }
+        }
         
         result.push({
           ...election,
-          status: 'active',
-          candidates: candidates.map(c => ({
+          status: statusMap.get(election.id) || 'active',
+          candidates: candidateResults.map(c => ({
             ...c,
             faculty_name: getFacultyName(c.faculty)
           }))
