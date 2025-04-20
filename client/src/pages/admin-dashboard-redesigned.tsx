@@ -575,21 +575,51 @@ const VotingTimeline = () => {
   // Ensure we have proper array data
   const electionOptions = Array.isArray(electionOptionsData) ? electionOptionsData : [];
 
-  // Process data for timeline chart with enhanced formatting
+  // Group data by parts of the day instead of showing individual hours
   const chartData = React.useMemo(() => {
     if (!Array.isArray(timelineData) || timelineData.length === 0) return [];
     
-    return timelineData.map(item => {
-      // Parse date from the timestamp
+    // Initialize counters for different parts of the day
+    let morningVotes = 0;
+    let afternoonVotes = 0;
+    let eveningVotes = 0;
+    
+    // Categorize votes by time of day
+    timelineData.forEach(item => {
       const date = new Date(item.hour);
-      return {
-        hour: item.formatted_hour || date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }),
-        votes: parseInt(String(item.vote_count)) || 0,
-        timestamp: date.getTime(), // For sorting
-        dayOfWeek: item.day_of_week?.trim() || date.toLocaleDateString([], {weekday: 'short'}),
-        fullDate: date.toLocaleDateString([], {month: 'short', day: 'numeric'})
-      };
-    }).sort((a, b) => a.timestamp - b.timestamp); // Ensure chronological order
+      const hour = date.getHours();
+      const votes = parseInt(String(item.vote_count)) || 0;
+      
+      if (hour >= 6 && hour < 12) {
+        morningVotes += votes;
+      } else if (hour >= 12 && hour < 18) {
+        afternoonVotes += votes;
+      } else {
+        eveningVotes += votes;
+      }
+    });
+    
+    // Return data in format appropriate for chart
+    return [
+      { 
+        timeOfDay: 'Morning (6AM-12PM)', 
+        votes: morningVotes,
+        label: 'Morning',
+        info: '6:00 AM - 12:00 PM'
+      },
+      { 
+        timeOfDay: 'Afternoon (12PM-6PM)', 
+        votes: afternoonVotes,
+        label: 'Afternoon',
+        info: '12:00 PM - 6:00 PM'
+      },
+      { 
+        timeOfDay: 'Evening (6PM-6AM)', 
+        votes: eveningVotes,
+        label: 'Evening',
+        info: '6:00 PM - 6:00 AM'
+      }
+    ];
   }, [timelineData]);
   
   // Calculate peak voting times
@@ -609,42 +639,15 @@ const VotingTimeline = () => {
     
     const insights = [];
     
-    // Group by day of week to find which days have most votes
-    const dayGroups = chartData.reduce((acc, item) => {
-      const day = item.dayOfWeek;
-      if (!acc[day]) acc[day] = 0;
-      acc[day] += item.votes;
-      return acc;
-    }, {} as Record<string, number>);
-    
-    // Find most active day
-    const mostActiveDayEntries = Object.entries(dayGroups).sort((a, b) => b[1] - a[1]);
-    const mostActiveDay = mostActiveDayEntries[0];
-    
-    if (mostActiveDay && mostActiveDay[1] > 0) {
-      insights.push(`Most votes occur on ${mostActiveDay[0]}`);
-    }
-    
-    // Check if there are clear peak times
+    // Find peak voting time
     if (peakVotingTime && peakVotingTime.length > 0 && peakVotingTime[0].votes > 0) {
-      insights.push(`Peak voting time: ${peakVotingTime[0].hour}`);
+      insights.push(`Peak voting time: ${peakVotingTime[0].label}`);
     }
     
-    // Look for voting trends (morning vs afternoon vs evening)
-    const morningVotes = chartData.filter(d => {
-      const hour = new Date(d.timestamp).getHours();
-      return hour >= 6 && hour < 12;
-    }).reduce((sum, d) => sum + d.votes, 0);
-    
-    const afternoonVotes = chartData.filter(d => {
-      const hour = new Date(d.timestamp).getHours();
-      return hour >= 12 && hour < 18;
-    }).reduce((sum, d) => sum + d.votes, 0);
-    
-    const eveningVotes = chartData.filter(d => {
-      const hour = new Date(d.timestamp).getHours();
-      return hour >= 18 || hour < 6;
-    }).reduce((sum, d) => sum + d.votes, 0);
+    // Look for voting trends based on our time-of-day data
+    const morningVotes = chartData.find(d => d.label === 'Morning')?.votes || 0;
+    const afternoonVotes = chartData.find(d => d.label === 'Afternoon')?.votes || 0;
+    const eveningVotes = chartData.find(d => d.label === 'Evening')?.votes || 0;
     
     const maxTimeOfDay = Math.max(morningVotes, afternoonVotes, eveningVotes);
     
@@ -707,19 +710,15 @@ const VotingTimeline = () => {
               </defs>
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
               <XAxis 
-                dataKey="hour" 
-                tick={{ fontSize: 10 }}
-                tickFormatter={(value, index) => {
-                  // Show every nth tick to avoid crowding
-                  return index % 2 === 0 ? value : '';
-                }}
+                dataKey="label" 
+                tick={{ fontSize: 12 }}
               />
               <YAxis allowDecimals={false} />
               <Tooltip 
-                formatter={(value) => [`${value} votes`, 'Activity']}
+                formatter={(value) => [`${value} votes`, 'Vote Count']}
                 labelFormatter={(label, payload) => {
                   if (payload.length > 0) {
-                    return `${payload[0].payload.fullDate} at ${label}`;
+                    return `${label} (${payload[0].payload.info})`;
                   }
                   return label;
                 }}
@@ -774,7 +773,7 @@ const VotingTimeline = () => {
               <div className="text-xs text-gray-500 mt-1">
                 <span className="text-gray-600 font-medium">Peak activity: </span>
                 <span className="text-gray-900">
-                  {peakVotingTime[0].fullDate} at {peakVotingTime[0].hour}
+                  {peakVotingTime[0].timeOfDay} ({peakVotingTime[0].votes} votes)
                 </span>
               </div>
             )}
