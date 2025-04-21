@@ -75,64 +75,42 @@ const router = Router();
 // Faculty participation metrics
 router.get('/metrics/faculty-participation', isAdmin, async (req: Request, res: Response) => {
   try {
-    const electionId = req.query.electionId ? parseInt(req.query.electionId as string) : null;
-
+    // Just get faculty distribution from the database since this doesn't involve votes
+    // We'll use blockchain data for the actual voting information elsewhere
     let query = sql`
-      WITH faculty_counts AS (
-        SELECT 
-          u.faculty, 
-          COUNT(*) as total_students
-        FROM users u
-        WHERE u.is_admin = false
-          AND u.faculty NOT IN ('Administration') -- Exclude admin faculties
-        GROUP BY u.faculty
-      ),
-      voted_counts AS (
-        SELECT 
-          u.faculty, 
-          COUNT(DISTINCT v.user_id) as voted_students
-        FROM votes v
-        JOIN users u ON v.user_id = u.id
-        WHERE u.is_admin = false
-          AND u.faculty NOT IN ('Administration') -- Exclude admin faculties
-        ${electionId ? sql`AND v.election_id = ${electionId}` : sql``}
-        GROUP BY u.faculty
-      )
       SELECT 
-        fc.faculty,
-        fc.total_students,
-        COALESCE(vc.voted_students, 0) as voted_students,
-        CASE 
-          WHEN fc.total_students > 0 THEN 
-            (COALESCE(vc.voted_students, 0)::float / fc.total_students::float) * 100
-          ELSE 0
-        END as participation_percentage
-      FROM faculty_counts fc
-      LEFT JOIN voted_counts vc ON fc.faculty = vc.faculty
-      ORDER BY fc.faculty
+        u.faculty, 
+        COUNT(*) as total_students,
+        0 as voted_students,
+        0 as participation_percentage
+      FROM users u
+      WHERE u.is_admin = false
+        AND u.faculty NOT IN ('Administration') -- Exclude admin faculties
+      GROUP BY u.faculty
+      ORDER BY u.faculty
     `;
 
     const queryResult = await db.execute(query);
-    console.log('Faculty participation query result:', JSON.stringify(queryResult, null, 2));
+    console.log('Faculty distribution query result:', JSON.stringify(queryResult, null, 2));
     
     // Ensure we have an array to work with
-    const facultyParticipation = Array.isArray(queryResult) 
+    const facultyDistribution = Array.isArray(queryResult) 
       ? queryResult 
       : queryResult && typeof queryResult === 'object' && 'rows' in queryResult 
         ? queryResult.rows || []
         : [];
     
-    console.log('Faculty array to map:', JSON.stringify(facultyParticipation, null, 2));
+    console.log('Faculty array to map:', JSON.stringify(facultyDistribution, null, 2));
     
     // Add faculty names for display purposes
-    const result = facultyParticipation.map(row => ({
+    const result = facultyDistribution.map(row => ({
       ...row,
       faculty_name: getFacultyName(row.faculty)
     }));
 
     res.json(result);
   } catch (error) {
-    console.error('Error fetching faculty participation metrics:', error);
+    console.error('Error fetching faculty distribution metrics:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 });
@@ -140,23 +118,19 @@ router.get('/metrics/faculty-participation', isAdmin, async (req: Request, res: 
 // Completed elections data for dashboard with blockchain results
 router.get('/metrics/completed-elections', isAdmin, async (req: Request, res: Response) => {
   try {
-    // Get completed elections
+    // Get completed elections - we'll get vote counts directly from blockchain
     const completedElectionsQuery = sql`
       SELECT 
         e.id,
         e.name,
         e.position,
         e.blockchain_id,
-        COUNT(v.id) as vote_count,
+        0 as vote_count,
         (SELECT COUNT(*) FROM users WHERE is_admin = false AND faculty NOT IN ('Administration')) as total_eligible_voters
       FROM 
         elections e
-      LEFT JOIN 
-        votes v ON e.id = v.election_id
       WHERE 
         e.status = 'completed'
-      GROUP BY 
-        e.id, e.name, e.position, e.blockchain_id
       ORDER BY 
         e.id DESC
     `;
@@ -283,13 +257,12 @@ router.get('/metrics/completed-elections', isAdmin, async (req: Request, res: Re
                 c.full_name,
                 c.student_id,
                 c.faculty,
-                COUNT(v.id) as vote_count
+                0 as vote_count
               FROM candidates c
               JOIN election_candidates ec ON c.id = ec.candidate_id
-              LEFT JOIN votes v ON v.candidate_id = c.id AND v.election_id = ${election.id}
               WHERE ec.election_id = ${election.id}
               GROUP BY c.id, c.full_name, c.student_id, c.faculty
-              ORDER BY vote_count DESC
+              ORDER BY c.full_name
             `;
             
             const candidatesResult = await db.execute(candidateVotesQuery);
@@ -336,54 +309,31 @@ router.get('/metrics/voting-timeline', isAdmin, async (req: Request, res: Respon
     
     console.log(`Fetching voting timeline data for election ID: ${electionId || 'all elections'}`);
     
-    // Get voting data broken down by hour, ensuring we have continuous data points
-    // even for hours with no votes
-    let query = sql`
-      WITH time_series AS (
-        SELECT generate_series(
-          DATE_TRUNC('hour', (SELECT MIN(created_at) FROM votes)),
-          DATE_TRUNC('hour', NOW()),
-          '1 hour'::interval
-        ) AS hour
-      ),
-      vote_counts AS (
-        SELECT 
-          DATE_TRUNC('hour', created_at) as hour,
-          COUNT(*) as vote_count
-        FROM votes
-        ${electionId ? sql`WHERE election_id = ${electionId}` : sql``}
-        GROUP BY hour
-      )
-      SELECT 
-        ts.hour,
-        COALESCE(vc.vote_count, 0) as vote_count,
-        to_char(ts.hour, 'HH12:MI AM') as formatted_hour,
-        to_char(ts.hour, 'Day') as day_of_week
-      FROM time_series ts
-      LEFT JOIN vote_counts vc ON ts.hour = vc.hour
-      ORDER BY ts.hour
-    `;
-
-    console.log("Voting timeline query:", query.toString());
+    // Since we don't have voting data in the database (it's all on blockchain),
+    // we'll return a sample timeline with the current day hours
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     
-    const votesResult = await db.execute(query);
-    console.log("Voting timeline raw result:", JSON.stringify(votesResult, null, 2));
+    const timelineSamples = [];
     
-    // Properly handle the query result
-    let voteTimeline: VoteTimeline[] = [];
-    if (votesResult && typeof votesResult === 'object') {
-      if ('rows' in votesResult && Array.isArray(votesResult.rows)) {
-        voteTimeline = votesResult.rows as unknown as VoteTimeline[];
-      } else if (Array.isArray(votesResult)) {
-        voteTimeline = votesResult as unknown as VoteTimeline[];
-      }
+    // Generate 24 hours of sample data for the current day
+    for (let i = 0; i < 24; i++) {
+      const hour = new Date(today);
+      hour.setHours(i);
+      
+      timelineSamples.push({
+        hour: hour,
+        vote_count: 0,
+        formatted_hour: hour.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
+        day_of_week: hour.toLocaleDateString('en-US', { weekday: 'long' })
+      });
     }
     
-    console.log("Voting timeline parsed:", JSON.stringify(voteTimeline, null, 2));
+    console.log("Voting timeline generated:", JSON.stringify(timelineSamples, null, 2));
     
-    res.json(voteTimeline);
+    res.json(timelineSamples);
   } catch (error) {
-    console.error('Error fetching voting timeline metrics:', error);
+    console.error('Error generating voting timeline metrics:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 });
