@@ -356,15 +356,12 @@ router.get('/metrics/blockchain-status', isAdmin, async (req: Request, res: Resp
 
     const elections = await db.execute(query) as unknown as Election[];
     
-    // Get blockchain vote transaction success rate
-    const blockchainTransactionsQuery = sql`
-      SELECT 
-        COUNT(*) as total_transactions,
-        COUNT(CASE WHEN success = true THEN 1 END) as successful_transactions
-      FROM blockchain_transactions
-    `;
-
-    const transactionStats = await db.execute(blockchainTransactionsQuery) as unknown as BlockchainTransaction[];
+    // Since we don't have blockchain_transactions table active,
+    // we'll provide a default value for transaction stats
+    const transactionStats = [{ 
+      total_transactions: 0, 
+      successful_transactions: 0 
+    }] as unknown as BlockchainTransaction[];
     
     const stats: BlockchainStats = {
       total_elections: elections.length,
@@ -383,17 +380,16 @@ router.get('/metrics/blockchain-status', isAdmin, async (req: Request, res: Resp
 // Active election stats
 router.get('/metrics/active-elections', isAdmin, async (req: Request, res: Response) => {
   try {
-    // Get currently active elections
+    // Get currently active elections - we'll get vote counts from the blockchain
     const activeElectionsQuery = sql`
       SELECT 
         e.id,
         e.name,
         e.position,
         e.blockchain_id,
-        COUNT(DISTINCT v.user_id) as vote_count,
+        0 as vote_count,
         (SELECT COUNT(*) FROM users WHERE is_admin = false AND faculty NOT IN ('Administration')) as total_eligible_voters
       FROM elections e
-      LEFT JOIN votes v ON e.id = v.election_id
       WHERE e.status = 'active' OR e.status = 'upcoming'
       GROUP BY e.id, e.name, e.position, e.blockchain_id
       ORDER BY e.created_at DESC
@@ -512,23 +508,21 @@ router.get('/metrics/active-elections', isAdmin, async (req: Request, res: Respo
         // If we couldn't get data from blockchain or there was no blockchain ID, 
         // fall back to database
         if (candidateResults.length === 0) {
-          console.log(`Using database for election ${election.id} candidate votes`);
-          const candidateVotesQuery = sql`
+          console.log(`Getting candidate list for election ${election.id} without vote data`);
+          const candidateListQuery = sql`
             SELECT 
               c.id,
               c.full_name,
               c.student_id,
               c.faculty,
-              COUNT(v.id) as vote_count
+              0 as vote_count
             FROM candidates c
             JOIN election_candidates ec ON c.id = ec.candidate_id
-            LEFT JOIN votes v ON v.candidate_id = c.id AND v.election_id = ${election.id}
             WHERE ec.election_id = ${election.id}
-            GROUP BY c.id, c.full_name, c.student_id, c.faculty
-            ORDER BY vote_count DESC
+            ORDER BY c.full_name
           `;
           
-          const candidatesResult = await db.execute(candidateVotesQuery);
+          const candidatesResult = await db.execute(candidateListQuery);
           if (candidatesResult && typeof candidatesResult === 'object') {
             if ('rows' in candidatesResult && Array.isArray(candidatesResult.rows)) {
               candidateResults = candidatesResult.rows as unknown as Candidate[];
@@ -556,41 +550,83 @@ router.get('/metrics/active-elections', isAdmin, async (req: Request, res: Respo
   }
 });
 
-// Overall participation stats
+// Overall participation stats - now using blockchain data when available
 router.get('/metrics/participation-overview', isAdmin, async (req: Request, res: Response) => {
   try {
+    // Get election info without vote data
     const query = sql`
-      WITH election_stats AS (
-        SELECT 
-          e.id,
-          e.name,
-          e.position,
-          e.status,
-          COUNT(DISTINCT v.user_id) as voters,
-          (SELECT COUNT(*) FROM users WHERE is_admin = false AND faculty NOT IN ('Administration')) as total_eligible_voters
-        FROM elections e
-        LEFT JOIN votes v ON e.id = v.election_id
-        GROUP BY e.id, e.name, e.position, e.status
-      )
       SELECT 
-        id,
-        name,
-        position,
-        status,
-        voters,
-        total_eligible_voters,
-        CASE 
-          WHEN total_eligible_voters > 0 THEN 
-            (voters::float / total_eligible_voters::float) * 100
-          ELSE 0
-        END as participation_percentage
-      FROM election_stats
-      ORDER BY id DESC
+        e.id,
+        e.name,
+        e.position,
+        e.status,
+        e.blockchain_id,
+        0 as voters,
+        (SELECT COUNT(*) FROM users WHERE is_admin = false AND faculty NOT IN ('Administration')) as total_eligible_voters
+      FROM elections e
+      ORDER BY e.id DESC
     `;
 
-    const participationStats = await db.execute(query) as unknown as ParticipationOverview[];
+    let queryResult = await db.execute(query);
     
-    res.json(participationStats);
+    // Properly handle the query result to ensure we have an array
+    let participationStats: any[] = [];
+    if (queryResult && typeof queryResult === 'object') {
+      if ('rows' in queryResult && Array.isArray(queryResult.rows)) {
+        participationStats = queryResult.rows;
+      } else if (Array.isArray(queryResult)) {
+        participationStats = queryResult;
+      }
+    }
+    
+    console.log("Participation stats raw query result:", JSON.stringify(participationStats, null, 2));
+    
+    // For each election with a blockchain ID, try to get actual vote counts
+    const result: ParticipationOverview[] = [];
+    
+    // Make sure we have an array to iterate over
+    if (Array.isArray(participationStats)) {
+      for (const election of participationStats) {
+      let voters = 0;
+      
+      // If the election has a blockchain ID, try to get vote counts from the blockchain
+      if (election.blockchain_id) {
+        try {
+          const blockchainId = parseInt(election.blockchain_id);
+          const exists = await checkElectionExists(blockchainId);
+          
+          if (exists) {
+            const blockchainResults = await getElectionResults(blockchainId);
+            if (Array.isArray(blockchainResults) && blockchainResults.length > 0) {
+              // Sum up all votes from blockchain
+              voters = blockchainResults.reduce((sum, candidate) => 
+                sum + parseInt(candidate.voteCount), 0);
+            }
+          }
+        } catch (err) {
+          console.error(`Error fetching blockchain data for election ${election.id}:`, err);
+        }
+      }
+      
+      // Calculate participation percentage
+      const participation_percentage = 
+        election.total_eligible_voters > 0 
+          ? (voters / election.total_eligible_voters) * 100 
+          : 0;
+      
+      result.push({
+        id: election.id,
+        name: election.name,
+        position: election.position,
+        status: election.status,
+        voters: voters,
+        total_eligible_voters: election.total_eligible_voters,
+        participation_percentage: participation_percentage
+      });
+    }
+    }
+    
+    res.json(result);
   } catch (error) {
     console.error('Error fetching participation overview metrics:', error);
     res.status(500).json({ message: 'Internal server error' });
