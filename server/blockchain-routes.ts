@@ -271,12 +271,12 @@ export function registerBlockchainRoutes(app: Express) {
       
       res.json({ 
         success: true,
-        message: 'Vote recorded successfully'
+        message: 'Vote participation recorded successfully'
       });
     } catch (error: any) {
-      console.error('Error recording vote:', error);
+      console.error('Error recording vote participation:', error);
       res.status(500).json({ 
-        message: 'Failed to record vote',
+        message: 'Failed to record vote participation',
         error: error.message
       });
     }

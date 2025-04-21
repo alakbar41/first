@@ -370,7 +370,11 @@ export async function voteForCandidate(startTime: number, candidateHash: string)
 }
 
 /**
- * Check if the current user has voted in an election
+ * Check if the current user has participated in an election
+ * 
+ * The vote itself is recorded on the blockchain, while the participation record is only stored
+ * in the database to track who has already voted. This protects privacy and ensures vote
+ * transparency.
  */
 export async function hasUserVoted(startTime: number) {
   try {
@@ -386,7 +390,7 @@ export async function hasUserVoted(startTime: number) {
     
     return await contract.hasVoted(startTime, accounts[0]);
   } catch (error) {
-    console.error('Error checking if user voted:', error);
+    console.error('Error checking if user has participated:', error);
     return false;
   }
 }

@@ -551,12 +551,12 @@ export function ElectionCandidatesList({ election }: ElectionCandidatesListProps
     // Update UI state to indicate user has voted
     setHasVotedInElection(true);
     
-    // Record this vote in the database if needed
+    // Record this vote participation in the database if needed
     try {
       apiRequest('POST', `/api/elections/${election.id}/record-vote`, {})
-        .catch(err => console.warn("Failed to record vote in database:", err));
+        .catch(err => console.warn("Failed to record vote participation in database:", err));
     } catch (error) {
-      console.warn("Error recording vote in database:", error);
+      console.warn("Error recording vote participation in database:", error);
     }
     
     // Refresh the UI with updated vote counts
