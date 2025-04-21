@@ -1418,10 +1418,10 @@ export class DatabaseStorage implements IStorage {
       );
     
     // Also record in vote participation table (but no candidate information)
-    await db.insert(voteParticipation).values({
-      userId,
-      electionId
-    });
+    // Use raw SQL since we have an inconsistency between schema and actual table
+    await db.execute(
+      `INSERT INTO vote_participation (user_id, election_id) VALUES (${userId}, ${electionId})`
+    );
   }
   
   async hasUserParticipated(userId: number, electionId: number): Promise<boolean> {
@@ -1440,17 +1440,14 @@ export class DatabaseStorage implements IStorage {
       return true;
     }
     
-    // Double-check participation table
-    const participation = await db.select()
-      .from(voteParticipation)
-      .where(
-        and(
-          eq(voteParticipation.userId, userId),
-          eq(voteParticipation.electionId, electionId)
-        )
-      );
+    // Double-check participation table using raw SQL since the table name doesn't match the schema
+    const participation = await db.execute(
+      `SELECT * FROM vote_participation WHERE user_id = ${userId} AND election_id = ${electionId}`
+    );
     
-    return participation.length > 0;
+    // Check if any rows were returned
+    const result = participation.rows as any[];
+    return result.length > 0;
   }
   
   async resetVoteParticipation(userId: number, electionId: number): Promise<void> {
@@ -1465,14 +1462,10 @@ export class DatabaseStorage implements IStorage {
         )
       );
     
-    // Also remove from vote participation table
-    await db.delete(voteParticipation)
-      .where(
-        and(
-          eq(voteParticipation.userId, userId),
-          eq(voteParticipation.electionId, electionId)
-        )
-      );
+    // Also remove from vote participation table using raw SQL
+    await db.execute(
+      `DELETE FROM vote_participation WHERE user_id = ${userId} AND election_id = ${electionId}`
+    );
     
     console.log(`Reset vote participation for user ${userId} in election ${electionId}`);
   }
