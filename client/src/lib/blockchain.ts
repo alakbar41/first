@@ -276,8 +276,6 @@ export async function getElectionResultsFromBlockchain(electionId: string | numb
  * Vote for a candidate in an election
  */
 export async function voteForCandidate(startTime: number, candidateHash: string) {
-  let txHash = '';
-  
   try {
     // First, ensure MetaMask is installed and accessible
     if (typeof window === 'undefined' || !window.ethereum) {
@@ -293,15 +291,14 @@ export async function voteForCandidate(startTime: number, candidateHash: string)
     
     // Send transaction to blockchain - let MetaMask handle gas estimation
     const tx = await contract.vote(startTime, candidateHash);
-    txHash = tx.hash;
-    console.log('Transaction sent:', txHash);
+    console.log('Transaction sent:', tx.hash);
     
     // Wait for transaction to be mined
     const receipt = await tx.wait();
     console.log('Transaction confirmed in block:', receipt.blockNumber);
     
     // Notify backend about the vote for backup/analytics and email confirmation
-    const response = await fetch('/api/blockchain/vote', {
+    await fetch('/api/blockchain/vote', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -309,15 +306,9 @@ export async function voteForCandidate(startTime: number, candidateHash: string)
       body: JSON.stringify({
         electionId: startTime,
         candidateHash: candidateHash,
-        txHash: txHash // Add transaction hash for email confirmations
+        txHash: tx.hash // Add transaction hash for email confirmations
       })
     });
-    
-    if (!response.ok) {
-      console.error('Failed to notify backend about vote:', await response.text());
-    } else {
-      console.log('Backend notified about vote, email confirmation should be sent');
-    }
     
     return true;
   } catch (error: any) {
@@ -375,30 +366,6 @@ export async function voteForCandidate(startTime: number, candidateHash: string)
     
     // If we couldn't identify a specific error, throw the original
     throw error;
-  } finally {
-    // Send the transaction hash to the backend even if there was an error
-    // This ensures email notifications are sent when MetaMask confirmation happened
-    // but there was an error after the transaction was broadcast
-    if (txHash) {
-      try {
-        console.log('Sending txHash to backend even after error:', txHash);
-        fetch('/api/blockchain/vote', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            electionId: startTime,
-            candidateHash: candidateHash,
-            txHash: txHash
-          })
-        }).catch(err => {
-          console.error('Failed to send transaction hash to backend after error:', err);
-        });
-      } catch (e) {
-        console.error('Error in finally block when sending transaction hash:', e);
-      }
-    }
   }
 }
 
