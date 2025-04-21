@@ -247,10 +247,10 @@ export function registerBlockchainRoutes(app: Express) {
         console.warn('Could not get election details:', e);
       }
       
-      // Record the vote in our database for backup/verification
+      // Record vote participation in our database (without storing candidate choice)
       if (req.user?.id) {
-        await storage.recordVote(req.user.id, parseInt(electionId));
-        console.log(`Vote recorded for user ${req.user.id} in election ${electionId} for candidate ${studentId}`);
+        await storage.recordVoteParticipation(req.user.id, parseInt(electionId));
+        console.log(`Vote participation recorded for user ${req.user.id} in election ${electionId}`);
         
         // Send email confirmation if we have a transaction hash
         if (txHash && req.user.email) {

@@ -104,6 +104,7 @@ export class MemStorage implements IStorage {
     this.elections = new Map();
     this.candidates = new Map();
     this.electionCandidates = new Map();
+    this.voteParticipation = new Map();
     
     this.currentId = 1;
     this.currentElectionId = 1;
@@ -746,13 +747,31 @@ export class MemStorage implements IStorage {
       token.used = true;
       this.votingTokens.set(token.token, token);
     }
+    
+    // Add to participation tracking
+    const key = `${userId}-${electionId}`;
+    const participation: VoteParticipation = {
+      id: 0, // Auto-generated ID (not used in memory storage)
+      userId,
+      electionId,
+      created_at: new Date()
+    };
+    this.voteParticipation.set(key, participation);
   }
   
   async hasUserParticipated(userId: number, electionId: number): Promise<boolean> {
-    // Check if any tokens are marked as used to determine participation
-    return Array.from(this.votingTokens.values()).some(
+    // First check token participation
+    const hasTokenParticipation = Array.from(this.votingTokens.values()).some(
       token => token.userId === userId && token.electionId === electionId && token.used
     );
+    
+    if (hasTokenParticipation) {
+      return true;
+    }
+    
+    // Then check direct participation record
+    const key = `${userId}-${electionId}`;
+    return this.voteParticipation.has(key);
   }
   
   async resetVoteParticipation(userId: number, electionId: number): Promise<void> {
@@ -766,7 +785,11 @@ export class MemStorage implements IStorage {
       this.votingTokens.set(token.token, token);
     }
     
-    console.log(`Reset vote for user ${userId} in election ${electionId}, reset ${tokens.length} tokens`);
+    // Also remove from participation tracking
+    const key = `${userId}-${electionId}`;
+    this.voteParticipation.delete(key);
+    
+    console.log(`Reset vote participation for user ${userId} in election ${electionId}, reset ${tokens.length} tokens`);
   }
 }
 

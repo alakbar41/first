@@ -1416,8 +1416,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Mark the token as used
       await storage.markTokenAsUsed(token);
       
-      // Record the vote in our database (for backup tracking)
-      await storage.recordVote(req.user.id, electionId);
+      // Record participation in our database (without storing candidate choice)
+      await storage.recordVoteParticipation(req.user.id, electionId);
       
       res.status(200).json({ message: "Vote recorded successfully" });
     } catch (error) {
@@ -1445,15 +1445,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const { electionId, txHash } = result.data;
       
-      // First check if the user has voted in this election
-      const hasVoted = await storage.hasUserVoted(req.user.id, electionId);
+      // First check if the user has participated in this election
+      const hasParticipated = await storage.hasUserParticipated(req.user.id, electionId);
       
-      if (!hasVoted) {
-        return res.status(400).json({ message: "No vote found to reset" });
+      if (!hasParticipated) {
+        return res.status(400).json({ message: "No vote participation found to reset" });
       }
       
-      // Reset the vote
-      await storage.resetVote(req.user.id, electionId);
+      // Reset the vote participation
+      await storage.resetVoteParticipation(req.user.id, electionId);
       
       console.log(`Vote reset for user ${req.user.id} in election ${electionId}. Failed transaction: ${txHash || 'unknown'}`);
       
