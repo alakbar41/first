@@ -1455,16 +1455,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Reset the vote participation
       await storage.resetVoteParticipation(req.user.id, electionId);
       
-      console.log(`Vote reset for user ${req.user.id} in election ${electionId}. Failed transaction: ${txHash || 'unknown'}`);
+      console.log(`Vote participation reset for user ${req.user.id} in election ${electionId}. Failed transaction: ${txHash || 'unknown'}`);
       
-      res.status(200).json({ message: "Vote reset successfully" });
+      res.status(200).json({ message: "Vote participation reset successfully" });
     } catch (error) {
-      console.error("Error resetting vote:", error);
-      res.status(500).json({ message: "Failed to reset vote" });
+      console.error("Error resetting vote participation:", error);
+      res.status(500).json({ message: "Failed to reset vote participation" });
     }
   });
   
-  // Check if a user has already voted in an election
+  // Check if a user has already participated in an election
   app.get("/api/elections/:electionId/has-voted", isAuthenticated, async (req, res) => {
     try {
       const electionId = parseInt(req.params.electionId);
@@ -1473,16 +1473,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid election ID" });
       }
       
-      const hasVoted = await storage.hasUserVoted(req.user.id, electionId);
+      const hasParticipated = await storage.hasUserParticipated(req.user.id, electionId);
       
-      res.status(200).json({ hasVoted });
+      res.status(200).json({ hasVoted: hasParticipated });
     } catch (error) {
-      console.error("Error checking vote status:", error);
-      res.status(500).json({ message: "Failed to check vote status" });
+      console.error("Error checking vote participation status:", error);
+      res.status(500).json({ message: "Failed to check vote participation status" });
     }
   });
   
-  // New endpoint with simpler route for checking user-voted status
+  // New endpoint with simpler route for checking user participation status
   app.get("/api/elections/:electionId/user-voted", isAuthenticated, async (req, res) => {
     try {
       const electionId = parseInt(req.params.electionId);
@@ -1491,11 +1491,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid election ID" });
       }
       
-      const hasVoted = await storage.hasUserVoted(req.user.id, electionId);
+      const hasParticipated = await storage.hasUserParticipated(req.user.id, electionId);
       
-      res.status(200).json({ hasVoted });
+      res.status(200).json({ hasVoted: hasParticipated });
     } catch (error) {
-      console.error("Error checking vote status:", error);
+      console.error("Error checking vote participation status:", error);
       res.status(500).json({ message: "Failed to check vote status" });
     }
   });
@@ -1599,7 +1599,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Reset user's vote for an election (now allowed for students for testing purposes)
+  // Reset user's vote participation for an election (now allowed for students for testing purposes)
   app.post("/api/test/reset-user-vote", isAuthenticated, async (req, res) => {
     try {
       const { electionId } = req.body;
@@ -1608,22 +1608,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid election ID" });
       }
       
-      // Check if the user has voted in this election
-      const hasVoted = await storage.hasUserVoted(req.user.id, electionId);
+      // Check if the user has participated in this election
+      const hasParticipated = await storage.hasUserParticipated(req.user.id, electionId);
       
-      if (!hasVoted) {
-        return res.status(400).json({ message: "No vote found to reset" });
+      if (!hasParticipated) {
+        return res.status(400).json({ message: "No vote participation found to reset" });
       }
       
-      // Reset the vote
-      await storage.resetVote(req.user.id, electionId);
+      // Reset the vote participation
+      await storage.resetVoteParticipation(req.user.id, electionId);
       
-      console.log(`Vote reset for user ${req.user.id} in election ${electionId} for testing purposes`);
+      console.log(`Vote participation reset for user ${req.user.id} in election ${electionId} for testing purposes`);
       
-      res.json({ message: "Vote reset successfully" });
+      res.json({ message: "Vote participation reset successfully" });
     } catch (error) {
-      console.error("Error resetting vote:", error);
-      res.status(500).json({ message: "Failed to reset vote" });
+      console.error("Error resetting vote participation:", error);
+      res.status(500).json({ message: "Failed to reset vote participation" });
     }
   });
   
