@@ -587,43 +587,43 @@ router.get('/metrics/participation-overview', isAdmin, async (req: Request, res:
     // Make sure we have an array to iterate over
     if (Array.isArray(participationStats)) {
       for (const election of participationStats) {
-      let voters = 0;
-      
-      // If the election has a blockchain ID, try to get vote counts from the blockchain
-      if (election.blockchain_id) {
-        try {
-          const blockchainId = parseInt(election.blockchain_id);
-          const exists = await checkElectionExists(blockchainId);
-          
-          if (exists) {
-            const blockchainResults = await getElectionResults(blockchainId);
-            if (Array.isArray(blockchainResults) && blockchainResults.length > 0) {
-              // Sum up all votes from blockchain
-              voters = blockchainResults.reduce((sum, candidate) => 
-                sum + parseInt(candidate.voteCount), 0);
+        let voters = 0;
+        
+        // If the election has a blockchain ID, try to get vote counts from the blockchain
+        if (election.blockchain_id) {
+          try {
+            const blockchainId = parseInt(election.blockchain_id);
+            const exists = await checkElectionExists(blockchainId);
+            
+            if (exists) {
+              const blockchainResults = await getElectionResults(blockchainId);
+              if (Array.isArray(blockchainResults) && blockchainResults.length > 0) {
+                // Sum up all votes from blockchain
+                voters = blockchainResults.reduce((sum, candidate) => 
+                  sum + parseInt(candidate.voteCount), 0);
+              }
             }
+          } catch (err) {
+            console.error(`Error fetching blockchain data for election ${election.id}:`, err);
           }
-        } catch (err) {
-          console.error(`Error fetching blockchain data for election ${election.id}:`, err);
         }
+        
+        // Calculate participation percentage
+        const participation_percentage = 
+          election.total_eligible_voters > 0 
+            ? (voters / election.total_eligible_voters) * 100 
+            : 0;
+        
+        result.push({
+          id: election.id,
+          name: election.name,
+          position: election.position,
+          status: election.status,
+          voters: voters,
+          total_eligible_voters: election.total_eligible_voters,
+          participation_percentage: participation_percentage
+        });
       }
-      
-      // Calculate participation percentage
-      const participation_percentage = 
-        election.total_eligible_voters > 0 
-          ? (voters / election.total_eligible_voters) * 100 
-          : 0;
-      
-      result.push({
-        id: election.id,
-        name: election.name,
-        position: election.position,
-        status: election.status,
-        voters: voters,
-        total_eligible_voters: election.total_eligible_voters,
-        participation_percentage: participation_percentage
-      });
-    }
     }
     
     res.json(result);
