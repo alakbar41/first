@@ -1,11 +1,12 @@
-import { users, pendingUsers, elections, candidates, electionCandidates, votingTokens, tickets,
+import { users, pendingUsers, elections, candidates, electionCandidates, votingTokens, tickets, voteParticipation,
   type User, type InsertUser, 
   type PendingUser, type InsertPendingUser, 
   type Election, type InsertElection,
   type Candidate, type InsertCandidate,
   type ElectionCandidate, type InsertElectionCandidate,
   type VotingToken, type InsertVotingToken,
-  type Ticket, type InsertTicket
+  type Ticket, type InsertTicket,
+  type VoteParticipation, type InsertVoteParticipation
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, asc, desc } from "drizzle-orm";
@@ -64,10 +65,10 @@ export interface IStorage {
   addCandidateToElection(electionCandidate: InsertElectionCandidate): Promise<ElectionCandidate>;
   removeCandidateFromElection(electionId: number, candidateId: number): Promise<void>;
   
-  // Vote history tracking
-  recordVote?(userId: number, electionId: number): Promise<void>;
-  hasUserVoted?(userId: number, electionId: number): Promise<boolean>;
-  resetVote?(userId: number, electionId: number): Promise<void>;
+  // Vote participation tracking (blockchain is the source of truth for actual votes)
+  recordVoteParticipation(userId: number, electionId: number): Promise<void>;
+  hasUserParticipated(userId: number, electionId: number): Promise<boolean>;
+  resetVoteParticipation(userId: number, electionId: number): Promise<void>;
   
   // Voting token methods (for secure voting)
   createVotingToken(userId: number, electionId: number): Promise<VotingToken>;
@@ -89,6 +90,7 @@ export class MemStorage implements IStorage {
   private elections: Map<number, Election>;
   private candidates: Map<number, Candidate>;
   private electionCandidates: Map<number, ElectionCandidate>;
+  private voteParticipation: Map<string, VoteParticipation>;
   
   sessionStore: session.Store;
   currentId: number;
@@ -733,9 +735,9 @@ export class MemStorage implements IStorage {
     return updatedTicket;
   }
   
-  // Optional vote history tracking methods
-  async recordVote(userId: number, electionId: number): Promise<void> {
-    // Mark any tokens as used
+  // Vote participation tracking - only tracks who has participated in voting, not who they voted for
+  async recordVoteParticipation(userId: number, electionId: number): Promise<void> {
+    // Mark any tokens as used to record participation
     const tokens = Array.from(this.votingTokens.values()).filter(
       token => token.userId === userId && token.electionId === electionId
     );
@@ -746,14 +748,14 @@ export class MemStorage implements IStorage {
     }
   }
   
-  async hasUserVoted(userId: number, electionId: number): Promise<boolean> {
-    // Check if any tokens are marked as used
+  async hasUserParticipated(userId: number, electionId: number): Promise<boolean> {
+    // Check if any tokens are marked as used to determine participation
     return Array.from(this.votingTokens.values()).some(
       token => token.userId === userId && token.electionId === electionId && token.used
     );
   }
   
-  async resetVote(userId: number, electionId: number): Promise<void> {
+  async resetVoteParticipation(userId: number, electionId: number): Promise<void> {
     // Find all tokens for this user/election and reset their used status
     const tokens = Array.from(this.votingTokens.values()).filter(
       token => token.userId === userId && token.electionId === electionId && token.used
@@ -1380,9 +1382,9 @@ export class DatabaseStorage implements IStorage {
       .where(eq(votingTokens.token, token));
   }
   
-  // Vote history tracking (optional, blockchain is the main source of truth)
-  async recordVote(userId: number, electionId: number): Promise<void> {
-    // Mark any tokens for this user/election as used
+  // Vote participation tracking - only tracks who has participated, not who they voted for
+  async recordVoteParticipation(userId: number, electionId: number): Promise<void> {
+    // Mark any tokens for this user/election as used to track participation
     await db.update(votingTokens)
       .set({ used: true })
       .where(
@@ -1391,10 +1393,16 @@ export class DatabaseStorage implements IStorage {
           eq(votingTokens.electionId, electionId)
         )
       );
+    
+    // Also record in vote participation table (but no candidate information)
+    await db.insert(voteParticipation).values({
+      userId,
+      electionId
+    });
   }
   
-  async hasUserVoted(userId: number, electionId: number): Promise<boolean> {
-    // Check if any tokens are marked as used
+  async hasUserParticipated(userId: number, electionId: number): Promise<boolean> {
+    // Check if any tokens are marked as used or if there's an entry in vote participation
     const usedTokens = await db.select()
       .from(votingTokens)
       .where(
@@ -1405,10 +1413,24 @@ export class DatabaseStorage implements IStorage {
         )
       );
       
-    return usedTokens.length > 0;
+    if (usedTokens.length > 0) {
+      return true;
+    }
+    
+    // Double-check participation table
+    const participation = await db.select()
+      .from(voteParticipation)
+      .where(
+        and(
+          eq(voteParticipation.userId, userId),
+          eq(voteParticipation.electionId, electionId)
+        )
+      );
+    
+    return participation.length > 0;
   }
   
-  async resetVote(userId: number, electionId: number): Promise<void> {
+  async resetVoteParticipation(userId: number, electionId: number): Promise<void> {
     // Reset any used voting tokens for this user and election
     await db.update(votingTokens)
       .set({ used: false })
@@ -1420,7 +1442,16 @@ export class DatabaseStorage implements IStorage {
         )
       );
     
-    console.log(`Reset vote for user ${userId} in election ${electionId}`);
+    // Also remove from vote participation table
+    await db.delete(voteParticipation)
+      .where(
+        and(
+          eq(voteParticipation.userId, userId),
+          eq(voteParticipation.electionId, electionId)
+        )
+      );
+    
+    console.log(`Reset vote participation for user ${userId} in election ${electionId}`);
   }
   
   // Ticket methods
