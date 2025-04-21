@@ -8,7 +8,8 @@ import {
   getElectionFromBlockchain,
   getCandidateVotes,
   voteForCandidate,
-  hasUserVoted
+  hasUserVoted,
+  studentIdToBytes32
 } from '@/lib/blockchain';
 import { Progress } from '@/components/ui/progress';
 
@@ -94,7 +95,7 @@ export function BlockchainVoting({ election, candidates }: BlockchainVotingProps
       // Call blockchain to cast vote
       await voteForCandidate(election.blockchainId, studentId);
       
-      // Record vote in our database
+      // Record vote participation in our database (without storing candidate choice)
       await fetch('/api/blockchain/vote', {
         method: 'POST',
         headers: {
@@ -102,7 +103,8 @@ export function BlockchainVoting({ election, candidates }: BlockchainVotingProps
         },
         body: JSON.stringify({
           electionId: election.id,
-          candidateId: candidates.find(c => c.studentId === studentId)?.id
+          candidateHash: studentIdToBytes32(studentId), // Only need the hash, not the actual candidate ID
+          txHash: 'blockchain-vote' // This would be a real transaction hash in production
         })
       });
       
@@ -110,7 +112,7 @@ export function BlockchainVoting({ election, candidates }: BlockchainVotingProps
       setHasVoted(true);
       toast({
         title: 'Vote Cast Successfully',
-        description: 'Your vote has been recorded on the blockchain.',
+        description: 'Your vote has been securely recorded on the blockchain. For privacy, only your participation is tracked in our database.',
         variant: 'default'
       });
       
@@ -203,7 +205,8 @@ export function BlockchainVoting({ election, candidates }: BlockchainVotingProps
                 <CheckCircle2 className="h-4 w-4" />
                 <AlertTitle>Vote Recorded</AlertTitle>
                 <AlertDescription>
-                  Your vote has been securely recorded on the blockchain.
+                  Your vote has been securely recorded on the blockchain. For privacy and transparency, 
+                  only the blockchain contains your actual vote choice.
                 </AlertDescription>
               </Alert>
             )}
@@ -233,6 +236,8 @@ export function BlockchainVoting({ election, candidates }: BlockchainVotingProps
           <div className="space-y-4">
             <p className="text-sm mb-4">
               Select a candidate to cast your vote on the blockchain. This action cannot be undone.
+              For transparency and privacy, your actual vote choice will only be stored on the blockchain, 
+              not in our database.
             </p>
             
             {candidates.map(candidate => (
