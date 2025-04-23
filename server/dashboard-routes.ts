@@ -622,43 +622,75 @@ router.get('/metrics/active-elections', isAdmin, async (req: Request, res: Respo
 router.get('/metrics/participation-overview', isAdmin, async (req: Request, res: Response) => {
   try {
     // Get election info without vote data
-    const query = sql`
+    const electionsQuery = sql`
       SELECT 
         e.id,
         e.name,
         e.position,
         e.status,
         e.blockchain_id,
-        0 as voters,
         (SELECT COUNT(*) FROM users WHERE is_admin = false AND faculty NOT IN ('Administration')) as total_eligible_voters
       FROM elections e
       ORDER BY e.id DESC
     `;
 
-    let queryResult = await db.execute(query);
+    // Get voter counts from vote_participation table
+    const voterCountsQuery = sql`
+      SELECT 
+        election_id,
+        COUNT(DISTINCT user_id) as voters
+      FROM 
+        vote_participation
+      GROUP BY 
+        election_id
+    `;
+
+    // Execute both queries
+    const [electionsResult, voterCountsResult] = await Promise.all([
+      db.execute(electionsQuery),
+      db.execute(voterCountsQuery)
+    ]);
     
-    // Properly handle the query result to ensure we have an array
-    let participationStats: any[] = [];
-    if (queryResult && typeof queryResult === 'object') {
-      if ('rows' in queryResult && Array.isArray(queryResult.rows)) {
-        participationStats = queryResult.rows;
-      } else if (Array.isArray(queryResult)) {
-        participationStats = queryResult;
+    // Process elections result
+    let elections: any[] = [];
+    if (electionsResult && typeof electionsResult === 'object') {
+      if ('rows' in electionsResult && Array.isArray(electionsResult.rows)) {
+        elections = electionsResult.rows;
+      } else if (Array.isArray(electionsResult)) {
+        elections = electionsResult;
       }
     }
     
-    console.log("Participation stats raw query result:", JSON.stringify(participationStats, null, 2));
+    // Process voter counts result
+    let voterCounts: any[] = [];
+    if (voterCountsResult && typeof voterCountsResult === 'object') {
+      if ('rows' in voterCountsResult && Array.isArray(voterCountsResult.rows)) {
+        voterCounts = voterCountsResult.rows;
+      } else if (Array.isArray(voterCountsResult)) {
+        voterCounts = voterCountsResult;
+      }
+    }
     
-    // For each election with a blockchain ID, try to get actual vote counts
+    // Create a map of election_id to voter count for fast lookup
+    const voterCountMap = new Map();
+    voterCounts.forEach(row => {
+      voterCountMap.set(parseInt(row.election_id), parseInt(row.voters));
+    });
+    
+    console.log("Total elections found:", elections.length);
+    console.log("Elections with vote participation records:", voterCounts.length);
+    
+    // Create the result array
     const result: ParticipationOverview[] = [];
     
     // Make sure we have an array to iterate over
-    if (Array.isArray(participationStats)) {
-      for (const election of participationStats) {
-        let voters = 0;
+    if (Array.isArray(elections)) {
+      for (const election of elections) {
+        // First check for voters in the vote_participation table
+        let voters = voterCountMap.get(election.id) || 0;
         
-        // If the election has a blockchain ID, try to get vote counts from the blockchain
-        if (election.blockchain_id) {
+        // If no voters found in database and election is on blockchain, fallback to blockchain data
+        if (voters === 0 && election.blockchain_id) {
           try {
             const blockchainId = parseInt(election.blockchain_id);
             const exists = await checkElectionExists(blockchainId);
@@ -669,6 +701,7 @@ router.get('/metrics/participation-overview', isAdmin, async (req: Request, res:
                 // Sum up all votes from blockchain
                 voters = blockchainResults.reduce((sum, candidate) => 
                   sum + parseInt(candidate.voteCount), 0);
+                console.log(`Using blockchain data for election ${election.id}: found ${voters} voters`);
               }
             }
           } catch (err) {
@@ -677,9 +710,10 @@ router.get('/metrics/participation-overview', isAdmin, async (req: Request, res:
         }
         
         // Calculate participation percentage
-        const participation_percentage = 
-          election.total_eligible_voters > 0 
-            ? (voters / election.total_eligible_voters) * 100 
+        const totalEligibleVoters = parseInt(election.total_eligible_voters);
+        const participationPercentage = 
+          totalEligibleVoters > 0 
+            ? Math.round((voters / totalEligibleVoters) * 100) 
             : 0;
         
         result.push({
@@ -688,8 +722,8 @@ router.get('/metrics/participation-overview', isAdmin, async (req: Request, res:
           position: election.position,
           status: election.status,
           voters: voters,
-          total_eligible_voters: election.total_eligible_voters,
-          participation_percentage: participation_percentage
+          total_eligible_voters: totalEligibleVoters,
+          participation_percentage: participationPercentage
         });
       }
     }
