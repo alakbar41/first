@@ -53,7 +53,7 @@ export default function Guidelines() {
               <CardHeader className="bg-purple-50">
                 <CardTitle className="text-purple-800 flex items-center">
                   <InfoIcon className="mr-2 h-5 w-5" />
-                  Introduction to ADA University Elections
+                  Introduction to UniVote Elections
                 </CardTitle>
                 <CardDescription>
                   Understanding the voting process and your role as a voter
@@ -61,7 +61,7 @@ export default function Guidelines() {
               </CardHeader>
               <CardContent className="pt-6">
                 <p className="text-gray-700 mb-4">
-                  Welcome to the ADA University Elections platform. This secure voting system allows you to participate 
+                  Welcome to the UniVote Elections platform. This secure voting system allows you to participate 
                   in various elections including President, Vice President, and Senator positions. Your participation 
                   is crucial to maintaining a vibrant student government that represents your interests.
                 </p>
@@ -145,7 +145,7 @@ export default function Guidelines() {
               </CardHeader>
               <CardContent>
                 <p className="text-gray-700 mb-4">
-                  The ADA University voting system employs blockchain technology to ensure maximum security and 
+                  The UniVote system employs blockchain technology to ensure maximum security and 
                   transparency while maintaining voter privacy.
                 </p>
                 
