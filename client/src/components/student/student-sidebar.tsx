@@ -64,7 +64,7 @@ export function StudentSidebar({ user }: SidebarProps) {
             className="w-16 h-16 mr-3"
             onError={(e) => {
               // Fallback if image fails to load
-              e.currentTarget.src = "/assets/ada-logo.svg";
+              e.currentTarget.src = "/assets/univote-logo.svg";
             }}
           />
           <h1 className="text-xl font-bold bg-gradient-to-r from-purple-800 to-purple-600 bg-clip-text text-transparent">
@@ -185,7 +185,7 @@ export function StudentSidebar({ user }: SidebarProps) {
               className="flex items-center px-4 py-2.5 rounded-lg text-gray-700 hover:bg-gray-100"
             >
               <GraduationCapIcon className="w-5 h-5 mr-3" />
-              <span>ADA University</span>
+              <span>University Portal</span>
               <ExternalLinkIcon className="w-3.5 h-3.5 ml-auto opacity-70" />
             </a>
             

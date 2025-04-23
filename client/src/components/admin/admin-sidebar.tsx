@@ -77,7 +77,7 @@ export function AdminSidebar({ user }: SidebarProps) {
             className="h-12 w-12"
             onError={(e) => {
               // Fallback to local logo instead of external image
-              e.currentTarget.src = "/assets/ada-logo.svg";
+              e.currentTarget.src = "/assets/univote-logo.svg";
             }}
           />
           {expanded && <span className="font-semibold text-purple-900">UniVote Admin</span>}

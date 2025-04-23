@@ -188,7 +188,7 @@ export default function Guidelines() {
                 <p className="text-gray-700">
                   Violations of election rules may result in disciplinary action according to the University 
                   Student Code of Conduct. Any suspicious activity should be reported immediately to the Election 
-                  Commission at <span className="text-purple-600">elections@ada.edu.az</span>.
+                  Commission at <span className="text-purple-600">elections@univote.edu</span>.
                 </p>
               </CardContent>
             </Card>
@@ -207,7 +207,7 @@ export default function Guidelines() {
                 </p>
                 
                 <ul className="list-disc pl-5 space-y-2 text-gray-700">
-                  <li>Email technical support at <span className="text-purple-600">voting-support@ada.edu.az</span></li>
+                  <li>Email technical support at <span className="text-purple-600">voting-support@univote.edu</span></li>
                   <li>Visit the Student Affairs office in the main campus building.</li>
                   <li>Check the FAQ section on the University website.</li>
                 </ul>
