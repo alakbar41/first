@@ -76,6 +76,11 @@ export interface IStorage {
   validateVotingToken(token: string, electionId: number): Promise<boolean>;
   markTokenAsUsed(token: string): Promise<void>;
   
+  // Vote participation methods (for tracking which users have voted in which elections)
+  hasUserParticipated(userId: number, electionId: number): Promise<boolean>;
+  recordVoteParticipation(userId: number, electionId: number): Promise<void>;
+  resetVoteParticipation(userId: number, electionId: number): Promise<void>;
+  
   // Ticket methods
   getTickets(): Promise<Ticket[]>;
   getUserTickets(userId: number): Promise<Ticket[]>;
