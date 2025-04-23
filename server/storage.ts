@@ -903,15 +903,26 @@ export class DatabaseStorage implements IStorage {
       await this.deletePendingUser(user.email);
     }
     
-    const result = await db.insert(pendingUsers).values(user).returning();
+    // Ensure expiresAt is set (default to 3 minutes from now)
+    const now = new Date();
+    const pendingUser = {
+      ...user,
+      expiresAt: user.expiresAt instanceof Date 
+        ? user.expiresAt 
+        : (user.expiresAt ? new Date(user.expiresAt) : new Date(now.getTime() + 3 * 60 * 1000))
+    };
+    
+    const result = await db.insert(pendingUsers).values(pendingUser).returning();
     return result[0];
   }
 
-  async updatePendingUserOtp(email: string, otp: string, createdAt?: Date): Promise<void> {
+  async updatePendingUserOtp(email: string, otp: string, expiresIn: number = 3 * 60 * 1000): Promise<void> {
+    const now = new Date();
     await db.update(pendingUsers)
       .set({ 
         otp: otp,
-        createdAt: createdAt || new Date()
+        createdAt: now,
+        expiresAt: new Date(now.getTime() + expiresIn) // Set to expire in expiresIn ms (default: 3 minutes)
       })
       .where(eq(pendingUsers.email, email));
   }

@@ -1154,18 +1154,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Check if pending user exists
         const pendingUser = await storage.getPendingUserByEmail(email);
         if (pendingUser) {
-          // Update existing pending user with new OTP and reset createdAt timestamp
+          // Update existing pending user with new OTP and reset timestamps
           // This ensures OTP expiration is always 3 minutes from generation time
-          await storage.updatePendingUserOtp(email, otp, new Date());
+          await storage.updatePendingUserOtp(email, otp, 3 * 60 * 1000); // 3 minutes in milliseconds
         } else {
           // Create a new pending user for password reset with minimum required fields
+          const now = new Date();
           await storage.createPendingUser({
             email,
             otp,
             type: "reset",
             password: "temporary", // This will be replaced when reset is complete
             faculty: "none", // Not relevant for password reset
-            createdAt: new Date()
+            createdAt: now,
+            expiresAt: new Date(now.getTime() + 3 * 60 * 1000) // Expire in 3 minutes
           });
         }
         
@@ -1206,9 +1208,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Check if OTP has expired (strict 3-minute limit for all OTPs)
-      const OTP_EXPIRY_TIME = 3 * 60 * 1000; // 3 minutes in milliseconds
-      if (Date.now() - pendingUser.createdAt.getTime() > OTP_EXPIRY_TIME) {
+      // Check if OTP has expired using the explicit expiresAt field
+      if (Date.now() > pendingUser.expiresAt.getTime()) {
         await storage.deletePendingUser(email);
         return res.status(400).json({ 
           message: "Verification code has expired. Please request a new code and try again."
