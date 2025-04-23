@@ -330,14 +330,14 @@ export const voteParticipation = pgTable("vote_participation", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(), // Reference to user id
   electionId: integer("election_id").notNull(), // Reference to election id
-  createdAt: timestamp("created_at").notNull().defaultNow(),
+  created_at: timestamp("created_at").notNull().defaultNow(),
 });
 
 // Vote participation schema and types
 export const insertVoteParticipationSchema = createInsertSchema(voteParticipation)
   .omit({
     id: true,
-    createdAt: true,
+    created_at: true,
   });
 
 export type VoteParticipation = typeof voteParticipation.$inferSelect;

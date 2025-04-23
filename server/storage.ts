@@ -762,18 +762,13 @@ export class MemStorage implements IStorage {
       this.votingTokens.set(token.token, token);
     }
     
-    // Add to participation tracking with correct Azerbaijan time (UTC+4)
+    // Add to participation tracking
     const key = `${userId}-${electionId}`;
-    const now = new Date();
-    const azerbaijanTime = new Date(now.getTime());
-    // Ensure timezone is explicitly set to Azerbaijan Standard Time (UTC+4)
-    azerbaijanTime.setUTCHours(now.getUTCHours() + 4);
-    
     const participation: VoteParticipation = {
       id: 0, // Auto-generated ID (not used in memory storage)
       userId,
       electionId,
-      createdAt: azerbaijanTime
+      created_at: new Date()
     };
     this.voteParticipation.set(key, participation);
   }
@@ -1448,76 +1443,36 @@ export class DatabaseStorage implements IStorage {
       );
     
     // Also record in vote participation table (but no candidate information)
-    try {
-      // First check if participation already exists to avoid duplicates
-      const exists = await this.hasUserParticipated(userId, electionId);
-      if (!exists) {
-        console.log(`Recording vote participation for user ${userId} in election ${electionId}`);
-        
-        // Use Drizzle ORM insert method instead of raw SQL with explicit timestamp set to Azerbaijan time (UTC+4)
-        const now = new Date();
-        const azerbaijanTime = new Date(now.getTime());
-        // Ensure timezone is explicitly set to Azerbaijan Standard Time (UTC+4)
-        azerbaijanTime.setUTCHours(now.getUTCHours() + 4);
-        
-        await db.insert(voteParticipation).values({
-          userId: userId,
-          electionId: electionId,
-          createdAt: azerbaijanTime
-        });
-        
-        console.log(`Successfully recorded vote participation for user ${userId} in election ${electionId}`);
-      } else {
-        console.log(`User ${userId} already participated in election ${electionId}, skipping record`);
-      }
-    } catch (error) {
-      console.error('Error recording vote participation:', error);
-      // Still throw the error so we know something went wrong
-      throw error;
-    }
+    // Use raw SQL since we have an inconsistency between schema and actual table
+    await db.execute(
+      `INSERT INTO vote_participation (user_id, election_id) VALUES (${userId}, ${electionId})`
+    );
   }
   
   async hasUserParticipated(userId: number, electionId: number): Promise<boolean> {
-    try {
-      // Check if any tokens are marked as used - first layer of check
-      const usedTokens = await db.select()
-        .from(votingTokens)
-        .where(
-          and(
-            eq(votingTokens.userId, userId),
-            eq(votingTokens.electionId, electionId),
-            eq(votingTokens.used, true)
-          )
-        );
-        
-      if (usedTokens.length > 0) {
-        console.log(`User ${userId} has used tokens for election ${electionId}`);
-        return true;
-      }
+    // Check if any tokens are marked as used or if there's an entry in vote participation
+    const usedTokens = await db.select()
+      .from(votingTokens)
+      .where(
+        and(
+          eq(votingTokens.userId, userId),
+          eq(votingTokens.electionId, electionId),
+          eq(votingTokens.used, true)
+        )
+      );
       
-      // Double-check participation table using Drizzle ORM
-      const participation = await db.select()
-        .from(voteParticipation)
-        .where(
-          and(
-            eq(voteParticipation.userId, userId),
-            eq(voteParticipation.electionId, electionId)
-          )
-        );
-      
-      // Check if any rows were returned
-      const hasParticipated = participation.length > 0;
-      
-      if (hasParticipated) {
-        console.log(`User ${userId} has vote participation record for election ${electionId}`);
-      }
-      
-      return hasParticipated;
-    } catch (error) {
-      console.error(`Error checking if user ${userId} participated in election ${electionId}:`, error);
-      // Return false in case of error to allow the user to try again
-      return false;
+    if (usedTokens.length > 0) {
+      return true;
     }
+    
+    // Double-check participation table using raw SQL since the table name doesn't match the schema
+    const participation = await db.execute(
+      `SELECT * FROM vote_participation WHERE user_id = ${userId} AND election_id = ${electionId}`
+    );
+    
+    // Check if any rows were returned
+    const result = participation.rows as any[];
+    return result.length > 0;
   }
   
   async resetVoteParticipation(userId: number, electionId: number): Promise<void> {
@@ -1532,14 +1487,10 @@ export class DatabaseStorage implements IStorage {
         )
       );
     
-    // Also remove from vote participation table using Drizzle ORM
-    await db.delete(voteParticipation)
-      .where(
-        and(
-          eq(voteParticipation.userId, userId),
-          eq(voteParticipation.electionId, electionId)
-        )
-      );
+    // Also remove from vote participation table using raw SQL
+    await db.execute(
+      `DELETE FROM vote_participation WHERE user_id = ${userId} AND election_id = ${electionId}`
+    );
     
     console.log(`Reset vote participation for user ${userId} in election ${electionId}`);
   }

@@ -1,18 +1,8 @@
 import nodemailer from "nodemailer";
-import fs from 'fs';
-import path from 'path';
 
 // For production and real email sending
 let transporter;
 let testAccount = null;
-
-// Logo handling for emails - we'll embed the logo directly in the emails
-const LOGO_BASE64 = fs.existsSync(path.join(process.cwd(), 'public', 'assets', 'univote_logo.png')) 
-  ? fs.readFileSync(path.join(process.cwd(), 'public', 'assets', 'univote_logo.png')).toString('base64')
-  : null;
-
-// Fallback to a remote URL if we can't find the logo file
-const LOGO_URL = 'https://i.imgur.com/gROk9Ym.png'; // Backup URL for logo
 
 // Create our transporter based on configuration
 async function createTransporter() {
@@ -118,7 +108,7 @@ async function createTestAccount() {
 })();
 
 export const mailer = {
-  async sendOtp(to, otp, type = "registration") {
+  async sendOtp(to, otp) {
     // Ensure transporter is available before attempting to send
     if (!transporter) {
       console.log("Transporter not initialized yet. Waiting for initialization and trying again...");
@@ -142,44 +132,20 @@ export const mailer = {
     try {
       // For Ethereal, use their test address, otherwise use env variable
       const fromEmail = testAccount ? testAccount.user : (process.env.EMAIL_USER || 'no-reply@ada.edu.az');
-      const fromName = "UniVote Voting System";
-      
-      // Different subjects and messages based on the type
-      let subject, headingText, purposeText;
-      
-      if (type === "reset") {
-        subject = "Password Reset Verification Code - UniVote";
-        headingText = "Reset Your Password";
-        purposeText = "You requested to reset your password for the UniVote System. Please use the verification code below to complete your password reset:";
-      } else {
-        // Default to registration
-        subject = "Email Verification Code - UniVote Registration";
-        headingText = "Verify Your Email Address";
-        purposeText = "Thank you for registering with the UniVote System. Please use the verification code below to complete your registration:";
-      }
-      
-      // Determine logo source - try to use embedded base64 if available
-      let logoHtml = '';
-      if (LOGO_BASE64) {
-        // Use embedded base64 logo data
-        logoHtml = `<img src="data:image/png;base64,${LOGO_BASE64}" alt="UniVote Logo" style="max-width: 150px;">`;
-      } else {
-        // Fall back to external URL
-        logoHtml = `<img src="${LOGO_URL}" alt="UniVote Logo" style="max-width: 150px;">`;
-      }
+      const fromName = "ADA University Voting System";
       
       const mailOptions = {
         from: `"${fromName}" <${fromEmail}>`,
         to,
-        subject: subject,
-        text: `Your ${type === "reset" ? "password reset" : "registration"} verification code is: ${otp}. This code will expire in 3 minutes.`,
+        subject: "Your Verification Code for ADA University Voting System",
+        text: `Your verification code is: ${otp}. This code will expire in 3 minutes.`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e9e9e9; border-radius: 5px;">
             <div style="text-align: center; margin-bottom: 20px;">
-              ${logoHtml}
+              <img src="https://ada.edu.az/wp-content/uploads/2021/02/ADA_ED_LOGO_E_H1.png" alt="ADA University Logo" style="max-width: 150px;">
             </div>
-            <h2 style="color: #005A9C; text-align: center;">${headingText}</h2>
-            <p style="margin-bottom: 20px; color: #666;">${purposeText}</p>
+            <h2 style="color: #005A9C; text-align: center;">Verify Your Email Address</h2>
+            <p style="margin-bottom: 20px; color: #666;">Thank you for registering with the ADA University Voting System. Please use the verification code below to complete your registration:</p>
             <div style="background-color: #f7f7f7; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0;">
               <p style="font-size: 24px; font-weight: bold; letter-spacing: 5px; margin: 0; color: #333;">${otp}</p>
             </div>
@@ -187,7 +153,7 @@ export const mailer = {
             <p style="color: #666; margin-bottom: 20px;">If you did not request this code, please ignore this email.</p>
             <div style="border-top: 1px solid #e9e9e9; padding-top: 20px; margin-top: 20px; color: #999; font-size: 12px; text-align: center;">
               <p>This is an automated message. Please do not reply to this email.</p>
-              <p>&copy; ${new Date().getFullYear()} UniVote System</p>
+              <p>&copy; ${new Date().getFullYear()} ADA University Voting System</p>
             </div>
           </div>
         `
@@ -264,25 +230,15 @@ export const mailer = {
     try {
       // For Ethereal, use their test address, otherwise use env variable
       const fromEmail = testAccount ? testAccount.user : (process.env.EMAIL_USER || 'no-reply@ada.edu.az');
-      const fromName = "UniVote Voting System";
+      const fromName = "ADA University Voting System";
       
       // Generate a link to view the transaction on Polygon Mainnet Explorer
       const explorerUrl = `https://polygonscan.com/tx/${transactionHash}`;
       
-      // Determine logo source - try to use embedded base64 if available
-      let logoHtml = '';
-      if (LOGO_BASE64) {
-        // Use embedded base64 logo data
-        logoHtml = `<img src="data:image/png;base64,${LOGO_BASE64}" alt="UniVote Logo" style="max-width: 150px;">`;
-      } else {
-        // Fall back to external URL
-        logoHtml = `<img src="${LOGO_URL}" alt="UniVote Logo" style="max-width: 150px;">`;
-      }
-      
       const mailOptions = {
         from: `"${fromName}" <${fromEmail}>`,
         to,
-        subject: "Your Vote Has Been Successfully Recorded - UniVote Blockchain Confirmation",
+        subject: "Your Vote Has Been Recorded on the Blockchain",
         text: `
 Your vote for ${candidateName} in the "${electionName}" election has been successfully recorded on the blockchain.
 
@@ -291,12 +247,12 @@ Transaction Hash: ${transactionHash}
 You can view your transaction on the blockchain explorer at:
 ${explorerUrl}
 
-Thank you for participating in the UniVote Voting System.
+Thank you for participating in the ADA University Voting System.
         `,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e9e9e9; border-radius: 5px;">
             <div style="text-align: center; margin-bottom: 20px;">
-              ${logoHtml}
+              <img src="https://ada.edu.az/wp-content/uploads/2021/02/ADA_ED_LOGO_E_H1.png" alt="ADA University Logo" style="max-width: 150px;">
             </div>
             <h2 style="color: #005A9C; text-align: center;">Vote Successfully Recorded</h2>
             <p style="margin-bottom: 20px; color: #666;">Your vote for <strong>${candidateName}</strong> in the "<strong>${electionName}</strong>" election has been successfully recorded on the blockchain.</p>
@@ -313,7 +269,7 @@ Thank you for participating in the UniVote Voting System.
             
             <div style="border-top: 1px solid #e9e9e9; padding-top: 20px; margin-top: 20px; color: #999; font-size: 12px; text-align: center;">
               <p>This is an automated message. Please do not reply to this email.</p>
-              <p>&copy; ${new Date().getFullYear()} UniVote System</p>
+              <p>&copy; ${new Date().getFullYear()} ADA University Voting System</p>
             </div>
           </div>
         `
