@@ -10,6 +10,7 @@ import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, LogOut as LogOutIcon } from "lucide-react";
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious, PaginationEllipsis } from "@/components/ui/pagination";
 
 export default function Dashboard() {
   const { user, logoutMutation } = useAuth();
@@ -18,6 +19,13 @@ export default function Dashboard() {
   const [currentElectionId, setCurrentElectionId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState("all");
   const [selectedElection, setSelectedElection] = useState<Election | null>(null);
+  
+  // Pagination state for each tab
+  const itemsPerPage = 6; // Show 6 elections per page (2 rows of 3 cards)
+  const [allElectionsPage, setAllElectionsPage] = useState(1);
+  const [activeElectionsPage, setActiveElectionsPage] = useState(1);
+  const [upcomingElectionsPage, setUpcomingElectionsPage] = useState(1);
+  const [completedElectionsPage, setCompletedElectionsPage] = useState(1);
   
   // Fetch all elections
   const { data: elections, isLoading } = useQuery<Election[]>({
@@ -96,6 +104,43 @@ export default function Dashboard() {
   const filteredUpcomingElections = filterElectionsByFaculty(upcomingElections);
   const filteredCompletedElections = filterElectionsByFaculty(completedElections);
   const filteredAllElections = [...filteredActiveElections, ...filteredUpcomingElections, ...filteredCompletedElections];
+  
+  // Helper function to get paginated elections
+  const getPaginatedElections = (elections: Election[], pageNumber: number) => {
+    const startIndex = (pageNumber - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return elections.slice(startIndex, endIndex);
+  };
+  
+  // Get the paginated elections for each tab
+  const paginatedAllElections = getPaginatedElections(filteredAllElections, allElectionsPage);
+  const paginatedActiveElections = getPaginatedElections(filteredActiveElections, activeElectionsPage);
+  const paginatedUpcomingElections = getPaginatedElections(filteredUpcomingElections, upcomingElectionsPage);
+  const paginatedCompletedElections = getPaginatedElections(filteredCompletedElections, completedElectionsPage);
+  
+  // Calculate total pages for each category
+  const totalAllPages = Math.ceil(filteredAllElections.length / itemsPerPage);
+  const totalActivePages = Math.ceil(filteredActiveElections.length / itemsPerPage);
+  const totalUpcomingPages = Math.ceil(filteredUpcomingElections.length / itemsPerPage);
+  const totalCompletedPages = Math.ceil(filteredCompletedElections.length / itemsPerPage);
+  
+  // Reset to page 1 when changing tabs
+  useEffect(() => {
+    switch(activeTab) {
+      case 'all':
+        setAllElectionsPage(1);
+        break;
+      case 'active':
+        setActiveElectionsPage(1);
+        break;
+      case 'upcoming':
+        setUpcomingElectionsPage(1);
+        break;
+      case 'completed':
+        setCompletedElectionsPage(1);
+        break;
+    }
+  }, [activeTab]);
 
   // Update the selected election when currentElectionId changes
   useEffect(() => {
@@ -248,16 +293,74 @@ export default function Dashboard() {
                           <p className="text-gray-500">No elections available</p>
                         </div>
                       ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {filteredAllElections.map(election => (
-                            <ElectionCard 
-                              key={election.id}
-                              election={election}
-                              onClick={handleElectionClick}
-                              isSelected={false}
-                            />
-                          ))}
-                        </div>
+                        <>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {paginatedAllElections.map(election => (
+                              <ElectionCard 
+                                key={election.id}
+                                election={election}
+                                onClick={handleElectionClick}
+                                isSelected={false}
+                              />
+                            ))}
+                          </div>
+                          
+                          {/* Pagination */}
+                          {totalAllPages > 1 && (
+                            <div className="mt-6 flex justify-center">
+                              <Pagination>
+                                <PaginationContent>
+                                  <PaginationItem>
+                                    <PaginationPrevious 
+                                      onClick={() => setAllElectionsPage(prev => Math.max(1, prev - 1))}
+                                      className={allElectionsPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                                    />
+                                  </PaginationItem>
+                                  
+                                  {Array.from({ length: totalAllPages }).map((_, index) => {
+                                    const pageNumber = index + 1;
+                                    // Show current page, first page, last page, and pages around current
+                                    const shouldShow = 
+                                      pageNumber === 1 || 
+                                      pageNumber === totalAllPages || 
+                                      (pageNumber >= allElectionsPage - 1 && pageNumber <= allElectionsPage + 1);
+                                      
+                                    // Show ellipsis for gaps
+                                    if (!shouldShow) {
+                                      // Only show ellipsis at appropriate positions
+                                      if (pageNumber === 2 || pageNumber === totalAllPages - 1) {
+                                        return (
+                                          <PaginationItem key={`all-ellipsis-${pageNumber}`}>
+                                            <PaginationEllipsis />
+                                          </PaginationItem>
+                                        );
+                                      }
+                                      return null;
+                                    }
+                                    
+                                    return (
+                                      <PaginationItem key={`all-${pageNumber}`}>
+                                        <PaginationLink
+                                          isActive={pageNumber === allElectionsPage}
+                                          onClick={() => setAllElectionsPage(pageNumber)}
+                                        >
+                                          {pageNumber}
+                                        </PaginationLink>
+                                      </PaginationItem>
+                                    );
+                                  })}
+                                  
+                                  <PaginationItem>
+                                    <PaginationNext 
+                                      onClick={() => setAllElectionsPage(prev => Math.min(totalAllPages, prev + 1))}
+                                      className={allElectionsPage === totalAllPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                                    />
+                                  </PaginationItem>
+                                </PaginationContent>
+                              </Pagination>
+                            </div>
+                          )}
+                        </>
                       )}
                     </TabsContent>
                     
@@ -268,16 +371,74 @@ export default function Dashboard() {
                           <p className="text-gray-500">No active elections</p>
                         </div>
                       ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {filteredActiveElections.map(election => (
-                            <ElectionCard 
-                              key={election.id}
-                              election={election}
-                              onClick={handleElectionClick}
-                              isSelected={false}
-                            />
-                          ))}
-                        </div>
+                        <>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {paginatedActiveElections.map(election => (
+                              <ElectionCard 
+                                key={election.id}
+                                election={election}
+                                onClick={handleElectionClick}
+                                isSelected={false}
+                              />
+                            ))}
+                          </div>
+                          
+                          {/* Pagination */}
+                          {totalActivePages > 1 && (
+                            <div className="mt-6 flex justify-center">
+                              <Pagination>
+                                <PaginationContent>
+                                  <PaginationItem>
+                                    <PaginationPrevious 
+                                      onClick={() => setActiveElectionsPage(prev => Math.max(1, prev - 1))}
+                                      className={activeElectionsPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                                    />
+                                  </PaginationItem>
+                                  
+                                  {Array.from({ length: totalActivePages }).map((_, index) => {
+                                    const pageNumber = index + 1;
+                                    // Show current page, first page, last page, and pages around current
+                                    const shouldShow = 
+                                      pageNumber === 1 || 
+                                      pageNumber === totalActivePages || 
+                                      (pageNumber >= activeElectionsPage - 1 && pageNumber <= activeElectionsPage + 1);
+                                      
+                                    // Show ellipsis for gaps
+                                    if (!shouldShow) {
+                                      // Only show ellipsis at appropriate positions
+                                      if (pageNumber === 2 || pageNumber === totalActivePages - 1) {
+                                        return (
+                                          <PaginationItem key={`active-ellipsis-${pageNumber}`}>
+                                            <PaginationEllipsis />
+                                          </PaginationItem>
+                                        );
+                                      }
+                                      return null;
+                                    }
+                                    
+                                    return (
+                                      <PaginationItem key={`active-${pageNumber}`}>
+                                        <PaginationLink
+                                          isActive={pageNumber === activeElectionsPage}
+                                          onClick={() => setActiveElectionsPage(pageNumber)}
+                                        >
+                                          {pageNumber}
+                                        </PaginationLink>
+                                      </PaginationItem>
+                                    );
+                                  })}
+                                  
+                                  <PaginationItem>
+                                    <PaginationNext 
+                                      onClick={() => setActiveElectionsPage(prev => Math.min(totalActivePages, prev + 1))}
+                                      className={activeElectionsPage === totalActivePages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                                    />
+                                  </PaginationItem>
+                                </PaginationContent>
+                              </Pagination>
+                            </div>
+                          )}
+                        </>
                       )}
                     </TabsContent>
                     
@@ -288,16 +449,74 @@ export default function Dashboard() {
                           <p className="text-gray-500">No upcoming elections</p>
                         </div>
                       ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {filteredUpcomingElections.map(election => (
-                            <ElectionCard 
-                              key={election.id}
-                              election={election}
-                              onClick={handleElectionClick}
-                              isSelected={false}
-                            />
-                          ))}
-                        </div>
+                        <>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {paginatedUpcomingElections.map(election => (
+                              <ElectionCard 
+                                key={election.id}
+                                election={election}
+                                onClick={handleElectionClick}
+                                isSelected={false}
+                              />
+                            ))}
+                          </div>
+                          
+                          {/* Pagination */}
+                          {totalUpcomingPages > 1 && (
+                            <div className="mt-6 flex justify-center">
+                              <Pagination>
+                                <PaginationContent>
+                                  <PaginationItem>
+                                    <PaginationPrevious 
+                                      onClick={() => setUpcomingElectionsPage(prev => Math.max(1, prev - 1))}
+                                      className={upcomingElectionsPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                                    />
+                                  </PaginationItem>
+                                  
+                                  {Array.from({ length: totalUpcomingPages }).map((_, index) => {
+                                    const pageNumber = index + 1;
+                                    // Show current page, first page, last page, and pages around current
+                                    const shouldShow = 
+                                      pageNumber === 1 || 
+                                      pageNumber === totalUpcomingPages || 
+                                      (pageNumber >= upcomingElectionsPage - 1 && pageNumber <= upcomingElectionsPage + 1);
+                                      
+                                    // Show ellipsis for gaps
+                                    if (!shouldShow) {
+                                      // Only show ellipsis at appropriate positions
+                                      if (pageNumber === 2 || pageNumber === totalUpcomingPages - 1) {
+                                        return (
+                                          <PaginationItem key={`upcoming-ellipsis-${pageNumber}`}>
+                                            <PaginationEllipsis />
+                                          </PaginationItem>
+                                        );
+                                      }
+                                      return null;
+                                    }
+                                    
+                                    return (
+                                      <PaginationItem key={`upcoming-${pageNumber}`}>
+                                        <PaginationLink
+                                          isActive={pageNumber === upcomingElectionsPage}
+                                          onClick={() => setUpcomingElectionsPage(pageNumber)}
+                                        >
+                                          {pageNumber}
+                                        </PaginationLink>
+                                      </PaginationItem>
+                                    );
+                                  })}
+                                  
+                                  <PaginationItem>
+                                    <PaginationNext 
+                                      onClick={() => setUpcomingElectionsPage(prev => Math.min(totalUpcomingPages, prev + 1))}
+                                      className={upcomingElectionsPage === totalUpcomingPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                                    />
+                                  </PaginationItem>
+                                </PaginationContent>
+                              </Pagination>
+                            </div>
+                          )}
+                        </>
                       )}
                     </TabsContent>
                     
@@ -308,16 +527,74 @@ export default function Dashboard() {
                           <p className="text-gray-500">No completed elections</p>
                         </div>
                       ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {filteredCompletedElections.map(election => (
-                            <ElectionCard 
-                              key={election.id}
-                              election={election}
-                              onClick={handleElectionClick}
-                              isSelected={false}
-                            />
-                          ))}
-                        </div>
+                        <>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {paginatedCompletedElections.map(election => (
+                              <ElectionCard 
+                                key={election.id}
+                                election={election}
+                                onClick={handleElectionClick}
+                                isSelected={false}
+                              />
+                            ))}
+                          </div>
+                          
+                          {/* Pagination */}
+                          {totalCompletedPages > 1 && (
+                            <div className="mt-6 flex justify-center">
+                              <Pagination>
+                                <PaginationContent>
+                                  <PaginationItem>
+                                    <PaginationPrevious 
+                                      onClick={() => setCompletedElectionsPage(prev => Math.max(1, prev - 1))}
+                                      className={completedElectionsPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                                    />
+                                  </PaginationItem>
+                                  
+                                  {Array.from({ length: totalCompletedPages }).map((_, index) => {
+                                    const pageNumber = index + 1;
+                                    // Show current page, first page, last page, and pages around current
+                                    const shouldShow = 
+                                      pageNumber === 1 || 
+                                      pageNumber === totalCompletedPages || 
+                                      (pageNumber >= completedElectionsPage - 1 && pageNumber <= completedElectionsPage + 1);
+                                      
+                                    // Show ellipsis for gaps
+                                    if (!shouldShow) {
+                                      // Only show ellipsis at appropriate positions
+                                      if (pageNumber === 2 || pageNumber === totalCompletedPages - 1) {
+                                        return (
+                                          <PaginationItem key={`completed-ellipsis-${pageNumber}`}>
+                                            <PaginationEllipsis />
+                                          </PaginationItem>
+                                        );
+                                      }
+                                      return null;
+                                    }
+                                    
+                                    return (
+                                      <PaginationItem key={`completed-${pageNumber}`}>
+                                        <PaginationLink
+                                          isActive={pageNumber === completedElectionsPage}
+                                          onClick={() => setCompletedElectionsPage(pageNumber)}
+                                        >
+                                          {pageNumber}
+                                        </PaginationLink>
+                                      </PaginationItem>
+                                    );
+                                  })}
+                                  
+                                  <PaginationItem>
+                                    <PaginationNext 
+                                      onClick={() => setCompletedElectionsPage(prev => Math.min(totalCompletedPages, prev + 1))}
+                                      className={completedElectionsPage === totalCompletedPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                                    />
+                                  </PaginationItem>
+                                </PaginationContent>
+                              </Pagination>
+                            </div>
+                          )}
+                        </>
                       )}
                     </TabsContent>
                   </div>
