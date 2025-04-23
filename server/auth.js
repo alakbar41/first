@@ -174,8 +174,8 @@ export function setupAuth(app) {
       await storage.createPendingUser(pendingUser);
       
       try {
-        // Send OTP email
-        await mailer.sendOtp(email, otp);
+        // Send OTP email with explicit registration type
+        await mailer.sendOtp(email, otp, "registration");
       } catch (emailError) {
         // Log the error but continue with registration
         console.error("Email sending failed but continuing with registration:", emailError);
@@ -228,8 +228,11 @@ export function setupAuth(app) {
       // This ensures the strict 3-minute expiration starts from the moment the new OTP is sent
       await storage.updatePendingUserOtp(email, newOtp, new Date());
       
-      // Send OTP email
-      await mailer.sendOtp(email, newOtp);
+      // Get the type of the pending user (registration or reset)
+      const otpType = pendingUser.type || "registration";
+      
+      // Send OTP email with the appropriate type
+      await mailer.sendOtp(email, newOtp, otpType);
       
       res.status(200).json({ message: "Verification code sent successfully." });
     } catch (error) {
