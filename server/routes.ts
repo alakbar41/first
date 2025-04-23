@@ -1351,9 +1351,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Check if user has already voted in this election
-      if (await storage.hasUserVoted(req.user.id, electionId)) {
-        return res.status(400).json({ message: "You have already voted in this election" });
+      // Check if user has already participated in this election
+      if (await storage.hasUserParticipated(req.user.id, electionId)) {
+        return res.status(400).json({ message: "You have already voted in this election. Each student may only vote once regardless of which wallet is used." });
       }
       
       // Create a new voting token
@@ -1409,7 +1409,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const { token, electionId } = result.data;
       
-      // Validate the token first
+      // Check if user has already participated in this election (regardless of which wallet)
+      if (await storage.hasUserParticipated(req.user.id, electionId)) {
+        return res.status(400).json({ message: "You have already voted in this election. Each student may only vote once regardless of which wallet is used." });
+      }
+      
+      // Validate the token
       const isValid = await storage.validateVotingToken(token, electionId);
       
       if (!isValid) {

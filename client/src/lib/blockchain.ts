@@ -282,6 +282,24 @@ export async function voteForCandidate(startTime: number, candidateHash: string)
       throw new Error('MetaMask is not installed or not accessible');
     }
     
+    // First, check if the user has already participated in this election
+    // This check is independent of which MetaMask account they're using
+    try {
+      const response = await fetch(`/api/elections/${startTime}/user-voted`);
+      const data = await response.json();
+      
+      if (data.hasVoted) {
+        throw new Error('You have already voted in this election. Each student may only vote once regardless of which wallet is used.');
+      }
+    } catch (error: any) {
+      // Only rethrow if this was our error about already having voted
+      if (error.message && error.message.includes('already voted')) {
+        throw error;
+      }
+      // Otherwise continue - we'll assume they haven't voted if we can't check
+      console.warn('Could not verify user voting status:', error);
+    }
+    
     // Explicitly request account access to trigger MetaMask popup if not connected
     await window.ethereum.request({ method: 'eth_requestAccounts' });
     

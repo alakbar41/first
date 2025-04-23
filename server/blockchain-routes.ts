@@ -247,8 +247,18 @@ export function registerBlockchainRoutes(app: Express) {
         console.warn('Could not get election details:', e);
       }
       
-      // Record vote participation in our database (without storing candidate choice)
+      // Check if user has already participated in this election
       if (req.user?.id) {
+        const hasParticipated = await storage.hasUserParticipated(req.user.id, parseInt(electionId));
+        
+        if (hasParticipated) {
+          console.warn(`User ${req.user.id} attempted to vote again in election ${electionId} using a different wallet address`);
+          return res.status(400).json({ 
+            message: "You have already voted in this election. Each student may only vote once regardless of which wallet is used." 
+          });
+        }
+        
+        // Record vote participation in our database (without storing candidate choice)
         await storage.recordVoteParticipation(req.user.id, parseInt(electionId));
         console.log(`Vote participation recorded for user ${req.user.id} in election ${electionId}`);
         
