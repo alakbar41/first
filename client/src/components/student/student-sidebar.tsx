@@ -59,17 +59,14 @@ export function StudentSidebar({ user }: SidebarProps) {
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center">
           <img 
-            src="/assets/ada_university_logo.png" 
-            alt="ADA University Logo" 
-            className="w-14 h-14 mr-3"
+            src="/assets/univote_logo.png" 
+            alt="UniVote Logo" 
+            className="w-20 h-20"
             onError={(e) => {
               // Fallback if image fails to load
               e.currentTarget.src = "/assets/ada-logo.svg";
             }}
           />
-          <h1 className="text-xl font-bold bg-gradient-to-r from-purple-800 to-purple-600 bg-clip-text text-transparent">
-            UniVote
-          </h1>
         </div>
       </div>
       
