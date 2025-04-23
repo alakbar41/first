@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Check, X } from "lucide-react";
 import OtpInput from "./otp-input";
 
 // Step 1 schema - email input
@@ -25,8 +25,14 @@ const emailSchema = z.object({
 // Step 2 schema - OTP and password input
 const resetSchema = z.object({
   otp: z.string().length(6, "OTP must be 6 digits"),
-  newPassword: z.string().min(8, "Password must be at least 8 characters").max(100),
-  confirmPassword: z.string().min(8, "Password must be at least 8 characters").max(100),
+  newPassword: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/,
+      "Password must include at least one uppercase letter, one lowercase letter, one number, and one special character"
+    ),
+  confirmPassword: z.string().min(8, "Password must be at least 8 characters"),
 }).refine((data) => data.newPassword === data.confirmPassword, {
   message: "Passwords do not match",
   path: ["confirmPassword"],
@@ -45,6 +51,16 @@ export function ResetPasswordModal({ open, onOpenChange }: ResetPasswordModalPro
   const [email, setEmail] = useState("");
   const [otpValue, setOtpValue] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  
+  // Password validation states
+  const [passwordCriteria, setPasswordCriteria] = useState({
+    length: false,
+    uppercase: false,
+    lowercase: false,
+    number: false,
+    special: false,
+    match: false
+  });
   
   const { resetPasswordSendOtpMutation, resetPasswordVerifyMutation } = useAuth();
 
@@ -112,6 +128,21 @@ export function ResetPasswordModal({ open, onOpenChange }: ResetPasswordModalPro
     });
     setOtpValue("");
   };
+
+  // Update password validation criteria
+  useEffect(() => {
+    const newPassword = resetForm.watch("newPassword");
+    const confirmPassword = resetForm.watch("confirmPassword");
+    
+    setPasswordCriteria({
+      length: newPassword.length >= 8,
+      uppercase: /[A-Z]/.test(newPassword),
+      lowercase: /[a-z]/.test(newPassword),
+      number: /\d/.test(newPassword),
+      special: /[@$!%*?&]/.test(newPassword),
+      match: newPassword === confirmPassword && newPassword.length > 0 && confirmPassword.length > 0
+    });
+  }, [resetForm.watch("newPassword"), resetForm.watch("confirmPassword")]);
 
   // Handle form close
   const handleClose = () => {
@@ -205,6 +236,31 @@ export function ResetPasswordModal({ open, onOpenChange }: ResetPasswordModalPro
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
+              <div className="text-xs space-y-1 mt-1">
+                <p className="text-gray-500">Password requirements:</p>
+                <ul className="space-y-1">
+                  <li className={`flex items-center space-x-1 ${passwordCriteria.length ? 'text-green-600' : 'text-red-600'}`}>
+                    {passwordCriteria.length ? <Check size={12} /> : <X size={12} />}
+                    <span>At least 8 characters long</span>
+                  </li>
+                  <li className={`flex items-center space-x-1 ${passwordCriteria.uppercase ? 'text-green-600' : 'text-red-600'}`}>
+                    {passwordCriteria.uppercase ? <Check size={12} /> : <X size={12} />}
+                    <span>Include at least one uppercase letter</span>
+                  </li>
+                  <li className={`flex items-center space-x-1 ${passwordCriteria.lowercase ? 'text-green-600' : 'text-red-600'}`}>
+                    {passwordCriteria.lowercase ? <Check size={12} /> : <X size={12} />}
+                    <span>Include at least one lowercase letter</span>
+                  </li>
+                  <li className={`flex items-center space-x-1 ${passwordCriteria.number ? 'text-green-600' : 'text-red-600'}`}>
+                    {passwordCriteria.number ? <Check size={12} /> : <X size={12} />}
+                    <span>Include at least one number</span>
+                  </li>
+                  <li className={`flex items-center space-x-1 ${passwordCriteria.special ? 'text-green-600' : 'text-red-600'}`}>
+                    {passwordCriteria.special ? <Check size={12} /> : <X size={12} />}
+                    <span>Include at least one special character</span>
+                  </li>
+                </ul>
+              </div>
               {resetForm.formState.errors.newPassword && (
                 <p className="text-sm text-red-500">
                   {resetForm.formState.errors.newPassword.message}
@@ -222,6 +278,21 @@ export function ResetPasswordModal({ open, onOpenChange }: ResetPasswordModalPro
                 autoComplete="new-password"
                 {...resetForm.register("confirmPassword")}
               />
+              <div className="mt-1 flex items-center text-xs space-x-1">
+                {resetForm.watch("confirmPassword") && (
+                  passwordCriteria.match ? (
+                    <div className="flex items-center text-green-600">
+                      <Check size={12} className="mr-1" />
+                      <span>Passwords match</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center text-red-600">
+                      <X size={12} className="mr-1" />
+                      <span>Passwords do not match</span>
+                    </div>
+                  )
+                )}
+              </div>
               {resetForm.formState.errors.confirmPassword && (
                 <p className="text-sm text-red-500">
                   {resetForm.formState.errors.confirmPassword.message}
