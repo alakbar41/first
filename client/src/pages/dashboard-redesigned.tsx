@@ -133,18 +133,13 @@ export default function Dashboard() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center">
               <img 
-                src="/assets/univote_logo.png" 
-                alt="UniVote Logo" 
-                className="w-12 h-12 mr-3 hidden sm:block"
-                style={{ objectFit: 'contain' }}
-                onError={(e) => {
-                  // Fallback if image fails to load
-                  e.currentTarget.src = "/assets/ada-logo.svg";
-                }}
+                src="/assets/ada-logo.svg" 
+                alt="ADA University Logo" 
+                className="w-10 h-10 mr-3 hidden sm:block"
               />
               <div>
                 <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-purple-800 to-purple-600 bg-clip-text text-transparent">
-                  UniVote Elections
+                  ADA Elections
                 </h1>
                 <p className="text-gray-500 text-xs sm:text-sm mt-1">
                   View and participate in current and upcoming university elections
@@ -164,17 +159,12 @@ export default function Dashboard() {
         <div className="md:hidden bg-white border-b border-gray-200 px-4 py-3">
           <div className="flex items-center">
             <img 
-              src="/assets/univote_logo.png" 
-              alt="UniVote Logo" 
-              className="w-10 h-10 mr-2"
-              style={{ objectFit: 'contain' }}
-              onError={(e) => {
-                // Fallback if image fails to load
-                e.currentTarget.src = "/assets/ada-logo.svg";
-              }}
+              src="/assets/ada-logo.svg" 
+              alt="ADA University Logo" 
+              className="w-8 h-8 mr-2"
             />
             <h2 className="text-base font-semibold bg-gradient-to-r from-purple-800 to-purple-600 bg-clip-text text-transparent">
-              UniVote Elections
+              ADA Elections
             </h2>
           </div>
         </div>

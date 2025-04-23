@@ -139,18 +139,18 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4">
       <div className="auth-card flex flex-col items-center">
-        {/* UniVote Logo */}
+        {/* ADA Logo */}
         <div className="mb-4 flex flex-col items-center">
           <img 
-            src="/assets/univote_logo.png" 
-            alt="UniVote" 
-            className="h-40 mb-2"
-            style={{ objectFit: 'contain' }}
+            src="/assets/ada_university_logo.png" 
+            alt="ADA University" 
+            className="h-24 mb-2"
             onError={(e) => {
               // Fallback if the new logo doesn't load
               e.currentTarget.src = "/images/adalogo.svg";
             }}
           />
+          <h3 className="text-lg text-gray-400 font-medium">UniVote</h3>
         </div>
 
         {currentStep === "form" ? (

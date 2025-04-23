@@ -4,6 +4,8 @@ import {
   FileTextIcon, 
   HomeIcon, 
   LogOutIcon, 
+  GraduationCapIcon,
+  ExternalLinkIcon,
   VoteIcon,
   UserIcon,
   SearchIcon,
@@ -57,15 +59,17 @@ export function StudentSidebar({ user }: SidebarProps) {
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center">
           <img 
-            src="/assets/univote_logo.png" 
-            alt="UniVote Logo" 
-            className="w-28 h-28 p-1"
-            style={{ objectFit: 'contain' }}
+            src="/assets/ada_university_logo.png" 
+            alt="ADA University Logo" 
+            className="w-14 h-14 mr-3"
             onError={(e) => {
               // Fallback if image fails to load
               e.currentTarget.src = "/assets/ada-logo.svg";
             }}
           />
+          <h1 className="text-xl font-bold bg-gradient-to-r from-purple-800 to-purple-600 bg-clip-text text-transparent">
+            UniVote
+          </h1>
         </div>
       </div>
       
@@ -174,6 +178,17 @@ export function StudentSidebar({ user }: SidebarProps) {
           </p>
           
           <nav className="space-y-1">
+            <a 
+              href="https://www.ada.edu.az" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="flex items-center px-4 py-2.5 rounded-lg text-gray-700 hover:bg-gray-100"
+            >
+              <GraduationCapIcon className="w-5 h-5 mr-3" />
+              <span>ADA University</span>
+              <ExternalLinkIcon className="w-3.5 h-3.5 ml-auto opacity-70" />
+            </a>
+            
             <Link to="/verify-vote">
               <span className={`flex items-center px-4 py-2.5 rounded-lg cursor-pointer ${
                 isActive('/verify-vote') 
