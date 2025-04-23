@@ -1154,8 +1154,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Check if pending user exists
         const pendingUser = await storage.getPendingUserByEmail(email);
         if (pendingUser) {
-          // Update existing pending user with new OTP
-          await storage.updatePendingUserOtp(email, otp);
+          // Update existing pending user with new OTP and reset createdAt timestamp
+          // This ensures OTP expiration is always 3 minutes from generation time
+          await storage.updatePendingUserOtp(email, otp, new Date());
         } else {
           // Create a new pending user for password reset with minimum required fields
           await storage.createPendingUser({
