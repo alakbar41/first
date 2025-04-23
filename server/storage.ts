@@ -32,7 +32,7 @@ export interface IStorage {
   // Pending user methods
   getPendingUserByEmail(email: string): Promise<PendingUser | undefined>;
   createPendingUser(user: InsertPendingUser): Promise<PendingUser>;
-  updatePendingUserOtp(email: string, otp: string): Promise<void>;
+  updatePendingUserOtp(email: string, otp: string, createdAt?: Date): Promise<void>;
   deletePendingUser(email: string): Promise<void>;
   
   // Election methods
@@ -173,11 +173,11 @@ export class MemStorage implements IStorage {
     return pendingUser;
   }
 
-  async updatePendingUserOtp(email: string, otp: string): Promise<void> {
+  async updatePendingUserOtp(email: string, otp: string, createdAt?: Date): Promise<void> {
     const pendingUser = this.pendingUsers.get(email);
     if (pendingUser) {
       pendingUser.otp = otp;
-      pendingUser.createdAt = new Date();
+      pendingUser.createdAt = createdAt || new Date();
       this.pendingUsers.set(email, pendingUser);
     }
   }

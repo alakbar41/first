@@ -1205,6 +1205,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // Check if OTP has expired (strict 3-minute limit for all OTPs)
+      const OTP_EXPIRY_TIME = 3 * 60 * 1000; // 3 minutes in milliseconds
+      if (Date.now() - pendingUser.createdAt.getTime() > OTP_EXPIRY_TIME) {
+        await storage.deletePendingUser(email);
+        return res.status(400).json({ 
+          message: "Verification code has expired. Please request a new code and try again."
+        });
+      }
+      
       // Verify user actually exists before updating password
       const user = await storage.getUserByEmail(email);
       if (!user) {

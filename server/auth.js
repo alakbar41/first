@@ -9,7 +9,7 @@ import { mailer } from "./mailer.js";
 
 export function setupAuth(app) {
   const SALT_ROUNDS = 10;
-  const OTP_EXPIRY_TIME = 3 * 60 * 1000; // 3 minutes in milliseconds
+  const OTP_EXPIRY_TIME = 3 * 60 * 1000; // 3 minutes in milliseconds - strict limit for all OTP operations
   // Stronger session secret with crypto-based fallback
   const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
 
@@ -224,8 +224,9 @@ export function setupAuth(app) {
       // Generate new OTP
       const newOtp = crypto.randomInt(100000, 1000000).toString();
       
-      // Update pending user
-      await storage.updatePendingUserOtp(email, newOtp);
+      // Update pending user with new OTP and reset the creation time
+      // This ensures the strict 3-minute expiration starts from the moment the new OTP is sent
+      await storage.updatePendingUserOtp(email, newOtp, new Date());
       
       // Send OTP email
       await mailer.sendOtp(email, newOtp);
