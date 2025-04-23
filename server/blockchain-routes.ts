@@ -204,10 +204,20 @@ export function registerBlockchainRoutes(app: Express) {
       // and records a backup of the vote in our database
       // Actual voting already happened client-side with MetaMask
       
+      // Ensure we have transaction hash (required for proper recording)
+      if (!txHash) {
+        console.error('Transaction hash missing in blockchain vote request');
+        return res.status(400).json({ 
+          success: false,
+          message: 'Transaction hash is required to record blockchain vote'
+        });
+      }
+      
       // Get student ID from hash (if possible) for record-keeping
       let studentId = 'unknown';
       let candidateName = 'Unknown Candidate';
       let electionName = 'Unknown Election';
+      let dbElectionId = 0;
       
       try {
         const idResult = await getStudentIdFromHash(candidateHash);
@@ -225,47 +235,77 @@ export function registerBlockchainRoutes(app: Express) {
       }
       
       // Get election details - we need to be careful with blockchain ID vs database ID
-      console.log(`Trying to find election with blockchain ID or DB ID: ${electionId}`);
+      console.log(`Trying to find election with blockchain ID: ${electionId}`);
       try {
         // First try to find an election with this blockchain ID
         const electionsByBlockchainId = await storage.getElectionByBlockchainId(electionId);
         if (electionsByBlockchainId) {
           console.log(`Found election by blockchain ID: ${electionsByBlockchainId.name} (ID: ${electionsByBlockchainId.id})`);
           electionName = electionsByBlockchainId.name;
+          dbElectionId = electionsByBlockchainId.id;
         } else {
-          console.log(`No election found with blockchain ID: ${electionId}, trying database ID`);
           // If not found by blockchain ID, try by database ID (less likely)
+          console.log(`No election found with blockchain ID: ${electionId}, trying database ID`);
           const electionByDbId = await storage.getElection(parseInt(electionId));
           if (electionByDbId) {
             console.log(`Found election by database ID: ${electionByDbId.name} (ID: ${electionByDbId.id})`);
             electionName = electionByDbId.name;
+            dbElectionId = electionByDbId.id;
           } else {
             console.log(`No election found with database ID: ${electionId} either`);
+            // Try one more time with exact string match - this is a failsafe for numeric blockchain IDs
+            const allElections = await storage.getAllElections();
+            const matchedElection = allElections.find(e => e.blockchainId === electionId.toString());
+            if (matchedElection) {
+              console.log(`Found election with exact string match on blockchainId: ${matchedElection.name} (ID: ${matchedElection.id})`);
+              electionName = matchedElection.name;
+              dbElectionId = matchedElection.id;
+            }
           }
         }
       } catch (e) {
         console.warn('Could not get election details:', e);
       }
       
+      // Ensure we found a valid election
+      if (dbElectionId === 0) {
+        console.error(`Unable to find election with ID ${electionId} (blockchain) in the database`);
+        return res.status(404).json({
+          success: false,
+          message: 'Election not found in database'
+        });
+      }
+      
       // Check if user has already participated in this election
       if (req.user?.id) {
-        const hasParticipated = await storage.hasUserParticipated(req.user.id, parseInt(electionId));
+        const hasParticipated = await storage.hasUserParticipated(req.user.id, dbElectionId);
         
         if (hasParticipated) {
-          console.warn(`User ${req.user.id} attempted to vote again in election ${electionId} using a different wallet address`);
+          console.warn(`User ${req.user.id} attempted to vote again in election ${dbElectionId} using a different wallet address`);
           return res.status(400).json({ 
+            success: false,
             message: "You have already voted in this election. Each student may only vote once regardless of which wallet is used." 
           });
         }
         
         // Record vote participation in our database (without storing candidate choice)
-        await storage.recordVoteParticipation(req.user.id, parseInt(electionId));
-        console.log(`Vote participation recorded for user ${req.user.id} in election ${electionId}`);
+        try {
+          console.log(`⭐ RECORDING VOTE PARTICIPATION for user ${req.user.id} in election ${dbElectionId}`);
+          await storage.recordVoteParticipation(req.user.id, dbElectionId);
+          console.log(`✅ Vote participation successfully recorded for user ${req.user.id} in election ${dbElectionId}`);
+        } catch (storageError) {
+          console.error(`❌ FAILED TO RECORD VOTE PARTICIPATION in database:`, storageError);
+          return res.status(500).json({
+            success: false,
+            message: 'Failed to record vote participation in database',
+            error: storageError.message
+          });
+        }
         
         // Send email confirmation if we have a transaction hash
         if (txHash && req.user.email) {
           try {
-            console.log(`ATTEMPTING TO SEND VOTE CONFIRMATION EMAIL to ${req.user.email}`);
+            console.log(`⭐ ATTEMPTING TO SEND VOTE CONFIRMATION EMAIL to ${req.user.email}`);
             console.log(`Email data: Election "${electionName}", Candidate "${candidateName}", Hash "${txHash}"`);
             
             const emailResult = await mailer.sendVoteConfirmation(
@@ -290,15 +330,27 @@ export function registerBlockchainRoutes(app: Express) {
         } else {
           console.warn(`⚠️ Not sending vote confirmation email - txHash: ${!!txHash}, email: ${!!req.user.email}`);
         }
+      } else {
+        console.error('User not authenticated or req.user.id is missing');
+        return res.status(401).json({
+          success: false,
+          message: 'User not authenticated'
+        });
       }
       
       res.json({ 
         success: true,
-        message: 'Vote participation recorded successfully'
+        message: 'Vote participation recorded successfully',
+        data: {
+          electionId: dbElectionId,
+          electionName: electionName,
+          txHash: txHash
+        }
       });
     } catch (error: any) {
       console.error('Error recording vote participation:', error);
       res.status(500).json({ 
+        success: false,
         message: 'Failed to record vote participation',
         error: error.message
       });
