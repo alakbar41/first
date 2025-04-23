@@ -893,11 +893,11 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async updatePendingUserOtp(email: string, otp: string): Promise<void> {
+  async updatePendingUserOtp(email: string, otp: string, createdAt?: Date): Promise<void> {
     await db.update(pendingUsers)
       .set({ 
         otp: otp,
-        createdAt: new Date()
+        createdAt: createdAt || new Date()
       })
       .where(eq(pendingUsers.email, email));
   }
