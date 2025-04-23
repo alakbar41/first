@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, useRoute } from "wouter";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { SearchX } from "lucide-react";
@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { Election } from "@shared/schema";
 
 export default function AdminElections() {
@@ -28,6 +29,10 @@ export default function AdminElections() {
   const [selectedElection, setSelectedElection] = useState<Election | undefined>(undefined);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8; // Show 8 elections per page
 
   // Fetch elections data
   const { data: elections = [] } = useQuery({
@@ -51,6 +56,17 @@ export default function AdminElections() {
         election.position.toLowerCase().includes(searchTerm.toLowerCase())
       )
     : elections;
+    
+  // Calculate pagination data
+  const totalPages = Math.ceil(filteredElections.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentElections = filteredElections.slice(startIndex, endIndex);
+  
+  // Reset to first page when searching
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
     
   // Action handlers for ElectionsTable
   const handleEdit = (electionId: number) => {
@@ -192,13 +208,69 @@ export default function AdminElections() {
             </CardHeader>
             <CardContent>
               <ElectionsTable 
-                elections={filteredElections}
+                elections={currentElections}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
                 onAddCandidates={handleAddCandidates}
                 onViewCandidates={handleViewCandidates}
                 onViewDetails={handleViewDetails}
               />
+              
+              {/* Pagination UI */}
+              {totalPages > 1 && (
+                <div className="mt-4">
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious 
+                          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                          className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        />
+                      </PaginationItem>
+                      
+                      {Array.from({ length: totalPages }).map((_, index) => {
+                        const pageNumber = index + 1;
+                        // Show current page, first page, last page, and pages around current
+                        const shouldShow = 
+                          pageNumber === 1 || 
+                          pageNumber === totalPages || 
+                          (pageNumber >= currentPage - 1 && pageNumber <= currentPage + 1);
+                          
+                        // Show ellipsis for gaps
+                        if (!shouldShow) {
+                          // Only show ellipsis at appropriate positions
+                          if (pageNumber === 2 || pageNumber === totalPages - 1) {
+                            return (
+                              <PaginationItem key={`ellipsis-${pageNumber}`}>
+                                <PaginationEllipsis />
+                              </PaginationItem>
+                            );
+                          }
+                          return null;
+                        }
+                        
+                        return (
+                          <PaginationItem key={pageNumber}>
+                            <PaginationLink
+                              isActive={pageNumber === currentPage}
+                              onClick={() => setCurrentPage(pageNumber)}
+                            >
+                              {pageNumber}
+                            </PaginationLink>
+                          </PaginationItem>
+                        );
+                      })}
+                      
+                      <PaginationItem>
+                        <PaginationNext 
+                          onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                          className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              )}
             </CardContent>
           </Card>
         </main>
