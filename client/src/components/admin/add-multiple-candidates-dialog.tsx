@@ -61,9 +61,16 @@ export function AddMultipleCandidatesDialog({
       (ec: any) => ec.candidateId === candidate.id || ec.runningMateId === candidate.id
     );
     
-    // Filter for Senator position and matching faculty
-    const isFacultyMatch = election.eligibleFaculties.includes(candidate.faculty);
+    // For Senator elections, check if the candidate's faculty matches at least one of the election's eligible faculties
     const isPositionMatch = candidate.position === "Senator";
+    
+    // Check faculty match - important: for Senator elections, the candidate must belong to ONE OF the eligible faculties
+    let isFacultyMatch = false;
+    
+    if (election.eligibleFaculties && Array.isArray(election.eligibleFaculties)) {
+      // Check if the candidate's faculty is included in the election's eligible faculties
+      isFacultyMatch = election.eligibleFaculties.includes(candidate.faculty);
+    }
     
     // Apply search filter
     const matchesSearch = searchTerm === "" || 
