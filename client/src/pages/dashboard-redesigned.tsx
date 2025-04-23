@@ -135,7 +135,7 @@ export default function Dashboard() {
               <img 
                 src="/assets/univote_logo.png" 
                 alt="UniVote Logo" 
-                className="w-10 h-10 mr-3 hidden sm:block rounded-full bg-white p-1 shadow-sm"
+                className="w-12 h-12 mr-3 hidden sm:block"
                 style={{ objectFit: 'contain' }}
                 onError={(e) => {
                   // Fallback if image fails to load
@@ -166,7 +166,7 @@ export default function Dashboard() {
             <img 
               src="/assets/univote_logo.png" 
               alt="UniVote Logo" 
-              className="w-8 h-8 mr-2 rounded-full bg-white p-1 shadow-sm"
+              className="w-10 h-10 mr-2"
               style={{ objectFit: 'contain' }}
               onError={(e) => {
                 // Fallback if image fails to load
