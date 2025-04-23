@@ -93,20 +93,8 @@ export function BlockchainVoting({ election, candidates }: BlockchainVotingProps
       setIsVoting(true);
       
       // Call blockchain to cast vote
-      await voteForCandidate(election.blockchainId, studentId);
-      
-      // Record vote participation in our database (without storing candidate choice)
-      await fetch('/api/blockchain/vote', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          electionId: election.id,
-          candidateHash: studentIdToBytes32(studentId), // Only need the hash, not the actual candidate ID
-          txHash: 'blockchain-vote' // This would be a real transaction hash in production
-        })
-      });
+      // The voteForCandidate function already notifies the backend about the vote
+      await voteForCandidate(election.blockchainId, studentIdToBytes32(studentId));
       
       // Update UI
       setHasVoted(true);
