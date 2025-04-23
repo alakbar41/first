@@ -32,7 +32,7 @@ export interface IStorage {
   // Pending user methods
   getPendingUserByEmail(email: string): Promise<PendingUser | undefined>;
   createPendingUser(user: InsertPendingUser): Promise<PendingUser>;
-  updatePendingUserOtp(email: string, otp: string, createdAt?: Date): Promise<void>;
+  updatePendingUserOtp(email: string, otp: string, expiresIn?: number): Promise<void>;
   deletePendingUser(email: string): Promise<void>;
   
   // Election methods
@@ -165,6 +165,12 @@ export class MemStorage implements IStorage {
   }
 
   async createPendingUser(user: InsertPendingUser): Promise<PendingUser> {
+    // Set OTP expiration time to 3 minutes from now by default
+    const now = new Date();
+    const expiresAt = user.expiresAt instanceof Date
+      ? user.expiresAt
+      : (user.expiresAt ? new Date(user.expiresAt) : new Date(now.getTime() + 3 * 60 * 1000));
+    
     const pendingUser: PendingUser = {
       email: user.email,
       password: user.password,
@@ -172,17 +178,20 @@ export class MemStorage implements IStorage {
       otp: user.otp,
       type: user.type || 'registration',
       createdAt: user.createdAt instanceof Date ? user.createdAt : new Date(user.createdAt),
+      expiresAt: expiresAt,
       isAdmin: user.isAdmin ?? false
     };
     this.pendingUsers.set(user.email, pendingUser);
     return pendingUser;
   }
 
-  async updatePendingUserOtp(email: string, otp: string, createdAt?: Date): Promise<void> {
+  async updatePendingUserOtp(email: string, otp: string, expiresIn: number = 3 * 60 * 1000): Promise<void> {
     const pendingUser = this.pendingUsers.get(email);
     if (pendingUser) {
+      const now = new Date();
       pendingUser.otp = otp;
-      pendingUser.createdAt = createdAt || new Date();
+      pendingUser.createdAt = now;
+      pendingUser.expiresAt = new Date(now.getTime() + expiresIn); // Set to expire in expiresIn ms (default: 3 minutes)
       this.pendingUsers.set(email, pendingUser);
     }
   }
