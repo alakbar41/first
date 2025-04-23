@@ -62,7 +62,7 @@ export default function AuthPage() {
           <img 
             src="/assets/univote_logo.png" 
             alt="UniVote" 
-            className="h-32 mb-2 rounded-full bg-white p-1 shadow-md"
+            className="h-40 mb-2"
             style={{ objectFit: 'contain' }}
             onError={(e) => {
               // Fallback if the new logo doesn't load

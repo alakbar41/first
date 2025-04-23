@@ -59,7 +59,7 @@ export function StudentSidebar({ user }: SidebarProps) {
           <img 
             src="/assets/univote_logo.png" 
             alt="UniVote Logo" 
-            className="w-20 h-20 rounded-full bg-white p-1 shadow-md"
+            className="w-28 h-28 p-1"
             style={{ objectFit: 'contain' }}
             onError={(e) => {
               // Fallback if image fails to load
