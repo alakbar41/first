@@ -60,9 +60,9 @@ export default function AuthPage() {
         {/* ADA Logo */}
         <div className="mb-4 flex flex-col items-center">
           <img 
-            src="/assets/ada_university_logo.png" 
-            alt="ADA University" 
-            className="h-24 mb-2"
+            src="/assets/univote_logo.png" 
+            alt="UniVote" 
+            className="h-36 mb-2"
             onError={(e) => {
               // Fallback if the new logo doesn't load
               e.currentTarget.src = "/images/adalogo.svg";
