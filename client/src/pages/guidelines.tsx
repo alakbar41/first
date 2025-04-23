@@ -207,7 +207,7 @@ export default function Guidelines() {
                 </p>
                 
                 <ul className="list-disc pl-5 space-y-2 text-gray-700">
-                  <li>Email technical support at <span className="text-purple-600">voting-support@univote.edu</span></li>
+                  <li>Email technical support at <span className="text-purple-600">voting-support@ada.edu.az</span></li>
                   <li>Visit the Student Affairs office in the main campus building.</li>
                   <li>Check the FAQ section on the University website.</li>
                 </ul>

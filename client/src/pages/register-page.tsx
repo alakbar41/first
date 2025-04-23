@@ -161,11 +161,11 @@ export default function RegisterPage() {
             {/* Registration Form */}
             <form onSubmit={form.handleSubmit(onSubmit)} className="w-full space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium uppercase">UNIVERSITY EMAIL</Label>
+                <Label htmlFor="email" className="text-sm font-medium uppercase">ADA EMAIL</Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="yourname@univote.edu"
+                  placeholder="yourname@ada.edu.az"
                   className="auth-input"
                   {...form.register("email")}
                 />
