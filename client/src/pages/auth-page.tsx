@@ -65,7 +65,7 @@ export default function AuthPage() {
             className="h-36 mb-2"
             onError={(e) => {
               // Fallback if the new logo doesn't load
-              e.currentTarget.src = "/images/adalogo.svg";
+              e.currentTarget.src = "/assets/univote-logo.svg";
             }}
           />
         </div>

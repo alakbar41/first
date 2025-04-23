@@ -147,7 +147,7 @@ export default function RegisterPage() {
             className="h-36 mb-2"
             onError={(e) => {
               // Fallback if the new logo doesn't load
-              e.currentTarget.src = "/images/adalogo.svg";
+              e.currentTarget.src = "/assets/univote-logo.svg";
             }}
           />
         </div>
@@ -161,11 +161,11 @@ export default function RegisterPage() {
             {/* Registration Form */}
             <form onSubmit={form.handleSubmit(onSubmit)} className="w-full space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium uppercase">ADA EMAIL</Label>
+                <Label htmlFor="email" className="text-sm font-medium uppercase">UNIVERSITY EMAIL</Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="yourname@ada.edu.az"
+                  placeholder="yourname@univote.edu"
                   className="auth-input"
                   {...form.register("email")}
                 />
