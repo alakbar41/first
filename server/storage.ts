@@ -768,7 +768,7 @@ export class MemStorage implements IStorage {
       id: 0, // Auto-generated ID (not used in memory storage)
       userId,
       electionId,
-      created_at: new Date()
+      createdAt: new Date()
     };
     this.voteParticipation.set(key, participation);
   }
@@ -1449,11 +1449,13 @@ export class DatabaseStorage implements IStorage {
       if (!exists) {
         console.log(`Recording vote participation for user ${userId} in election ${electionId}`);
         
-        // Use parameterized query for better security
-        await db.execute({
-          sql: `INSERT INTO vote_participation (user_id, election_id) VALUES ($1, $2)`,
-          args: [userId, electionId]
+        // Use Drizzle ORM insert method instead of raw SQL
+        await db.insert(voteParticipation).values({
+          userId: userId,
+          electionId: electionId
         });
+        
+        console.log(`Successfully recorded vote participation for user ${userId} in election ${electionId}`);
       } else {
         console.log(`User ${userId} already participated in election ${electionId}, skipping record`);
       }
@@ -1482,15 +1484,18 @@ export class DatabaseStorage implements IStorage {
         return true;
       }
       
-      // Double-check participation table using parameterized query for better security
-      const participation = await db.execute({
-        sql: `SELECT * FROM vote_participation WHERE user_id = $1 AND election_id = $2`,
-        args: [userId, electionId]
-      });
+      // Double-check participation table using Drizzle ORM
+      const participation = await db.select()
+        .from(voteParticipation)
+        .where(
+          and(
+            eq(voteParticipation.userId, userId),
+            eq(voteParticipation.electionId, electionId)
+          )
+        );
       
       // Check if any rows were returned
-      const result = participation.rows as any[];
-      const hasParticipated = result.length > 0;
+      const hasParticipated = participation.length > 0;
       
       if (hasParticipated) {
         console.log(`User ${userId} has vote participation record for election ${electionId}`);
@@ -1516,10 +1521,14 @@ export class DatabaseStorage implements IStorage {
         )
       );
     
-    // Also remove from vote participation table using raw SQL
-    await db.execute(
-      `DELETE FROM vote_participation WHERE user_id = ${userId} AND election_id = ${electionId}`
-    );
+    // Also remove from vote participation table using Drizzle ORM
+    await db.delete(voteParticipation)
+      .where(
+        and(
+          eq(voteParticipation.userId, userId),
+          eq(voteParticipation.electionId, electionId)
+        )
+      );
     
     console.log(`Reset vote participation for user ${userId} in election ${electionId}`);
   }
