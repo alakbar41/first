@@ -74,7 +74,7 @@ export default function VerifyVote() {
               </CardHeader>
               <CardContent className="pt-6">
                 <p className="text-gray-700 mb-4">
-                  ADA University's voting system uses blockchain technology to ensure your vote is 
+                  UniVote uses blockchain technology to ensure your vote is 
                   securely and permanently recorded. This transparency allows you to independently verify 
                   that your vote was properly counted.
                 </p>

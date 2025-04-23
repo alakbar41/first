@@ -82,7 +82,7 @@ export default function Guidelines() {
               </CardHeader>
               <CardContent>
                 <ul className="list-disc pl-5 space-y-2 text-gray-700">
-                  <li>You must be a registered student of ADA University with an active account.</li>
+                  <li>You must be a registered student of the University with an active account.</li>
                   <li>For university-wide elections (President, Vice President), all students are eligible to vote.</li>
                   <li>For faculty-specific elections (Senator), you may only vote in elections for your faculty.</li>
                   <li>You must complete identity verification through your university email account.</li>
@@ -186,7 +186,7 @@ export default function Guidelines() {
                 </div>
                 
                 <p className="text-gray-700">
-                  Violations of election rules may result in disciplinary action according to the ADA University 
+                  Violations of election rules may result in disciplinary action according to the University 
                   Student Code of Conduct. Any suspicious activity should be reported immediately to the Election 
                   Commission at <span className="text-purple-600">elections@ada.edu.az</span>.
                 </p>
@@ -209,12 +209,12 @@ export default function Guidelines() {
                 <ul className="list-disc pl-5 space-y-2 text-gray-700">
                   <li>Email technical support at <span className="text-purple-600">voting-support@ada.edu.az</span></li>
                   <li>Visit the Student Affairs office in the main campus building.</li>
-                  <li>Check the FAQ section on the ADA University website.</li>
+                  <li>Check the FAQ section on the University website.</li>
                 </ul>
                 
                 <div className="mt-4 p-4 bg-purple-50 rounded-md">
                   <p className="text-purple-800 font-medium">
-                    Thank you for participating in the democratic process at ADA University. Your vote matters!
+                    Thank you for participating in the democratic process at the University. Your vote matters!
                   </p>
                 </div>
               </CardContent>
