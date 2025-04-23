@@ -7,6 +7,7 @@ import { CreateElectionDialog } from "@/components/admin/create-election-dialog"
 import { EditElectionDialog } from "@/components/admin/edit-election-dialog";
 import { ViewElectionDetailsDialog } from "@/components/admin/view-election-details-dialog";
 import { AddCandidatesToElectionDialog } from "@/components/admin/add-candidates-to-election-dialog";
+import { AddMultipleCandidatesDialog } from "@/components/admin/add-multiple-candidates-dialog";
 import { ViewElectionCandidatesDialog } from "@/components/admin/view-election-candidates-dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ export default function AdminElections() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isViewDetailsDialogOpen, setIsViewDetailsDialogOpen] = useState(false);
   const [isAddCandidatesDialogOpen, setIsAddCandidatesDialogOpen] = useState(false);
+  const [isAddMultipleCandidatesDialogOpen, setIsAddMultipleCandidatesDialogOpen] = useState(false);
   const [isViewCandidatesDialogOpen, setIsViewCandidatesDialogOpen] = useState(false);
   const [selectedElection, setSelectedElection] = useState<Election | undefined>(undefined);
   const { toast } = useToast();
@@ -126,7 +128,16 @@ export default function AdminElections() {
   
   const handleAddCandidates = (election: Election) => {
     setSelectedElection(election);
-    setIsAddCandidatesDialogOpen(true);
+    
+    // For senator elections, use the new multiple candidates dialog
+    // For President/VP elections, use the original dialog which handles running mates
+    const isSenatorElection = election.position === "Senator";
+    
+    if (isSenatorElection) {
+      setIsAddMultipleCandidatesDialogOpen(true);
+    } else {
+      setIsAddCandidatesDialogOpen(true);
+    }
   };
   
   const handleViewCandidates = (election: Election) => {
@@ -191,6 +202,13 @@ export default function AdminElections() {
             <AddCandidatesToElectionDialog
               open={isAddCandidatesDialogOpen}
               onOpenChange={setIsAddCandidatesDialogOpen}
+              election={selectedElection}
+            />
+            
+            {/* Add Multiple Candidates Dialog (for Senator elections) */}
+            <AddMultipleCandidatesDialog
+              open={isAddMultipleCandidatesDialogOpen}
+              onOpenChange={setIsAddMultipleCandidatesDialogOpen}
               election={selectedElection}
             />
             

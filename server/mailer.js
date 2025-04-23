@@ -1,8 +1,18 @@
 import nodemailer from "nodemailer";
+import fs from 'fs';
+import path from 'path';
 
 // For production and real email sending
 let transporter;
 let testAccount = null;
+
+// Logo handling for emails - we'll embed the logo directly in the emails
+const LOGO_BASE64 = fs.existsSync(path.join(process.cwd(), 'public', 'assets', 'univote_logo.png')) 
+  ? fs.readFileSync(path.join(process.cwd(), 'public', 'assets', 'univote_logo.png')).toString('base64')
+  : null;
+
+// Fallback to a remote URL if we can't find the logo file
+const LOGO_URL = 'https://i.imgur.com/gROk9Ym.png'; // Backup URL for logo
 
 // Create our transporter based on configuration
 async function createTransporter() {
@@ -148,6 +158,16 @@ export const mailer = {
         purposeText = "Thank you for registering with the UniVote System. Please use the verification code below to complete your registration:";
       }
       
+      // Determine logo source - try to use embedded base64 if available
+      let logoHtml = '';
+      if (LOGO_BASE64) {
+        // Use embedded base64 logo data
+        logoHtml = `<img src="data:image/png;base64,${LOGO_BASE64}" alt="UniVote Logo" style="max-width: 150px;">`;
+      } else {
+        // Fall back to external URL
+        logoHtml = `<img src="${LOGO_URL}" alt="UniVote Logo" style="max-width: 150px;">`;
+      }
+      
       const mailOptions = {
         from: `"${fromName}" <${fromEmail}>`,
         to,
@@ -156,7 +176,7 @@ export const mailer = {
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e9e9e9; border-radius: 5px;">
             <div style="text-align: center; margin-bottom: 20px;">
-              <img src="https://univote-system.replit.app/assets/univote_logo.png" alt="UniVote Logo" style="max-width: 150px;">
+              ${logoHtml}
             </div>
             <h2 style="color: #005A9C; text-align: center;">${headingText}</h2>
             <p style="margin-bottom: 20px; color: #666;">${purposeText}</p>
@@ -249,6 +269,16 @@ export const mailer = {
       // Generate a link to view the transaction on Polygon Mainnet Explorer
       const explorerUrl = `https://polygonscan.com/tx/${transactionHash}`;
       
+      // Determine logo source - try to use embedded base64 if available
+      let logoHtml = '';
+      if (LOGO_BASE64) {
+        // Use embedded base64 logo data
+        logoHtml = `<img src="data:image/png;base64,${LOGO_BASE64}" alt="UniVote Logo" style="max-width: 150px;">`;
+      } else {
+        // Fall back to external URL
+        logoHtml = `<img src="${LOGO_URL}" alt="UniVote Logo" style="max-width: 150px;">`;
+      }
+      
       const mailOptions = {
         from: `"${fromName}" <${fromEmail}>`,
         to,
@@ -266,7 +296,7 @@ Thank you for participating in the UniVote Voting System.
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e9e9e9; border-radius: 5px;">
             <div style="text-align: center; margin-bottom: 20px;">
-              <img src="https://univote-system.replit.app/assets/univote_logo.png" alt="UniVote Logo" style="max-width: 150px;">
+              ${logoHtml}
             </div>
             <h2 style="color: #005A9C; text-align: center;">Vote Successfully Recorded</h2>
             <p style="margin-bottom: 20px; color: #666;">Your vote for <strong>${candidateName}</strong> in the "<strong>${electionName}</strong>" election has been successfully recorded on the blockchain.</p>
