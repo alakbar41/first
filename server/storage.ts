@@ -1465,29 +1465,43 @@ export class DatabaseStorage implements IStorage {
   }
   
   async hasUserParticipated(userId: number, electionId: number): Promise<boolean> {
-    // Check if any tokens are marked as used or if there's an entry in vote participation
-    const usedTokens = await db.select()
-      .from(votingTokens)
-      .where(
-        and(
-          eq(votingTokens.userId, userId),
-          eq(votingTokens.electionId, electionId),
-          eq(votingTokens.used, true)
-        )
-      );
+    try {
+      // Check if any tokens are marked as used - first layer of check
+      const usedTokens = await db.select()
+        .from(votingTokens)
+        .where(
+          and(
+            eq(votingTokens.userId, userId),
+            eq(votingTokens.electionId, electionId),
+            eq(votingTokens.used, true)
+          )
+        );
+        
+      if (usedTokens.length > 0) {
+        console.log(`User ${userId} has used tokens for election ${electionId}`);
+        return true;
+      }
       
-    if (usedTokens.length > 0) {
-      return true;
+      // Double-check participation table using parameterized query for better security
+      const participation = await db.execute({
+        sql: `SELECT * FROM vote_participation WHERE user_id = $1 AND election_id = $2`,
+        args: [userId, electionId]
+      });
+      
+      // Check if any rows were returned
+      const result = participation.rows as any[];
+      const hasParticipated = result.length > 0;
+      
+      if (hasParticipated) {
+        console.log(`User ${userId} has vote participation record for election ${electionId}`);
+      }
+      
+      return hasParticipated;
+    } catch (error) {
+      console.error(`Error checking if user ${userId} participated in election ${electionId}:`, error);
+      // Return false in case of error to allow the user to try again
+      return false;
     }
-    
-    // Double-check participation table using raw SQL since the table name doesn't match the schema
-    const participation = await db.execute(
-      `SELECT * FROM vote_participation WHERE user_id = ${userId} AND election_id = ${electionId}`
-    );
-    
-    // Check if any rows were returned
-    const result = participation.rows as any[];
-    return result.length > 0;
   }
   
   async resetVoteParticipation(userId: number, electionId: number): Promise<void> {

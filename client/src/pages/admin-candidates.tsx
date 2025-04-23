@@ -24,6 +24,10 @@ export default function AdminCandidates() {
   const [currentCandidate, setCurrentCandidate] = useState<Candidate | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState("");
   
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8; // Show 8 candidates per page as requested
+  
   // Filters for candidates
   const [facultyFilter, setFacultyFilter] = useState<string>("all");
   const [positionFilter, setPositionFilter] = useState<string>("all");
@@ -166,6 +170,22 @@ export default function AdminCandidates() {
         return matchesSearch && matchesFaculty && matchesPosition && matchesStatus;
       })
     : [];
+    
+  // Calculate pagination
+  const totalItems = filteredCandidates.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  
+  // Reset to page 1 if the current page is out of bounds after filtering
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1);
+    }
+  }, [filteredCandidates, currentPage, totalPages]);
+  
+  // Get current page items
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredCandidates.slice(indexOfFirstItem, indexOfLastItem);
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -286,35 +306,77 @@ export default function AdminCandidates() {
             ) : (
               <>
                 <CandidatesTable 
-                  candidates={filteredCandidates} 
+                  candidates={currentItems} 
                   onDelete={handleDeleteCandidate}
                   onEdit={handleEditCandidate}
                 />
                 
                 <div className="px-6 py-4 bg-white border-t border-gray-200 flex justify-between items-center">
                   <div className="text-sm text-gray-500">
-                    Showing {filteredCandidates.length} candidates
+                    Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, totalItems)} of {totalItems} candidates
                   </div>
                   
-                  <Pagination>
-                    <PaginationContent>
-                      <PaginationItem>
-                        <PaginationPrevious href="#" />
-                      </PaginationItem>
-                      <PaginationItem>
-                        <PaginationLink href="#" isActive>1</PaginationLink>
-                      </PaginationItem>
-                      <PaginationItem>
-                        <PaginationLink href="#">2</PaginationLink>
-                      </PaginationItem>
-                      <PaginationItem>
-                        <PaginationEllipsis />
-                      </PaginationItem>
-                      <PaginationItem>
-                        <PaginationNext href="#" />
-                      </PaginationItem>
-                    </PaginationContent>
-                  </Pagination>
+                  {totalPages > 1 && (
+                    <Pagination>
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious 
+                            href="#" 
+                            onClick={(e) => {
+                              e.preventDefault();
+                              if (currentPage > 1) setCurrentPage(currentPage - 1);
+                            }}
+                            className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                          />
+                        </PaginationItem>
+                        
+                        {/* Generate pagination items dynamically */}
+                        {Array.from({ length: Math.min(totalPages, 5) }).map((_, i) => {
+                          // Show first 3 pages, then ellipsis, then last page if there are many pages
+                          let pageNum = i + 1;
+                          
+                          // If we have more than 5 pages and we're past page 3, show ellipsis and last pages
+                          if (totalPages > 5 && i >= 3) {
+                            if (i === 3) {
+                              return (
+                                <PaginationItem key="ellipsis">
+                                  <PaginationEllipsis />
+                                </PaginationItem>
+                              );
+                            } else if (i === 4) {
+                              pageNum = totalPages;
+                            }
+                          }
+                          
+                          return (
+                            <PaginationItem key={i}>
+                              <PaginationLink 
+                                href="#" 
+                                isActive={currentPage === pageNum}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  setCurrentPage(pageNum);
+                                }}
+                              >
+                                {pageNum}
+                              </PaginationLink>
+                            </PaginationItem>
+                          );
+                        })}
+                        
+                        <PaginationItem>
+                          <PaginationNext 
+                            href="#" 
+                            onClick={(e) => {
+                              e.preventDefault();
+                              if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+                            }}
+                            className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                          />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  )}
                 </div>
               </>
             )}
