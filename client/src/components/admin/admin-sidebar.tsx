@@ -80,7 +80,7 @@ export function AdminSidebar({ user }: SidebarProps) {
               e.currentTarget.src = "/assets/ada-logo.svg";
             }}
           />
-          {expanded && <span className="font-semibold text-purple-900">ADA Admin</span>}
+          {expanded && <span className="font-semibold text-purple-900">UniVote Admin</span>}
         </div>
         <Button 
           variant="ghost" 

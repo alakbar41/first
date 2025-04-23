@@ -68,7 +68,7 @@ export function StudentSidebar({ user }: SidebarProps) {
             }}
           />
           <h1 className="text-xl font-bold bg-gradient-to-r from-purple-800 to-purple-600 bg-clip-text text-transparent">
-            ADA Vote
+            UniVote
           </h1>
         </div>
       </div>

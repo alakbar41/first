@@ -150,13 +150,13 @@ export default function RegisterPage() {
               e.currentTarget.src = "/images/adalogo.svg";
             }}
           />
-          <h3 className="text-lg text-gray-400 font-medium">ADA University Voting</h3>
+          <h3 className="text-lg text-gray-400 font-medium">UniVote</h3>
         </div>
 
         {currentStep === "form" ? (
           <>
             {/* Registration Heading */}
-            <h1 className="text-2xl font-bold mb-2 text-center">Sign Up for ADA Voting</h1>
+            <h1 className="text-2xl font-bold mb-2 text-center">Sign Up for UniVote</h1>
             <p className="text-gray-500 mb-6 text-center">Create your account to participate in university elections</p>
 
             {/* Registration Form */}

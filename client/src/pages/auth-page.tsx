@@ -68,11 +68,11 @@ export default function AuthPage() {
               e.currentTarget.src = "/images/adalogo.svg";
             }}
           />
-          <h3 className="text-lg text-gray-400 font-medium">ADA University Voting</h3>
+          <h3 className="text-lg text-gray-400 font-medium">UniVote</h3>
         </div>
 
         {/* Login Heading */}
-        <h1 className="text-2xl font-bold mb-2 text-center">Log In to ADA Voting</h1>
+        <h1 className="text-2xl font-bold mb-2 text-center">Log In to UniVote</h1>
         <p className="text-gray-500 mb-6 text-center">Enter your email and password below</p>
 
         {/* Login Form */}
