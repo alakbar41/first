@@ -4,7 +4,7 @@ import { Plus, Search, X, Filter } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Candidate, FACULTIES, CANDIDATE_POSITIONS } from "@shared/schema";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
@@ -35,15 +35,19 @@ export default function AdminCandidates() {
 
   // Fetch elections to monitor changes
   // This query is only used to trigger a refresh of candidates when elections change
-  useQuery({
+  const { data: electionsData } = useQuery({
     queryKey: ["/api/elections"],
     queryFn: async () => {
       const response = await fetch("/api/elections");
       if (!response.ok) throw new Error("Failed to fetch elections");
       return response.json();
-    },
-    // When elections change, invalidate the candidates cache to ensure status is updated
-    onSuccess: () => {
+    }
+  });
+  
+  // Effect to handle invalidation when election data changes
+  useEffect(() => {
+    if (electionsData) {
+      // Invalidate the candidates cache to ensure status is updated
       queryClient.invalidateQueries({ queryKey: ["/api/candidates"] });
       
       // Also clear cached candidate status checks
@@ -55,7 +59,7 @@ export default function AdminCandidates() {
         }
       });
     }
-  });
+  }, [electionsData, queryClient]);
   
   // Fetch candidates
   const { data: candidates, isLoading } = useQuery<Candidate[]>({
