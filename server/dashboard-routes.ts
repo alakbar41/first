@@ -75,39 +75,74 @@ const router = Router();
 // Faculty participation metrics
 router.get('/metrics/faculty-participation', isAdmin, async (req: Request, res: Response) => {
   try {
-    // Just get faculty distribution from the database since this doesn't involve votes
-    // We'll use blockchain data for the actual voting information elsewhere
-    let query = sql`
+    // Get total students by faculty
+    let totalStudentsQuery = sql`
       SELECT 
         u.faculty, 
-        COUNT(*) as total_students,
-        0 as voted_students,
-        0 as participation_percentage
+        COUNT(*) as total_students
       FROM users u
       WHERE u.is_admin = false
         AND u.faculty NOT IN ('Administration') -- Exclude admin faculties
       GROUP BY u.faculty
-      ORDER BY u.faculty
     `;
 
-    const queryResult = await db.execute(query);
-    console.log('Faculty distribution query result:', JSON.stringify(queryResult, null, 2));
+    // Get voting participation by faculty
+    let votedStudentsQuery = sql`
+      SELECT 
+        u.faculty, 
+        COUNT(DISTINCT vp.user_id) as voted_students
+      FROM vote_participation vp
+      JOIN users u ON vp.user_id = u.id
+      WHERE u.is_admin = false
+        AND u.faculty NOT IN ('Administration')
+      GROUP BY u.faculty
+    `;
+
+    // Execute both queries
+    const [totalStudentsResult, votedStudentsResult] = await Promise.all([
+      db.execute(totalStudentsQuery),
+      db.execute(votedStudentsQuery)
+    ]);
     
-    // Ensure we have an array to work with
-    const facultyDistribution = Array.isArray(queryResult) 
-      ? queryResult 
-      : queryResult && typeof queryResult === 'object' && 'rows' in queryResult 
-        ? queryResult.rows || []
+    // Process total students result
+    const totalStudents = Array.isArray(totalStudentsResult) 
+      ? totalStudentsResult 
+      : totalStudentsResult && typeof totalStudentsResult === 'object' && 'rows' in totalStudentsResult 
+        ? totalStudentsResult.rows || []
         : [];
     
-    console.log('Faculty array to map:', JSON.stringify(facultyDistribution, null, 2));
+    // Process voted students result
+    const votedStudents = Array.isArray(votedStudentsResult) 
+      ? votedStudentsResult 
+      : votedStudentsResult && typeof votedStudentsResult === 'object' && 'rows' in votedStudentsResult 
+        ? votedStudentsResult.rows || []
+        : [];
     
-    // Add faculty names for display purposes
-    const result = facultyDistribution.map(row => ({
-      ...row,
-      faculty_name: getFacultyName(row.faculty)
-    }));
+    // Create a map for voted students by faculty
+    const votedStudentsMap = new Map();
+    votedStudents.forEach(row => {
+      votedStudentsMap.set(row.faculty, parseInt(row.voted_students));
+    });
+    
+    // Combine the data and calculate percentages
+    const result = totalStudents.map(row => {
+      const faculty = row.faculty;
+      const totalStudents = parseInt(row.total_students);
+      const votedStudents = votedStudentsMap.get(faculty) || 0;
+      const participationPercentage = totalStudents > 0 
+        ? Math.round((votedStudents / totalStudents) * 100) 
+        : 0;
+      
+      return {
+        faculty,
+        total_students: totalStudents,
+        voted_students: votedStudents,
+        participation_percentage: participationPercentage,
+        faculty_name: getFacultyName(faculty)
+      };
+    });
 
+    console.log('Faculty participation metrics:', JSON.stringify(result, null, 2));
     res.json(result);
   } catch (error) {
     console.error('Error fetching faculty distribution metrics:', error);
@@ -309,29 +344,62 @@ router.get('/metrics/voting-timeline', isAdmin, async (req: Request, res: Respon
     
     console.log(`Fetching voting timeline data for election ID: ${electionId || 'all elections'}`);
     
-    // Since we don't have voting data in the database (it's all on blockchain),
-    // we'll return a sample timeline with the current day hours
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const timelineSamples = [];
-    
-    // Generate 24 hours of sample data for the current day
-    for (let i = 0; i < 24; i++) {
-      const hour = new Date(today);
-      hour.setHours(i);
-      
-      timelineSamples.push({
-        hour: hour,
-        vote_count: 0,
-        formatted_hour: hour.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
-        day_of_week: hour.toLocaleDateString('en-US', { weekday: 'long' })
-      });
+    // Use the vote_participation table to get actual voting timestamps
+    let query;
+    if (electionId) {
+      // For a specific election
+      query = sql`
+        SELECT 
+          DATE_TRUNC('hour', created_at) as hour,
+          COUNT(*) as vote_count
+        FROM 
+          vote_participation
+        WHERE 
+          election_id = ${electionId}
+        GROUP BY 
+          DATE_TRUNC('hour', created_at)
+        ORDER BY 
+          hour
+      `;
+    } else {
+      // For all elections
+      query = sql`
+        SELECT 
+          DATE_TRUNC('hour', created_at) as hour,
+          COUNT(*) as vote_count
+        FROM 
+          vote_participation
+        GROUP BY 
+          DATE_TRUNC('hour', created_at)
+        ORDER BY 
+          hour
+      `;
     }
     
-    console.log("Voting timeline generated:", JSON.stringify(timelineSamples, null, 2));
+    const result = await db.execute(query);
     
-    res.json(timelineSamples);
+    // Ensure we have an array to work with
+    const voteData = 'rows' in result ? result.rows : (Array.isArray(result) ? result : []);
+    
+    // Format the data for the frontend
+    const timeline = voteData.map(entry => ({
+      hour: entry.hour,
+      vote_count: parseInt(entry.vote_count),
+      formatted_hour: new Date(entry.hour).toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit', 
+        hour12: true 
+      }),
+      day_of_week: new Date(entry.hour).toLocaleDateString('en-US', { 
+        weekday: 'long',
+        month: 'short',
+        day: 'numeric'
+      })
+    }));
+    
+    console.log(`Voting timeline generated with ${timeline.length} time points from actual data`);
+    
+    res.json(timeline);
   } catch (error) {
     console.error('Error generating voting timeline metrics:', error);
     res.status(500).json({ message: 'Internal server error' });
