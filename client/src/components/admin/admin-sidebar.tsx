@@ -74,7 +74,8 @@ export function AdminSidebar({ user }: SidebarProps) {
           <img 
             src="/assets/univote_logo.png" 
             alt="UniVote Logo" 
-            className="h-10 w-10"
+            className="h-10 w-10 rounded-full bg-white p-1 shadow-sm"
+            style={{ objectFit: 'contain' }}
             onError={(e) => {
               // Fallback to local logo instead of external image
               e.currentTarget.src = "/assets/ada-logo.svg";
