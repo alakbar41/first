@@ -1443,10 +1443,25 @@ export class DatabaseStorage implements IStorage {
       );
     
     // Also record in vote participation table (but no candidate information)
-    // Use raw SQL since we have an inconsistency between schema and actual table
-    await db.execute(
-      `INSERT INTO vote_participation (user_id, election_id) VALUES (${userId}, ${electionId})`
-    );
+    try {
+      // First check if participation already exists to avoid duplicates
+      const exists = await this.hasUserParticipated(userId, electionId);
+      if (!exists) {
+        console.log(`Recording vote participation for user ${userId} in election ${electionId}`);
+        
+        // Use parameterized query for better security
+        await db.execute({
+          sql: `INSERT INTO vote_participation (user_id, election_id) VALUES ($1, $2)`,
+          args: [userId, electionId]
+        });
+      } else {
+        console.log(`User ${userId} already participated in election ${electionId}, skipping record`);
+      }
+    } catch (error) {
+      console.error('Error recording vote participation:', error);
+      // Still throw the error so we know something went wrong
+      throw error;
+    }
   }
   
   async hasUserParticipated(userId: number, electionId: number): Promise<boolean> {
