@@ -72,12 +72,12 @@ export function AdminSidebar({ user }: SidebarProps) {
       <div className="p-4 flex items-center justify-between border-b border-gray-100">
         <div className="flex items-center space-x-2">
           <img 
-            src="/assets/ada-logo.svg" 
-            alt="ADA Logo" 
-            className="h-8 w-8"
+            src="/assets/ada_university_logo.png" 
+            alt="ADA University Logo" 
+            className="h-10 w-10"
             onError={(e) => {
               // Fallback to local logo instead of external image
-              e.currentTarget.src = "/assets/logo.png";
+              e.currentTarget.src = "/assets/ada-logo.svg";
             }}
           />
           {expanded && <span className="font-semibold text-purple-900">ADA Admin</span>}
