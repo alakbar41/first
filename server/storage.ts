@@ -66,8 +66,9 @@ export interface IStorage {
   removeCandidateFromElection(electionId: number, candidateId: number): Promise<void>;
   
   // Vote participation tracking (blockchain is the source of truth for actual votes)
-  recordVoteParticipation(userId: number, electionId: number): Promise<void>;
+  recordVoteParticipation(userId: number, electionId: number, walletAddress: string): Promise<void>;
   hasUserParticipated(userId: number, electionId: number): Promise<boolean>;
+  hasWalletAddressVoted(walletAddress: string, electionId: number): Promise<boolean>;
   resetVoteParticipation(userId: number, electionId: number): Promise<void>;
   
   // Voting token methods (for secure voting)

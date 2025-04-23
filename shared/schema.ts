@@ -329,6 +329,7 @@ export const voteParticipation = pgTable("vote_participation", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(), // Reference to user id
   electionId: integer("election_id").notNull(), // Reference to election id
+  walletAddress: text("wallet_address").notNull(), // Store MetaMask wallet address
   created_at: timestamp("created_at").notNull().defaultNow(),
 });
 
