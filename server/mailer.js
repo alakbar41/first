@@ -156,7 +156,7 @@ export const mailer = {
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e9e9e9; border-radius: 5px;">
             <div style="text-align: center; margin-bottom: 20px;">
-              <img src="https://ada.edu.az/wp-content/uploads/2021/02/ADA_ED_LOGO_E_H1.png" alt="ADA University Logo" style="max-width: 150px;">
+              <img src="https://univote-system.replit.app/assets/univote_logo.png" alt="UniVote Logo" style="max-width: 150px;">
             </div>
             <h2 style="color: #005A9C; text-align: center;">${headingText}</h2>
             <p style="margin-bottom: 20px; color: #666;">${purposeText}</p>
@@ -266,7 +266,7 @@ Thank you for participating in the UniVote Voting System.
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e9e9e9; border-radius: 5px;">
             <div style="text-align: center; margin-bottom: 20px;">
-              <img src="https://ada.edu.az/wp-content/uploads/2021/02/ADA_ED_LOGO_E_H1.png" alt="ADA University Logo" style="max-width: 150px;">
+              <img src="https://univote-system.replit.app/assets/univote_logo.png" alt="UniVote Logo" style="max-width: 150px;">
             </div>
             <h2 style="color: #005A9C; text-align: center;">Vote Successfully Recorded</h2>
             <p style="margin-bottom: 20px; color: #666;">Your vote for <strong>${candidateName}</strong> in the "<strong>${electionName}</strong>" election has been successfully recorded on the blockchain.</p>
