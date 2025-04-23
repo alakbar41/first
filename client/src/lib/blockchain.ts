@@ -302,10 +302,15 @@ export async function voteForCandidate(startTime: number, candidateHash: string)
     console.log('Transaction confirmed in block:', receipt.blockNumber);
     
     // Notify backend about the vote for backup/analytics and email confirmation
+    // First get a CSRF token
+    const csrfResponse = await fetch('/api/csrf-token');
+    const csrfData = await csrfResponse.json();
+    
     await fetch('/api/blockchain/vote', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'CSRF-Token': csrfData.csrfToken
       },
       body: JSON.stringify({
         electionId: startTime,
