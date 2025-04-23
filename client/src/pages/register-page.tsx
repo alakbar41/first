@@ -150,7 +150,6 @@ export default function RegisterPage() {
               e.currentTarget.src = "/images/adalogo.svg";
             }}
           />
-          <h3 className="text-lg text-gray-400 font-medium">UniVote</h3>
         </div>
 
         {currentStep === "form" ? (
