@@ -762,13 +762,18 @@ export class MemStorage implements IStorage {
       this.votingTokens.set(token.token, token);
     }
     
-    // Add to participation tracking
+    // Add to participation tracking with correct Azerbaijan time (UTC+4)
     const key = `${userId}-${electionId}`;
+    const now = new Date();
+    const azerbaijanTime = new Date(now.getTime());
+    // Ensure timezone is explicitly set to Azerbaijan Standard Time (UTC+4)
+    azerbaijanTime.setUTCHours(now.getUTCHours() + 4);
+    
     const participation: VoteParticipation = {
       id: 0, // Auto-generated ID (not used in memory storage)
       userId,
       electionId,
-      createdAt: new Date()
+      createdAt: azerbaijanTime
     };
     this.voteParticipation.set(key, participation);
   }
@@ -1449,10 +1454,16 @@ export class DatabaseStorage implements IStorage {
       if (!exists) {
         console.log(`Recording vote participation for user ${userId} in election ${electionId}`);
         
-        // Use Drizzle ORM insert method instead of raw SQL
+        // Use Drizzle ORM insert method instead of raw SQL with explicit timestamp set to Azerbaijan time (UTC+4)
+        const now = new Date();
+        const azerbaijanTime = new Date(now.getTime());
+        // Ensure timezone is explicitly set to Azerbaijan Standard Time (UTC+4)
+        azerbaijanTime.setUTCHours(now.getUTCHours() + 4);
+        
         await db.insert(voteParticipation).values({
           userId: userId,
-          electionId: electionId
+          electionId: electionId,
+          createdAt: azerbaijanTime
         });
         
         console.log(`Successfully recorded vote participation for user ${userId} in election ${electionId}`);
