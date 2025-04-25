@@ -65,18 +65,8 @@ export interface IStorage {
   addCandidateToElection(electionCandidate: InsertElectionCandidate): Promise<ElectionCandidate>;
   removeCandidateFromElection(electionId: number, candidateId: number): Promise<void>;
   
-  // Vote participation tracking (blockchain is the source of truth for actual votes)
-  recordVoteParticipation(userId: number, electionId: number): Promise<void>;
-  hasUserParticipated(userId: number, electionId: number): Promise<boolean>;
-  resetVoteParticipation(userId: number, electionId: number): Promise<void>;
-  
-  // Voting token methods (for secure voting)
-  createVotingToken(userId: number, electionId: number): Promise<VotingToken>;
-  getVotingToken(userId: number, electionId: number): Promise<VotingToken | undefined>;
-  validateVotingToken(token: string, electionId: number): Promise<boolean>;
-  markTokenAsUsed(token: string): Promise<void>;
-  
   // Vote participation methods (for tracking which users have voted in which elections)
+  // The blockchain is the source of truth for the actual votes, we only track participation
   hasUserParticipated(userId: number, electionId: number): Promise<boolean>;
   recordVoteParticipation(userId: number, electionId: number): Promise<void>;
   resetVoteParticipation(userId: number, electionId: number): Promise<void>;
@@ -1432,7 +1422,7 @@ export class DatabaseStorage implements IStorage {
   
   // Vote participation tracking - only tracks who has participated, not who they voted for
   async recordVoteParticipation(userId: number, electionId: number): Promise<void> {
-    // Instead of updating votingTokens (which doesn't exist), insert a record into voteParticipation
+    // Insert a record into voteParticipation table
     await db.insert(voteParticipation)
       .values({
         userId,
@@ -1441,56 +1431,31 @@ export class DatabaseStorage implements IStorage {
       .onConflictDoNothing(); // In case there's a duplicate entry
     
     console.log(`Recorded vote participation for user ${userId} in election ${electionId} using voteParticipation table`);
-    
-    // Also record in vote participation table (but no candidate information)
-    // Use raw SQL since we have an inconsistency between schema and actual table
-    await db.execute(
-      `INSERT INTO vote_participation (user_id, election_id) VALUES (${userId}, ${electionId})`
-    );
   }
   
   async hasUserParticipated(userId: number, electionId: number): Promise<boolean> {
-    // Check if any tokens are marked as used or if there's an entry in vote participation
-    const usedTokens = await db.select()
-      .from(votingTokens)
+    // Use only the vote_participation table to check if a user has participated
+    const participation = await db.select()
+      .from(voteParticipation)
       .where(
         and(
-          eq(votingTokens.userId, userId),
-          eq(votingTokens.electionId, electionId),
-          eq(votingTokens.used, true)
+          eq(voteParticipation.userId, userId),
+          eq(voteParticipation.electionId, electionId)
         )
       );
-      
-    if (usedTokens.length > 0) {
-      return true;
-    }
     
-    // Double-check participation table using raw SQL since the table name doesn't match the schema
-    const participation = await db.execute(
-      `SELECT * FROM vote_participation WHERE user_id = ${userId} AND election_id = ${electionId}`
-    );
-    
-    // Check if any rows were returned
-    const result = participation.rows as any[];
-    return result.length > 0;
+    return participation.length > 0;
   }
   
   async resetVoteParticipation(userId: number, electionId: number): Promise<void> {
-    // Reset any used voting tokens for this user and election
-    await db.update(votingTokens)
-      .set({ used: false })
+    // Delete from vote_participation table
+    await db.delete(voteParticipation)
       .where(
         and(
-          eq(votingTokens.userId, userId),
-          eq(votingTokens.electionId, electionId),
-          eq(votingTokens.used, true)
+          eq(voteParticipation.userId, userId),
+          eq(voteParticipation.electionId, electionId)
         )
       );
-    
-    // Also remove from vote participation table using raw SQL
-    await db.execute(
-      `DELETE FROM vote_participation WHERE user_id = ${userId} AND election_id = ${electionId}`
-    );
     
     console.log(`Reset vote participation for user ${userId} in election ${electionId}`);
   }
