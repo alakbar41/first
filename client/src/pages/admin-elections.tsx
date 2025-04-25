@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useLocation, useRoute } from "wouter";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
-import { SearchX } from "lucide-react";
+import { SearchX, ChevronLeft, ChevronRight } from "lucide-react";
 import { ElectionsTable } from "@/components/admin/elections-table";
 import { CreateElectionDialog } from "@/components/admin/create-election-dialog";
 import { EditElectionDialog } from "@/components/admin/edit-election-dialog";
@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Election } from "@shared/schema";
+import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 
 export default function AdminElections() {
   const { user } = useAuth();
@@ -26,6 +27,8 @@ export default function AdminElections() {
   const [isAddCandidatesDialogOpen, setIsAddCandidatesDialogOpen] = useState(false);
   const [isViewCandidatesDialogOpen, setIsViewCandidatesDialogOpen] = useState(false);
   const [selectedElection, setSelectedElection] = useState<Election | undefined>(undefined);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8; // Show 8 elections per page
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -51,6 +54,19 @@ export default function AdminElections() {
         election.position.toLowerCase().includes(searchTerm.toLowerCase())
       )
     : elections;
+    
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredElections.length / itemsPerPage);
+  
+  // Get current page data
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentElections = filteredElections.slice(indexOfFirstItem, indexOfLastItem);
+  
+  // Handle page change
+  const handlePageChange = (pageNumber: number) => {
+    setCurrentPage(pageNumber);
+  };
     
   // Action handlers for ElectionsTable
   const handleEdit = (electionId: number) => {
@@ -192,13 +208,54 @@ export default function AdminElections() {
             </CardHeader>
             <CardContent>
               <ElectionsTable 
-                elections={filteredElections}
+                elections={currentElections}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
                 onAddCandidates={handleAddCandidates}
                 onViewCandidates={handleViewCandidates}
                 onViewDetails={handleViewDetails}
               />
+              
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="mt-4">
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious 
+                          onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                          className={currentPage === 1 ? "cursor-not-allowed opacity-50" : "cursor-pointer"}
+                        />
+                      </PaginationItem>
+                      
+                      {/* Render page numbers */}
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                        <PaginationItem key={page}>
+                          <PaginationLink 
+                            onClick={() => handlePageChange(page)}
+                            isActive={currentPage === page}
+                            className="cursor-pointer"
+                          >
+                            {page}
+                          </PaginationLink>
+                        </PaginationItem>
+                      ))}
+                      
+                      <PaginationItem>
+                        <PaginationNext 
+                          onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+                          className={currentPage === totalPages ? "cursor-not-allowed opacity-50" : "cursor-pointer"}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              )}
+              
+              {/* Display pagination stats */}
+              <div className="text-sm text-gray-500 mt-2 text-center">
+                Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredElections.length)} of {filteredElections.length} elections
+              </div>
             </CardContent>
           </Card>
         </main>
