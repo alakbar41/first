@@ -302,17 +302,29 @@ export async function voteForCandidate(startTime: number, candidateHash: string)
     console.log('Transaction confirmed in block:', receipt.blockNumber);
     
     // Notify backend about the vote for backup/analytics and email confirmation
-    await fetch('/api/blockchain/vote', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        electionId: startTime,
-        candidateHash: candidateHash,
-        txHash: tx.hash // Add transaction hash for email confirmations
-      })
-    });
+    console.log('Sending vote confirmation to backend API with transaction hash:', tx.hash);
+    try {
+      const response = await fetch('/api/blockchain/vote', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          electionId: startTime,
+          candidateHash: candidateHash,
+          txHash: tx.hash // Add transaction hash for email confirmations
+        })
+      });
+      
+      const responseData = await response.json();
+      console.log('Backend API response:', responseData);
+      
+      if (!response.ok) {
+        console.error('Backend API error:', responseData);
+      }
+    } catch (error) {
+      console.error('Error notifying backend about vote:', error);
+    }
     
     return true;
   } catch (error: any) {

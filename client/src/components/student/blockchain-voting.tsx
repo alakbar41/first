@@ -91,16 +91,20 @@ export function BlockchainVoting({ election, candidates }: BlockchainVotingProps
     
     try {
       setIsVoting(true);
+      console.log(`Attempting to vote for candidate with student ID: ${studentId}`);
+      console.log(`Election blockchain ID: ${election.blockchainId}`);
+      console.log(`Candidate hash: ${studentIdToBytes32(studentId)}`);
       
       // Call blockchain to cast vote
       // The voteForCandidate function already notifies the backend about the vote
-      await voteForCandidate(election.blockchainId, studentIdToBytes32(studentId));
+      const success = await voteForCandidate(election.blockchainId, studentIdToBytes32(studentId));
+      console.log(`Vote result: ${success ? 'successful' : 'failed'}`);
       
       // Update UI
       setHasVoted(true);
       toast({
         title: 'Vote Cast Successfully',
-        description: 'Your vote has been securely recorded on the blockchain. For privacy, only your participation is tracked in our database.',
+        description: 'Your vote has been securely recorded on the blockchain. A confirmation email with your transaction details has been sent to your registered email address.',
         variant: 'default'
       });
       
