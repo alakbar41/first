@@ -132,17 +132,9 @@ export const electionCandidates = pgTable("election_candidates", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-// Table for one-time voting tokens
-// This provides secure voting by requiring a valid token
-export const votingTokens = pgTable("voting_tokens", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(), // Reference to user id
-  electionId: integer("election_id").notNull(), // Reference to election id
-  token: text("token").notNull().unique(), // Unique token generated per student per election
-  used: boolean("used").notNull().default(false), // Whether the token has been used
-  expiresAt: timestamp("expires_at").notNull(), // Token expiration time
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+// Note: We've migrated away from the one-time voting tokens approach
+// We now use the vote_participation table directly to track participation
+// The votingTokens table has been removed to simplify the system
 
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
@@ -242,16 +234,8 @@ export const resetPasswordSchema = z.object({
 
 export type ResetPasswordData = z.infer<typeof resetPasswordSchema>;
 
-// Voting token schema and type
-export const votingTokenSchema = createInsertSchema(votingTokens)
-  .omit({
-    id: true,
-    createdAt: true,
-    used: true,
-  });
-
-export type VotingToken = typeof votingTokens.$inferSelect;
-export type InsertVotingToken = z.infer<typeof votingTokenSchema>;
+// Note: Voting tokens have been removed from the system
+// We now use vote_participation table to track voting
 
 // Schema for token request and verification
 export const tokenRequestSchema = z.object({

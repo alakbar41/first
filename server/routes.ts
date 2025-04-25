@@ -1368,10 +1368,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   }, express.static(uploadsDir));
   
-  // Voting token endpoints for secure blockchain voting
+  // Direct voting authorization endpoints for blockchain voting
   
-  // Request a one-time voting token for a specific election
-  app.post("/api/voting-tokens", isAuthenticated, async (req, res) => {
+  // Check if a user is eligible to vote in an election
+  app.post("/api/authorize-voting", isAuthenticated, async (req, res) => {
     try {
       const result = tokenRequestSchema.safeParse(req.body);
       
@@ -1392,31 +1392,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (election.status !== "active") {
         return res.status(400).json({ 
-          message: "Voting tokens can only be generated for active elections", 
+          message: "Voting is only allowed for active elections", 
           status: election.status 
         });
       }
       
-      // Check if user has already participated in this election
-      if (await storage.hasUserParticipated(req.user.id, electionId)) {
-        return res.status(400).json({ message: "You have already voted in this election. Each student may only vote once regardless of which wallet is used." });
+      // Check if user is eligible to vote
+      const authorization = await storage.authorizeVoting(req.user.id, electionId);
+      
+      if (!authorization.authorized) {
+        return res.status(400).json({ message: authorization.message || "You are not eligible to vote in this election." });
       }
       
-      // Create a new voting token
-      const token = await storage.createVotingToken(req.user.id, electionId);
-      
-      // Return only the token string, not the full object (for security)
-      res.status(201).json({ token: token.token });
+      // User is eligible to vote
+      res.status(200).json({ authorized: true });
     } catch (error) {
-      console.error("Error generating voting token:", error);
-      res.status(500).json({ message: "Failed to generate voting token" });
+      console.error("Error authorizing voting:", error);
+      res.status(500).json({ message: "Failed to authorize voting" });
     }
   });
   
-  // Verify a token (used by the client before submitting to blockchain)
-  app.post("/api/voting-tokens/verify", isAuthenticated, async (req, res) => {
+  // Record a vote after successful blockchain transaction
+  app.post("/api/record-vote", isAuthenticated, async (req, res) => {
     try {
-      const result = tokenVerifySchema.safeParse(req.body);
+      const schema = z.object({
+        electionId: z.number(),
+        candidateId: z.number(),
+        txHash: z.string() // Transaction hash is required to verify the blockchain transaction occurred
+      });
+      
+      const result = schema.safeParse(req.body);
       
       if (!result.success) {
         return res.status(400).json({ 
@@ -1425,56 +1430,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      const { token, electionId } = result.data;
-      
-      // Validate the token
-      const isValid = await storage.validateVotingToken(token, electionId);
-      
-      if (!isValid) {
-        return res.status(400).json({ message: "Invalid or expired token" });
-      }
-      
-      res.status(200).json({ valid: true });
-    } catch (error) {
-      console.error("Error verifying voting token:", error);
-      res.status(500).json({ message: "Failed to verify voting token" });
-    }
-  });
-  
-  // Mark a token as used after successful blockchain vote
-  app.post("/api/voting-tokens/use", isAuthenticated, async (req, res) => {
-    try {
-      const result = tokenVerifySchema.safeParse(req.body);
-      
-      if (!result.success) {
-        return res.status(400).json({ 
-          message: "Invalid request", 
-          errors: result.error.format() 
-        });
-      }
-      
-      const { token, electionId } = result.data;
+      const { electionId, txHash } = result.data;
       
       // Check if user has already participated in this election (regardless of which wallet)
       if (await storage.hasUserParticipated(req.user.id, electionId)) {
         return res.status(400).json({ message: "You have already voted in this election. Each student may only vote once regardless of which wallet is used." });
       }
-      
-      // Validate the token
-      const isValid = await storage.validateVotingToken(token, electionId);
-      
-      if (!isValid) {
-        return res.status(400).json({ message: "Invalid or expired token" });
-      }
-      
-      // Require a transaction hash to mark the token as used - this proves the blockchain transaction was submitted
-      const txHash = req.body.txHash;
-      if (!txHash) {
-        return res.status(400).json({ message: "Transaction hash required" });
-      }
-      
-      // Mark the token as used
-      await storage.markTokenAsUsed(token);
       
       // Record participation in our database (without storing candidate choice)
       await storage.recordVoteParticipation(req.user.id, electionId);
