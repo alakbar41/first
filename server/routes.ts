@@ -239,11 +239,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ csrfToken: token });
   });
   
-  // Serve the logo at the root level for email clients
-  app.get("/univote_logo.png", (req: Request, res: Response) => {
-    res.sendFile(path.join(process.cwd(), 'uploads', 'univote_logo.png'));
-  });
-  
   // Apply CSRF protection to all routes after this point
   app.use(validateCSRFToken);
   
