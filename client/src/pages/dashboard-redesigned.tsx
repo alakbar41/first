@@ -80,24 +80,13 @@ export default function Dashboard() {
     new Date(election.endDate) < new Date()
   ) || [];
 
-  // Get filtered elections for the current faculty for Senator elections
-  const filterElectionsByFaculty = (elections: Election[]) => {
-    return elections.map(election => {
-      // If this is a Senator election, only show if it matches user's faculty
-      if (election.position === "Senator") {
-        if (election.eligibleFaculties.includes(user.faculty) || election.eligibleFaculties.includes("all")) {
-          return election;
-        }
-        return null;
-      }
-      // For other election types, show to all users
-      return election;
-    }).filter(election => election !== null) as Election[];
-  };
-
-  const filteredActiveElections = filterElectionsByFaculty(activeElections);
-  const filteredUpcomingElections = filterElectionsByFaculty(upcomingElections);
-  const filteredCompletedElections = filterElectionsByFaculty(completedElections);
+  // Show all elections to students (both their faculty and other faculties)
+  // No filtering by faculty - this allows viewing elections from all faculties for transparency
+  // Voting restrictions are handled in the election-candidates-list-improved.tsx component
+  
+  const filteredActiveElections = activeElections;
+  const filteredUpcomingElections = upcomingElections;
+  const filteredCompletedElections = completedElections;
   const filteredAllElections = [...filteredActiveElections, ...filteredUpcomingElections, ...filteredCompletedElections];
   
   // Get current page elections for the active tab
