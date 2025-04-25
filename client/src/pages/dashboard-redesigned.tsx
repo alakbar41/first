@@ -9,7 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, LogOut as LogOutIcon } from "lucide-react";
+import { ArrowLeft, LogOut as LogOutIcon, ChevronLeft, ChevronRight } from "lucide-react";
+import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 
 export default function Dashboard() {
   const { user, logoutMutation } = useAuth();
@@ -18,6 +19,8 @@ export default function Dashboard() {
   const [currentElectionId, setCurrentElectionId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState("all");
   const [selectedElection, setSelectedElection] = useState<Election | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8; // Show 8 elections per page
   
   // Fetch all elections
   const { data: elections, isLoading } = useQuery<Election[]>({
@@ -96,6 +99,49 @@ export default function Dashboard() {
   const filteredUpcomingElections = filterElectionsByFaculty(upcomingElections);
   const filteredCompletedElections = filterElectionsByFaculty(completedElections);
   const filteredAllElections = [...filteredActiveElections, ...filteredUpcomingElections, ...filteredCompletedElections];
+  
+  // Get current page elections for the active tab
+  const getCurrentPageElections = () => {
+    let currentElections: Election[] = [];
+    
+    switch (activeTab) {
+      case 'all':
+        currentElections = filteredAllElections;
+        break;
+      case 'active':
+        currentElections = filteredActiveElections;
+        break;
+      case 'upcoming':
+        currentElections = filteredUpcomingElections;
+        break;
+      case 'completed':
+        currentElections = filteredCompletedElections;
+        break;
+    }
+    
+    // Calculate pagination
+    const totalPages = Math.ceil(currentElections.length / itemsPerPage);
+    const indexOfLastItem = currentPage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    
+    return {
+      paginatedElections: currentElections.slice(indexOfFirstItem, indexOfLastItem),
+      totalPages,
+      indexOfFirstItem,
+      indexOfLastItem,
+      totalItems: currentElections.length
+    };
+  };
+  
+  // Handle page change
+  const handlePageChange = (pageNumber: number) => {
+    setCurrentPage(pageNumber);
+  };
+  
+  // Reset page number when tab changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab]);
 
   // Update the selected election when currentElectionId changes
   useEffect(() => {
@@ -248,16 +294,60 @@ export default function Dashboard() {
                           <p className="text-gray-500">No elections available</p>
                         </div>
                       ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {filteredAllElections.map(election => (
-                            <ElectionCard 
-                              key={election.id}
-                              election={election}
-                              onClick={handleElectionClick}
-                              isSelected={false}
-                            />
-                          ))}
-                        </div>
+                        <>
+                          {/* Current page elections */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {getCurrentPageElections().paginatedElections.map(election => (
+                              <ElectionCard 
+                                key={election.id}
+                                election={election}
+                                onClick={handleElectionClick}
+                                isSelected={false}
+                              />
+                            ))}
+                          </div>
+                          
+                          {/* Pagination controls */}
+                          {getCurrentPageElections().totalPages > 1 && (
+                            <div className="mt-6 flex flex-col items-center space-y-2">
+                              <Pagination>
+                                <PaginationContent>
+                                  <PaginationItem>
+                                    <PaginationPrevious 
+                                      onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                                      className={currentPage === 1 ? "cursor-not-allowed opacity-50" : "cursor-pointer"}
+                                    />
+                                  </PaginationItem>
+                                  
+                                  {/* Render page numbers */}
+                                  {Array.from({ length: getCurrentPageElections().totalPages }, (_, i) => i + 1).map(page => (
+                                    <PaginationItem key={page}>
+                                      <PaginationLink 
+                                        onClick={() => handlePageChange(page)}
+                                        isActive={currentPage === page}
+                                        className="cursor-pointer"
+                                      >
+                                        {page}
+                                      </PaginationLink>
+                                    </PaginationItem>
+                                  ))}
+                                  
+                                  <PaginationItem>
+                                    <PaginationNext 
+                                      onClick={() => handlePageChange(Math.min(getCurrentPageElections().totalPages, currentPage + 1))}
+                                      className={currentPage === getCurrentPageElections().totalPages ? "cursor-not-allowed opacity-50" : "cursor-pointer"}
+                                    />
+                                  </PaginationItem>
+                                </PaginationContent>
+                              </Pagination>
+                              
+                              {/* Pagination stats */}
+                              <div className="text-sm text-gray-500">
+                                Showing {getCurrentPageElections().indexOfFirstItem + 1}-{Math.min(getCurrentPageElections().indexOfLastItem, getCurrentPageElections().totalItems)} of {getCurrentPageElections().totalItems} elections
+                              </div>
+                            </div>
+                          )}
+                        </>
                       )}
                     </TabsContent>
                     
@@ -268,16 +358,60 @@ export default function Dashboard() {
                           <p className="text-gray-500">No active elections</p>
                         </div>
                       ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {filteredActiveElections.map(election => (
-                            <ElectionCard 
-                              key={election.id}
-                              election={election}
-                              onClick={handleElectionClick}
-                              isSelected={false}
-                            />
-                          ))}
-                        </div>
+                        <>
+                          {/* Current page elections */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {getCurrentPageElections().paginatedElections.map(election => (
+                              <ElectionCard 
+                                key={election.id}
+                                election={election}
+                                onClick={handleElectionClick}
+                                isSelected={false}
+                              />
+                            ))}
+                          </div>
+                          
+                          {/* Pagination controls */}
+                          {getCurrentPageElections().totalPages > 1 && (
+                            <div className="mt-6 flex flex-col items-center space-y-2">
+                              <Pagination>
+                                <PaginationContent>
+                                  <PaginationItem>
+                                    <PaginationPrevious 
+                                      onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                                      className={currentPage === 1 ? "cursor-not-allowed opacity-50" : "cursor-pointer"}
+                                    />
+                                  </PaginationItem>
+                                  
+                                  {/* Render page numbers */}
+                                  {Array.from({ length: getCurrentPageElections().totalPages }, (_, i) => i + 1).map(page => (
+                                    <PaginationItem key={page}>
+                                      <PaginationLink 
+                                        onClick={() => handlePageChange(page)}
+                                        isActive={currentPage === page}
+                                        className="cursor-pointer"
+                                      >
+                                        {page}
+                                      </PaginationLink>
+                                    </PaginationItem>
+                                  ))}
+                                  
+                                  <PaginationItem>
+                                    <PaginationNext 
+                                      onClick={() => handlePageChange(Math.min(getCurrentPageElections().totalPages, currentPage + 1))}
+                                      className={currentPage === getCurrentPageElections().totalPages ? "cursor-not-allowed opacity-50" : "cursor-pointer"}
+                                    />
+                                  </PaginationItem>
+                                </PaginationContent>
+                              </Pagination>
+                              
+                              {/* Pagination stats */}
+                              <div className="text-sm text-gray-500">
+                                Showing {getCurrentPageElections().indexOfFirstItem + 1}-{Math.min(getCurrentPageElections().indexOfLastItem, getCurrentPageElections().totalItems)} of {getCurrentPageElections().totalItems} elections
+                              </div>
+                            </div>
+                          )}
+                        </>
                       )}
                     </TabsContent>
                     
@@ -288,16 +422,60 @@ export default function Dashboard() {
                           <p className="text-gray-500">No upcoming elections</p>
                         </div>
                       ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {filteredUpcomingElections.map(election => (
-                            <ElectionCard 
-                              key={election.id}
-                              election={election}
-                              onClick={handleElectionClick}
-                              isSelected={false}
-                            />
-                          ))}
-                        </div>
+                        <>
+                          {/* Current page elections */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {getCurrentPageElections().paginatedElections.map(election => (
+                              <ElectionCard 
+                                key={election.id}
+                                election={election}
+                                onClick={handleElectionClick}
+                                isSelected={false}
+                              />
+                            ))}
+                          </div>
+                          
+                          {/* Pagination controls */}
+                          {getCurrentPageElections().totalPages > 1 && (
+                            <div className="mt-6 flex flex-col items-center space-y-2">
+                              <Pagination>
+                                <PaginationContent>
+                                  <PaginationItem>
+                                    <PaginationPrevious 
+                                      onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                                      className={currentPage === 1 ? "cursor-not-allowed opacity-50" : "cursor-pointer"}
+                                    />
+                                  </PaginationItem>
+                                  
+                                  {/* Render page numbers */}
+                                  {Array.from({ length: getCurrentPageElections().totalPages }, (_, i) => i + 1).map(page => (
+                                    <PaginationItem key={page}>
+                                      <PaginationLink 
+                                        onClick={() => handlePageChange(page)}
+                                        isActive={currentPage === page}
+                                        className="cursor-pointer"
+                                      >
+                                        {page}
+                                      </PaginationLink>
+                                    </PaginationItem>
+                                  ))}
+                                  
+                                  <PaginationItem>
+                                    <PaginationNext 
+                                      onClick={() => handlePageChange(Math.min(getCurrentPageElections().totalPages, currentPage + 1))}
+                                      className={currentPage === getCurrentPageElections().totalPages ? "cursor-not-allowed opacity-50" : "cursor-pointer"}
+                                    />
+                                  </PaginationItem>
+                                </PaginationContent>
+                              </Pagination>
+                              
+                              {/* Pagination stats */}
+                              <div className="text-sm text-gray-500">
+                                Showing {getCurrentPageElections().indexOfFirstItem + 1}-{Math.min(getCurrentPageElections().indexOfLastItem, getCurrentPageElections().totalItems)} of {getCurrentPageElections().totalItems} elections
+                              </div>
+                            </div>
+                          )}
+                        </>
                       )}
                     </TabsContent>
                     
@@ -308,16 +486,60 @@ export default function Dashboard() {
                           <p className="text-gray-500">No completed elections</p>
                         </div>
                       ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {filteredCompletedElections.map(election => (
-                            <ElectionCard 
-                              key={election.id}
-                              election={election}
-                              onClick={handleElectionClick}
-                              isSelected={false}
-                            />
-                          ))}
-                        </div>
+                        <>
+                          {/* Current page elections */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {getCurrentPageElections().paginatedElections.map(election => (
+                              <ElectionCard 
+                                key={election.id}
+                                election={election}
+                                onClick={handleElectionClick}
+                                isSelected={false}
+                              />
+                            ))}
+                          </div>
+                          
+                          {/* Pagination controls */}
+                          {getCurrentPageElections().totalPages > 1 && (
+                            <div className="mt-6 flex flex-col items-center space-y-2">
+                              <Pagination>
+                                <PaginationContent>
+                                  <PaginationItem>
+                                    <PaginationPrevious 
+                                      onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                                      className={currentPage === 1 ? "cursor-not-allowed opacity-50" : "cursor-pointer"}
+                                    />
+                                  </PaginationItem>
+                                  
+                                  {/* Render page numbers */}
+                                  {Array.from({ length: getCurrentPageElections().totalPages }, (_, i) => i + 1).map(page => (
+                                    <PaginationItem key={page}>
+                                      <PaginationLink 
+                                        onClick={() => handlePageChange(page)}
+                                        isActive={currentPage === page}
+                                        className="cursor-pointer"
+                                      >
+                                        {page}
+                                      </PaginationLink>
+                                    </PaginationItem>
+                                  ))}
+                                  
+                                  <PaginationItem>
+                                    <PaginationNext 
+                                      onClick={() => handlePageChange(Math.min(getCurrentPageElections().totalPages, currentPage + 1))}
+                                      className={currentPage === getCurrentPageElections().totalPages ? "cursor-not-allowed opacity-50" : "cursor-pointer"}
+                                    />
+                                  </PaginationItem>
+                                </PaginationContent>
+                              </Pagination>
+                              
+                              {/* Pagination stats */}
+                              <div className="text-sm text-gray-500">
+                                Showing {getCurrentPageElections().indexOfFirstItem + 1}-{Math.min(getCurrentPageElections().indexOfLastItem, getCurrentPageElections().totalItems)} of {getCurrentPageElections().totalItems} elections
+                              </div>
+                            </div>
+                          )}
+                        </>
                       )}
                     </TabsContent>
                   </div>

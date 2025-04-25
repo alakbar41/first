@@ -23,6 +23,8 @@ export default function AdminCandidates() {
   const [isEditCandidateOpen, setIsEditCandidateOpen] = useState(false);
   const [currentCandidate, setCurrentCandidate] = useState<Candidate | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8; // Show 8 candidates per page
   
   // Filters for candidates
   const [facultyFilter, setFacultyFilter] = useState<string>("all");
@@ -166,6 +168,19 @@ export default function AdminCandidates() {
         return matchesSearch && matchesFaculty && matchesPosition && matchesStatus;
       })
     : [];
+    
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredCandidates.length / itemsPerPage);
+  
+  // Get current page data
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentCandidates = filteredCandidates.slice(indexOfFirstItem, indexOfLastItem);
+  
+  // Handle page change
+  const handlePageChange = (pageNumber: number) => {
+    setCurrentPage(pageNumber);
+  };
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -286,35 +301,47 @@ export default function AdminCandidates() {
             ) : (
               <>
                 <CandidatesTable 
-                  candidates={filteredCandidates} 
+                  candidates={currentCandidates} 
                   onDelete={handleDeleteCandidate}
                   onEdit={handleEditCandidate}
                 />
                 
                 <div className="px-6 py-4 bg-white border-t border-gray-200 flex justify-between items-center">
                   <div className="text-sm text-gray-500">
-                    Showing {filteredCandidates.length} candidates
+                    Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredCandidates.length)} of {filteredCandidates.length} candidates
                   </div>
                   
-                  <Pagination>
-                    <PaginationContent>
-                      <PaginationItem>
-                        <PaginationPrevious href="#" />
-                      </PaginationItem>
-                      <PaginationItem>
-                        <PaginationLink href="#" isActive>1</PaginationLink>
-                      </PaginationItem>
-                      <PaginationItem>
-                        <PaginationLink href="#">2</PaginationLink>
-                      </PaginationItem>
-                      <PaginationItem>
-                        <PaginationEllipsis />
-                      </PaginationItem>
-                      <PaginationItem>
-                        <PaginationNext href="#" />
-                      </PaginationItem>
-                    </PaginationContent>
-                  </Pagination>
+                  {totalPages > 1 && (
+                    <Pagination>
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious 
+                            onClick={() => handlePageChange(Math.max(1, currentPage - 1))} 
+                            className={currentPage === 1 ? "cursor-not-allowed opacity-50" : "cursor-pointer"}
+                          />
+                        </PaginationItem>
+                        
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                          <PaginationItem key={page}>
+                            <PaginationLink 
+                              onClick={() => handlePageChange(page)}
+                              isActive={currentPage === page}
+                              className="cursor-pointer"
+                            >
+                              {page}
+                            </PaginationLink>
+                          </PaginationItem>
+                        ))}
+                        
+                        <PaginationItem>
+                          <PaginationNext 
+                            onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+                            className={currentPage === totalPages ? "cursor-not-allowed opacity-50" : "cursor-pointer"}
+                          />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  )}
                 </div>
               </>
             )}
