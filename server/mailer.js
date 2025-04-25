@@ -132,12 +132,12 @@ export const mailer = {
     try {
       // For Ethereal, use their test address, otherwise use env variable
       const fromEmail = testAccount ? testAccount.user : (process.env.EMAIL_USER || 'no-reply@ada.edu.az');
-      const fromName = "ADA University Voting System";
+      const fromName = "UniVote Voting System";
       
       const mailOptions = {
         from: `"${fromName}" <${fromEmail}>`,
         to,
-        subject: "Your Verification Code for ADA University Voting System",
+        subject: "Your Verification Code for UniVote Voting System",
         text: `Your verification code is: ${otp}. This code will expire in 3 minutes.`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e9e9e9; border-radius: 5px;">
@@ -230,7 +230,7 @@ export const mailer = {
     try {
       // For Ethereal, use their test address, otherwise use env variable
       const fromEmail = testAccount ? testAccount.user : (process.env.EMAIL_USER || 'no-reply@ada.edu.az');
-      const fromName = "ADA University Voting System";
+      const fromName = "UniVote Voting System";
       
       // Generate a link to view the transaction on Polygon Mainnet Explorer
       const explorerUrl = `https://polygonscan.com/tx/${transactionHash}`;
@@ -247,7 +247,7 @@ Transaction Hash: ${transactionHash}
 You can view your transaction on the blockchain explorer at:
 ${explorerUrl}
 
-Thank you for participating in the ADA University Voting System.
+Thank you for participating in the UniVote Voting System.
         `,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e9e9e9; border-radius: 5px;">
