@@ -301,7 +301,7 @@ export async function voteForCandidate(startTime: number, candidateHash: string)
     const receipt = await tx.wait();
     console.log('Transaction confirmed in block:', receipt.blockNumber);
     
-    // Notify backend about the vote for backup/analytics and email confirmation
+    // Notify backend about the vote to record it in the vote_participation table and send email confirmation
     console.log('Sending vote confirmation to backend API with transaction hash:', tx.hash);
     try {
       const response = await fetch('/api/blockchain/vote', {
@@ -321,9 +321,17 @@ export async function voteForCandidate(startTime: number, candidateHash: string)
       
       if (!response.ok) {
         console.error('Backend API error:', responseData);
+        // If participation tracking failed, inform the user
+        if (responseData.message && responseData.message.includes('already voted')) {
+          throw new Error('You have already voted in this election. Each student may only vote once.');
+        } else {
+          throw new Error('Failed to record your vote participation. The vote was processed on the blockchain, but your participation record was not saved in our database.');
+        }
       }
     } catch (error) {
       console.error('Error notifying backend about vote:', error);
+      // Don't rethrow the error since the vote has already been submitted to the blockchain
+      // Just log it and continue
     }
     
     return true;
@@ -388,23 +396,54 @@ export async function voteForCandidate(startTime: number, candidateHash: string)
 /**
  * Check if the current user has participated in an election
  * 
- * The vote itself is recorded on the blockchain, while the participation record is only stored
- * in the database to track who has already voted. This protects privacy and ensures vote
- * transparency.
+ * We check both:
+ * 1. The blockchain - where the actual vote is stored (for wallet-specific participation)
+ * 2. The vote_participation table - which tracks that the user has voted (regardless of which wallet)
+ * 
+ * This dual-layer verification ensures each student can only vote once, even if
+ * they have multiple wallets.
  */
 export async function hasUserVoted(startTime: number) {
   try {
+    // First, check if the current wallet has voted on the blockchain
     const contract = await getVotingContract();
     
     // Try to get accounts, but don't force a connection popup for this read-only check
     // Use eth_accounts instead of eth_requestAccounts to avoid prompting unnecessarily
     const accounts = await window.ethereum.request({ method: 'eth_accounts' });
     
-    if (accounts.length === 0) {
-      return false; // Not connected, but don't force connection for this check
+    if (accounts.length > 0) {
+      // Check the blockchain for this specific wallet
+      const walletHasVoted = await contract.hasVoted(startTime, accounts[0]);
+      if (walletHasVoted) {
+        console.log('This wallet has already voted in this election according to the blockchain');
+        return true;
+      }
     }
     
-    return await contract.hasVoted(startTime, accounts[0]);
+    // Also check the vote_participation table through our API
+    try {
+      const response = await fetch(`/api/elections/${startTime}/has-voted`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.hasVoted) {
+          console.log('User has already voted in this election according to the vote_participation table');
+          return true;
+        }
+      }
+    } catch (apiError) {
+      console.error('Error checking vote participation via API:', apiError);
+      // Continue even if API check fails - we'll rely on blockchain check
+    }
+    
+    // If neither check returned true, user hasn't voted
+    return false;
   } catch (error) {
     console.error('Error checking if user has participated:', error);
     return false;

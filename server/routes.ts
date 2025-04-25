@@ -340,6 +340,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Check if user has voted in a specific election
+  app.get("/api/elections/:electionId/has-voted", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const electionId = req.params.electionId;
+      let databaseElectionId: number;
+      
+      // First determine if we're dealing with a blockchain ID or database ID
+      try {
+        // Try to find an election with this blockchain ID
+        const electionByBlockchainId = await storage.getElectionByBlockchainId(electionId);
+        if (electionByBlockchainId) {
+          console.log(`Found election by blockchain ID: ${electionByBlockchainId.name} (ID: ${electionByBlockchainId.id})`);
+          databaseElectionId = electionByBlockchainId.id;
+        } else {
+          // If not found by blockchain ID, try by database ID
+          const electionByDbId = await storage.getElection(parseInt(electionId));
+          if (electionByDbId) {
+            console.log(`Found election by database ID: ${electionByDbId.name} (ID: ${electionByDbId.id})`);
+            databaseElectionId = electionByDbId.id;
+          } else {
+            console.log(`No election found with ID: ${electionId}`);
+            return res.status(404).json({ message: 'Election not found' });
+          }
+        }
+      } catch (e) {
+        console.error('Error finding election:', e);
+        return res.status(500).json({ message: 'Error finding election' });
+      }
+      
+      // Check if user has already voted in the vote_participation table
+      if (req.session.user?.id) {
+        const hasVoted = await storage.hasUserParticipated(req.session.user.id, databaseElectionId);
+        console.log(`Checking if user ${req.session.user.id} has voted in election ${databaseElectionId}: ${hasVoted}`);
+        return res.json({ hasVoted });
+      } else {
+        // Not authenticated somehow (should not happen due to isAuthenticated middleware)
+        return res.status(401).json({ message: 'Not authenticated' });
+      }
+    } catch (error) {
+      console.error('Error checking if user has voted:', error);
+      res.status(500).json({ message: 'Error checking if user has voted' });
+    }
+  });
+  
   app.post("/api/elections", isAdmin, async (req, res) => {
     try {
       const result = insertElectionSchema.safeParse(req.body);
