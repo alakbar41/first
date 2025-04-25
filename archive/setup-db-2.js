@@ -88,13 +88,7 @@ async function setupDatabase() {
       )
     `);
     
-    console.log("Creating voting_tokens table...");
-    await pool.query(`
-      CREATE TABLE voting_tokens (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER NOT NULL,
-        election_id INTEGER NOT NULL,
-        token TEXT NOT NULL UNIQUE,
+    // Voting tokens table removed - now using vote_participation table instead
         used BOOLEAN NOT NULL DEFAULT false,
         expires_at TIMESTAMP NOT NULL,
         created_at TIMESTAMP NOT NULL DEFAULT NOW()
