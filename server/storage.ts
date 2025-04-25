@@ -742,17 +742,7 @@ export class MemStorage implements IStorage {
   
   // Vote participation tracking - only tracks who has participated in voting, not who they voted for
   async recordVoteParticipation(userId: number, electionId: number): Promise<void> {
-    // Mark any tokens as used to record participation
-    const tokens = Array.from(this.votingTokens.values()).filter(
-      token => token.userId === userId && token.electionId === electionId
-    );
-    
-    for (const token of tokens) {
-      token.used = true;
-      this.votingTokens.set(token.token, token);
-    }
-    
-    // Add to participation tracking
+    // Add to participation tracking using only the vote_participation table
     const key = `${userId}-${electionId}`;
     const participation: VoteParticipation = {
       id: 0, // Auto-generated ID (not used in memory storage)
@@ -761,39 +751,20 @@ export class MemStorage implements IStorage {
       created_at: new Date()
     };
     this.voteParticipation.set(key, participation);
+    console.log(`Recorded vote participation for user ${userId} in election ${electionId} using voteParticipation table`);
   }
   
   async hasUserParticipated(userId: number, electionId: number): Promise<boolean> {
-    // First check token participation
-    const hasTokenParticipation = Array.from(this.votingTokens.values()).some(
-      token => token.userId === userId && token.electionId === electionId && token.used
-    );
-    
-    if (hasTokenParticipation) {
-      return true;
-    }
-    
-    // Then check direct participation record
+    // Only check the vote_participation table
     const key = `${userId}-${electionId}`;
     return this.voteParticipation.has(key);
   }
   
   async resetVoteParticipation(userId: number, electionId: number): Promise<void> {
-    // Find all tokens for this user/election and reset their used status
-    const tokens = Array.from(this.votingTokens.values()).filter(
-      token => token.userId === userId && token.electionId === electionId && token.used
-    );
-    
-    for (const token of tokens) {
-      token.used = false;
-      this.votingTokens.set(token.token, token);
-    }
-    
-    // Also remove from participation tracking
+    // Remove from participation tracking in the vote_participation table
     const key = `${userId}-${electionId}`;
     this.voteParticipation.delete(key);
-    
-    console.log(`Reset vote participation for user ${userId} in election ${electionId}, reset ${tokens.length} tokens`);
+    console.log(`Reset vote participation for user ${userId} in election ${electionId}`);
   }
 }
 
