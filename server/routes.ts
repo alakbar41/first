@@ -1215,8 +1215,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
         
-        // Send OTP to email
-        await mailer.sendOtp(email, otp);
+        // Send OTP to email with password_reset type
+        await mailer.sendOtp(email, otp, 'password_reset');
       }
       
       // Always return the same success message, whether the user exists or not
