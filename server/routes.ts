@@ -290,7 +290,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Election routes
   app.get("/api/elections", async (req, res) => {
     try {
-      const elections = await storage.getElections();
+      let elections = await storage.getElections();
+      
+      // Update all election statuses based on their start and end times
+      for (const election of elections) {
+        const now = new Date();
+        let needsUpdate = false;
+        
+        // Check if status needs to be updated
+        if (now >= election.startDate && now < election.endDate && election.status === 'upcoming') {
+          election.status = 'active';
+          needsUpdate = true;
+        } else if (now >= election.endDate && election.status !== 'completed') {
+          election.status = 'completed';
+          needsUpdate = true;
+        }
+        
+        // If status has changed, update it in the database
+        if (needsUpdate) {
+          console.log(`Updating election ${election.id} status to ${election.status}`);
+          await storage.updateElectionStatus(election.id, election.status);
+        }
+      }
       
       // Filter elections based on user role - admins see all, students only see blockchain-deployed elections
       const isAdmin = req.isAuthenticated() && req.user && req.user.isAdmin === true;
@@ -327,6 +348,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!election) {
         return res.status(404).json({ message: "Election not found" });
+      }
+      
+      // Update election status based on start and end times
+      const now = new Date();
+      let needsUpdate = false;
+      
+      // Check if status needs to be updated
+      if (now >= election.startDate && now < election.endDate && election.status === 'upcoming') {
+        election.status = 'active';
+        needsUpdate = true;
+      } else if (now >= election.endDate && election.status !== 'completed') {
+        election.status = 'completed';
+        needsUpdate = true;
+      }
+      
+      // If status has changed, update it in the database
+      if (needsUpdate) {
+        console.log(`Updating election ${election.id} status to ${election.status}`);
+        await storage.updateElectionStatus(election.id, election.status);
       }
       
       // Check if user is admin or if election has a blockchain ID (regardless of status)
