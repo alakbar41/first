@@ -264,6 +264,9 @@ export function registerBlockchainRoutes(app: Express) {
         
         // Send email confirmation if we have a transaction hash
         if (txHash && req.user.email) {
+          console.log(`Attempting to send vote confirmation email to ${req.user.email}`);
+          console.log(`Election name: "${electionName}", Candidate name: "${candidateName}"`);
+          
           try {
             await mailer.sendVoteConfirmation(
               req.user.email,
@@ -272,10 +275,14 @@ export function registerBlockchainRoutes(app: Express) {
               candidateName
             );
             console.log(`Vote confirmation email sent to ${req.user.email} with transaction hash ${txHash}`);
-          } catch (emailError) {
+          } catch (emailError: any) {
             console.error('Failed to send vote confirmation email:', emailError);
+            console.error('Error details:', emailError.message || 'No error message');
+            console.error('Error stack:', emailError.stack || 'No stack trace');
             // Continue even if email fails - don't block the response
           }
+        } else {
+          console.log(`Missing information for email confirmation: txHash=${!!txHash}, userEmail=${!!req.user?.email}`);
         }
       }
       

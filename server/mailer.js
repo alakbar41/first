@@ -207,6 +207,13 @@ export const mailer = {
   },
 
   async sendVoteConfirmation(to, transactionHash, electionName, candidateName) {
+    console.log('===== VOTE CONFIRMATION EMAIL =====');
+    console.log(`Recipient: ${to}`);
+    console.log(`Transaction Hash: ${transactionHash}`);
+    console.log(`Election: ${electionName}`);
+    console.log(`Candidate: ${candidateName}`);
+    console.log('===================================');
+    
     // Ensure transporter is available before attempting to send
     if (!transporter) {
       console.log("Transporter not initialized yet. Waiting for initialization and trying again...");
