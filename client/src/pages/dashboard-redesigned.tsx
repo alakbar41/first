@@ -2,15 +2,22 @@ import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation, Link } from "wouter";
 import { StudentSidebar } from "@/components/student/student-sidebar";
-import { Election } from "@shared/schema";
+import { Election, getFacultyName } from "@shared/schema";
 import { ElectionDetailView } from "@/components/student/election-detail-view";
 import { ElectionCard } from "@/components/student/election-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, LogOut as LogOutIcon, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, LogOut as LogOutIcon, ChevronLeft, ChevronRight, Filter, X } from "lucide-react";
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { 
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 export default function Dashboard() {
   const { user, logoutMutation } = useAuth();
@@ -21,6 +28,15 @@ export default function Dashboard() {
   const [selectedElection, setSelectedElection] = useState<Election | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8; // Show 8 elections per page
+  
+  // Filter states
+  const [eligibilityFilter, setEligibilityFilter] = useState<string>("all");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  
+  // Calculate active filter count
+  const activeFilterCount = [
+    eligibilityFilter !== "all"
+  ].filter(Boolean).length;
   
   // Fetch all elections
   const { data: elections, isLoading } = useQuery<Election[]>({
@@ -80,13 +96,38 @@ export default function Dashboard() {
     new Date(election.endDate) < new Date()
   ) || [];
 
-  // Show all elections to students (both their faculty and other faculties)
-  // No filtering by faculty - this allows viewing elections from all faculties for transparency
-  // Voting restrictions are handled in the election-candidates-list-improved.tsx component
+  // Apply eligibility filter if needed
+  const applyEligibilityFilter = (elections: Election[]) => {
+    if (eligibilityFilter === "all") {
+      return elections; // No filtering
+    } else if (eligibilityFilter === "eligible") {
+      // Show only elections for user's faculty or all faculties
+      return elections.filter(election => {
+        if (election.position === "President/VP" || election.position === "President/Vice President") {
+          return true; // All students can vote in President/VP elections
+        }
+        
+        // For Senator elections, check if user's faculty is eligible
+        return election.eligibleFaculties.includes(user.faculty) || election.eligibleFaculties.includes("all");
+      });
+    } else if (eligibilityFilter === "other") {
+      // Show only elections for other faculties (that user can't vote in)
+      return elections.filter(election => {
+        if (election.position === "President/VP" || election.position === "President/Vice President") {
+          return false; // Exclude President/VP since all students can vote in these
+        }
+        
+        // Include only Senator elections where user's faculty is not eligible
+        return !election.eligibleFaculties.includes(user.faculty) && !election.eligibleFaculties.includes("all");
+      });
+    }
+    
+    return elections; // Default case
+  };
   
-  const filteredActiveElections = activeElections;
-  const filteredUpcomingElections = upcomingElections;
-  const filteredCompletedElections = completedElections;
+  const filteredActiveElections = applyEligibilityFilter(activeElections);
+  const filteredUpcomingElections = applyEligibilityFilter(upcomingElections);
+  const filteredCompletedElections = applyEligibilityFilter(completedElections);
   const filteredAllElections = [...filteredActiveElections, ...filteredUpcomingElections, ...filteredCompletedElections];
   
   // Get current page elections for the active tab
@@ -247,32 +288,86 @@ export default function Dashboard() {
                 >
                   {/* Top navigation bar */}
                   <div className="bg-white p-4 rounded-lg shadow-sm mb-6">
-                    <TabsList className="w-full grid grid-cols-4">
-                      <TabsTrigger value="all">
-                        All
-                        <span className="ml-1 px-1.5 py-0.5 text-xs bg-gray-100 text-gray-800 rounded-full">
-                          {filteredAllElections.length}
-                        </span>
-                      </TabsTrigger>
-                      <TabsTrigger value="active">
-                        Active
-                        <span className="ml-1 px-1.5 py-0.5 text-xs bg-green-100 text-green-800 rounded-full">
-                          {filteredActiveElections.length}
-                        </span>
-                      </TabsTrigger>
-                      <TabsTrigger value="upcoming">
-                        Upcoming
-                        <span className="ml-1 px-1.5 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-full">
-                          {filteredUpcomingElections.length}
-                        </span>
-                      </TabsTrigger>
-                      <TabsTrigger value="completed">
-                        Past
-                        <span className="ml-1 px-1.5 py-0.5 text-xs bg-gray-100 text-gray-800 rounded-full">
-                          {filteredCompletedElections.length}
-                        </span>
-                      </TabsTrigger>
-                    </TabsList>
+                    <div className="flex flex-col md:flex-row md:justify-between md:items-center space-y-4 md:space-y-0 mb-4">
+                      <TabsList className="w-full md:w-auto grid grid-cols-4">
+                        <TabsTrigger value="all">
+                          All
+                          <span className="ml-1 px-1.5 py-0.5 text-xs bg-gray-100 text-gray-800 rounded-full">
+                            {filteredAllElections.length}
+                          </span>
+                        </TabsTrigger>
+                        <TabsTrigger value="active">
+                          Active
+                          <span className="ml-1 px-1.5 py-0.5 text-xs bg-green-100 text-green-800 rounded-full">
+                            {filteredActiveElections.length}
+                          </span>
+                        </TabsTrigger>
+                        <TabsTrigger value="upcoming">
+                          Upcoming
+                          <span className="ml-1 px-1.5 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-full">
+                            {filteredUpcomingElections.length}
+                          </span>
+                        </TabsTrigger>
+                        <TabsTrigger value="completed">
+                          Past
+                          <span className="ml-1 px-1.5 py-0.5 text-xs bg-gray-100 text-gray-800 rounded-full">
+                            {filteredCompletedElections.length}
+                          </span>
+                        </TabsTrigger>
+                      </TabsList>
+                      
+                      <div className="flex items-center space-x-2">
+                        <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
+                          <PopoverTrigger asChild>
+                            <Button variant="outline" size="sm" className="h-8 px-2 lg:px-3">
+                              <Filter className="h-3.5 w-3.5 lg:mr-2" />
+                              <span className="hidden lg:inline-block">Filters</span>
+                              {activeFilterCount > 0 && (
+                                <Badge variant="secondary" className="ml-1 px-1 py-0 h-5 min-w-5 text-xs">
+                                  {activeFilterCount}
+                                </Badge>
+                              )}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[240px] p-4" align="end">
+                            <div className="space-y-4">
+                              <h4 className="font-medium text-sm">Eligibility</h4>
+                              <Select 
+                                value={eligibilityFilter} 
+                                onValueChange={(value) => {
+                                  setEligibilityFilter(value);
+                                  setCurrentPage(1); // Reset to first page when filter changes
+                                }}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="All elections" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="all">All elections</SelectItem>
+                                  <SelectItem value="eligible">Only my faculty</SelectItem>
+                                  <SelectItem value="other">Other faculties</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              
+                              {activeFilterCount > 0 && (
+                                <Button 
+                                  variant="outline" 
+                                  className="w-full mt-4" 
+                                  size="sm"
+                                  onClick={() => {
+                                    setEligibilityFilter("all");
+                                    setCurrentPage(1);
+                                  }}
+                                >
+                                  <X className="h-3.5 w-3.5 mr-2" />
+                                  Clear filters
+                                </Button>
+                              )}
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                    </div>
                   </div>
   
                   <div className="grid grid-cols-1 gap-6">

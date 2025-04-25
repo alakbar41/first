@@ -422,9 +422,40 @@ export function AddCandidatesToElectionDialog({
               )}
               
               <div className="mt-4 flex items-center justify-between">
-                <span className="text-sm text-gray-500">
-                  {selectedCandidateIds.length} candidate{selectedCandidateIds.length !== 1 ? 's' : ''} selected
-                </span>
+                <div className="flex items-center gap-4">
+                  <span className="text-sm text-gray-500">
+                    {selectedCandidateIds.length} candidate{selectedCandidateIds.length !== 1 ? 's' : ''} selected
+                  </span>
+                  
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        // Select all available candidates
+                        const allCandidateIds = senatorCandidates.map(c => c.id);
+                        setSelectedCandidateIds(allCandidateIds);
+                      }}
+                      disabled={isFormDisabled || senatorCandidates.length === 0 || 
+                                selectedCandidateIds.length === senatorCandidates.length}
+                      className="h-7 text-xs"
+                    >
+                      Select All
+                    </Button>
+                    
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSelectedCandidateIds([])}
+                      disabled={isFormDisabled || selectedCandidateIds.length === 0}
+                      className="h-7 text-xs"
+                    >
+                      Clear
+                    </Button>
+                  </div>
+                </div>
                 
                 <div className="flex space-x-2">
                   <Button
