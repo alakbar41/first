@@ -54,20 +54,20 @@ export default function AdminElections() {
         election.position.toLowerCase().includes(searchTerm.toLowerCase())
       )
     : elections;
-    
+
   // Calculate pagination
   const totalPages = Math.ceil(filteredElections.length / itemsPerPage);
-  
+
   // Get current page data
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentElections = filteredElections.slice(indexOfFirstItem, indexOfLastItem);
-  
+
   // Handle page change
   const handlePageChange = (pageNumber: number) => {
     setCurrentPage(pageNumber);
   };
-    
+
   // Action handlers for ElectionsTable
   const handleEdit = (electionId: number) => {
     // Find the election to edit
@@ -83,14 +83,14 @@ export default function AdminElections() {
       });
     }
   };
-  
+
   const handleDelete = async (electionId: number) => {
     if (window.confirm("Are you sure you want to delete this election? This action cannot be undone.")) {
       try {
         // First get the CSRF token
         const csrfResponse = await fetch('/api/csrf-token');
         const { csrfToken } = await csrfResponse.json();
-        
+
         const response = await fetch(`/api/elections/${electionId}`, {
           method: 'DELETE',
           headers: {
@@ -98,7 +98,7 @@ export default function AdminElections() {
             'X-CSRF-Token': csrfToken,
           },
         });
-        
+
         if (response.ok) {
           toast({
             title: "Success",
@@ -123,26 +123,56 @@ export default function AdminElections() {
       }
     }
   };
-  
+
   const handleAddCandidates = (election: Election) => {
     setSelectedElection(election);
     setIsAddCandidatesDialogOpen(true);
   };
-  
+
   const handleViewCandidates = (election: Election) => {
     setSelectedElection(election);
     setIsViewCandidatesDialogOpen(true);
   };
-  
+
   const handleViewDetails = (election: Election) => {
     setSelectedElection(election);
     setIsViewDetailsDialogOpen(true);
   };
 
+  const getStatusBadgeClass = (status: string) => {
+    switch (status) {
+      case 'active':
+        return 'bg-purple-100 text-purple-800';
+      case 'completed':
+        return 'bg-gray-100 text-gray-800';
+      case 'upcoming':
+        return 'bg-green-100 text-green-800';
+      default:
+        return 'bg-blue-100 text-blue-800';
+    }
+  };
+
+  // Sort elections: active first, then upcoming, then completed
+  const sortedElections = React.useMemo(() => {
+    if (elections.length === 0) return [];
+
+    const statusPriority = { 'active': 0, 'upcoming': 1, 'completed': 2 };
+
+    // Use the status directly from the election object
+    return [...elections].sort((a, b) => {
+      // Ensure we use the actual status from the database
+      const statusA = a.status.toLowerCase();
+      const statusB = b.status.toLowerCase();
+      const priorityA = statusPriority[statusA as keyof typeof statusPriority] || 3;
+      const priorityB = statusPriority[statusB as keyof typeof statusPriority] || 3;
+      return priorityA - priorityB;
+    });
+  }, [elections]);
+
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-900">
       <AdminSidebar user={user} />
-      
+
       <div className="flex-1 overflow-auto">
         <main className="p-6">
           <div className="mb-6">
@@ -172,28 +202,28 @@ export default function AdminElections() {
               open={isCreateDialogOpen}
               onOpenChange={setIsCreateDialogOpen}
             />
-            
+
             {/* Edit Election Dialog */}
             <EditElectionDialog
               open={isEditDialogOpen}
               onOpenChange={setIsEditDialogOpen}
               election={selectedElection}
             />
-            
+
             {/* View Election Details Dialog */}
             <ViewElectionDetailsDialog
               open={isViewDetailsDialogOpen}
               onOpenChange={setIsViewDetailsDialogOpen}
               election={selectedElection}
             />
-            
+
             {/* Add Candidates to Election Dialog */}
             <AddCandidatesToElectionDialog
               open={isAddCandidatesDialogOpen}
               onOpenChange={setIsAddCandidatesDialogOpen}
               election={selectedElection}
             />
-            
+
             {/* View Election Candidates Dialog */}
             <ViewElectionCandidatesDialog
               open={isViewCandidatesDialogOpen}
@@ -208,14 +238,15 @@ export default function AdminElections() {
             </CardHeader>
             <CardContent>
               <ElectionsTable 
-                elections={currentElections}
+                elections={sortedElections} // Use sortedElections here
                 onEdit={handleEdit}
                 onDelete={handleDelete}
                 onAddCandidates={handleAddCandidates}
                 onViewCandidates={handleViewCandidates}
                 onViewDetails={handleViewDetails}
+                getStatusBadgeClass={getStatusBadgeClass} // Pass the function to ElectionsTable
               />
-              
+
               {/* Pagination Controls */}
               {totalPages > 1 && (
                 <div className="mt-4">
@@ -227,7 +258,7 @@ export default function AdminElections() {
                           className={currentPage === 1 ? "cursor-not-allowed opacity-50" : "cursor-pointer"}
                         />
                       </PaginationItem>
-                      
+
                       {/* Render page numbers */}
                       {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
                         <PaginationItem key={page}>
@@ -240,7 +271,7 @@ export default function AdminElections() {
                           </PaginationLink>
                         </PaginationItem>
                       ))}
-                      
+
                       <PaginationItem>
                         <PaginationNext 
                           onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
@@ -251,7 +282,7 @@ export default function AdminElections() {
                   </Pagination>
                 </div>
               )}
-              
+
               {/* Display pagination stats */}
               <div className="text-sm text-gray-500 mt-2 text-center">
                 Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredElections.length)} of {filteredElections.length} elections
