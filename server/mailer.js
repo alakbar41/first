@@ -134,25 +134,18 @@ export const mailer = {
       const fromEmail = testAccount ? testAccount.user : (process.env.EMAIL_USER || 'no-reply@ada.edu.az');
       const fromName = "UniVote Voting System";
       
-      // Check if this is a password reset or registration
-  const isPasswordReset = req?.body?.type === 'reset';
-  
-  const mailOptions = {
+      const mailOptions = {
         from: `"${fromName}" <${fromEmail}>`,
         to,
-        subject: isPasswordReset ? 
-          "Password Reset Code - UniVote Voting System" : 
-          "Email Verification - UniVote Voting System",
+        subject: "Your Verification Code for UniVote Voting System",
         text: `Your verification code is: ${otp}. This code will expire in 3 minutes.`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e9e9e9; border-radius: 5px;">
             <div style="text-align: center; margin-bottom: 20px;">
               <img src="https://ada.edu.az/wp-content/uploads/2021/02/ADA_ED_LOGO_E_H1.png" alt="ADA University Logo" style="max-width: 150px;">
             </div>
-            <h2 style="color: #005A9C; text-align: center;">${isPasswordReset ? 'Reset Your Password' : 'Verify Your Email Address'}</h2>
-            <p style="margin-bottom: 20px; color: #666;">${isPasswordReset ? 
-              'You have requested to reset your password for the UniVote Voting System. Please use the verification code below to continue with the password reset:' : 
-              'Thank you for registering with the UniVote Voting System. Please use the verification code below to complete your registration:'}</p>
+            <h2 style="color: #005A9C; text-align: center;">Verify Your Email Address</h2>
+            <p style="margin-bottom: 20px; color: #666;">Thank you for registering with the UniVote Voting System. Please use the verification code below to complete your registration:</p>
             <div style="background-color: #f7f7f7; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0;">
               <p style="font-size: 24px; font-weight: bold; letter-spacing: 5px; margin: 0; color: #333;">${otp}</p>
             </div>
