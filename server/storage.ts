@@ -1432,15 +1432,15 @@ export class DatabaseStorage implements IStorage {
   
   // Vote participation tracking - only tracks who has participated, not who they voted for
   async recordVoteParticipation(userId: number, electionId: number): Promise<void> {
-    // Mark any tokens for this user/election as used to track participation
-    await db.update(votingTokens)
-      .set({ used: true })
-      .where(
-        and(
-          eq(votingTokens.userId, userId),
-          eq(votingTokens.electionId, electionId)
-        )
-      );
+    // Instead of updating votingTokens (which doesn't exist), insert a record into voteParticipation
+    await db.insert(voteParticipation)
+      .values({
+        userId,
+        electionId
+      })
+      .onConflictDoNothing(); // In case there's a duplicate entry
+    
+    console.log(`Recorded vote participation for user ${userId} in election ${electionId} using voteParticipation table`);
     
     // Also record in vote participation table (but no candidate information)
     // Use raw SQL since we have an inconsistency between schema and actual table
