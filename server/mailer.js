@@ -145,7 +145,7 @@ export const mailer = {
               <img src="https://ada.edu.az/wp-content/uploads/2021/02/ADA_ED_LOGO_E_H1.png" alt="ADA University Logo" style="max-width: 150px;">
             </div>
             <h2 style="color: #005A9C; text-align: center;">Verify Your Email Address</h2>
-            <p style="margin-bottom: 20px; color: #666;">Thank you for registering with the ADA University Voting System. Please use the verification code below to complete your registration:</p>
+            <p style="margin-bottom: 20px; color: #666;">Thank you for registering with the UniVote Voting System. Please use the verification code below to complete your registration:</p>
             <div style="background-color: #f7f7f7; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0;">
               <p style="font-size: 24px; font-weight: bold; letter-spacing: 5px; margin: 0; color: #333;">${otp}</p>
             </div>
@@ -153,7 +153,7 @@ export const mailer = {
             <p style="color: #666; margin-bottom: 20px;">If you did not request this code, please ignore this email.</p>
             <div style="border-top: 1px solid #e9e9e9; padding-top: 20px; margin-top: 20px; color: #999; font-size: 12px; text-align: center;">
               <p>This is an automated message. Please do not reply to this email.</p>
-              <p>&copy; ${new Date().getFullYear()} ADA University Voting System</p>
+              <p>&copy; ${new Date().getFullYear()} UniVote Voting System</p>
             </div>
           </div>
         `
@@ -269,7 +269,7 @@ Thank you for participating in the UniVote Voting System.
             
             <div style="border-top: 1px solid #e9e9e9; padding-top: 20px; margin-top: 20px; color: #999; font-size: 12px; text-align: center;">
               <p>This is an automated message. Please do not reply to this email.</p>
-              <p>&copy; ${new Date().getFullYear()} ADA University Voting System</p>
+              <p>&copy; ${new Date().getFullYear()} UniVote Voting System</p>
             </div>
           </div>
         `
