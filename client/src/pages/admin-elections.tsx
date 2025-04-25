@@ -296,14 +296,14 @@ export default function AdminElections() {
                 <div>
                   <label className="text-sm text-gray-500 mb-1 block">Status</label>
                   <Select
-                    value={statusFilter}
-                    onValueChange={setStatusFilter}
+                    value={statusFilter || "all"}
+                    onValueChange={(value) => setStatusFilter(value === "all" ? "" : value)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select status" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All Statuses</SelectItem>
+                      <SelectItem value="all">All Statuses</SelectItem>
                       <SelectItem value="upcoming">Upcoming</SelectItem>
                       <SelectItem value="active">Active</SelectItem>
                       <SelectItem value="completed">Completed</SelectItem>
@@ -315,14 +315,14 @@ export default function AdminElections() {
                 <div>
                   <label className="text-sm text-gray-500 mb-1 block">Position</label>
                   <Select
-                    value={positionFilter}
-                    onValueChange={setPositionFilter}
+                    value={positionFilter || "all"}
+                    onValueChange={(value) => setPositionFilter(value === "all" ? "" : value)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select position" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All Positions</SelectItem>
+                      <SelectItem value="all">All Positions</SelectItem>
                       {uniquePositions.map(position => (
                         <SelectItem key={position} value={position}>{position}</SelectItem>
                       ))}
@@ -334,14 +334,14 @@ export default function AdminElections() {
                 <div>
                   <label className="text-sm text-gray-500 mb-1 block">Eligible Faculty</label>
                   <Select
-                    value={facultyFilter}
-                    onValueChange={setFacultyFilter}
+                    value={facultyFilter || "all_faculties"}
+                    onValueChange={(value) => setFacultyFilter(value === "all_faculties" ? "" : value)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select faculty" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All Faculties</SelectItem>
+                      <SelectItem value="all_faculties">All Faculties</SelectItem>
                       {FACULTY_CODES.map(faculty => (
                         <SelectItem key={faculty} value={faculty}>
                           {getFacultyName(faculty)}
