@@ -158,7 +158,7 @@ export const mailer = {
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e9e9e9; border-radius: 5px;">
             <div style="text-align: center; margin-bottom: 20px;">
-              <img src="https://univote-system.web.app/logo.png" alt="UniVote Logo" style="max-width: 150px;">
+              <img src="https://ad0591da-b426-4a84-876d-4e36567ce223-00-3ktlote48pnrm.worf.replit.dev/assets/univote_logo.png" alt="UniVote Logo" style="max-width: 150px;">
             </div>
             <h2 style="color: #005A9C; text-align: center;">${mainHeading}</h2>
             <p style="margin-bottom: 20px; color: #666;">${mainText}</p>
@@ -275,7 +275,7 @@ Thank you for participating in the UniVote Voting System.
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e9e9e9; border-radius: 5px;">
             <div style="text-align: center; margin-bottom: 20px;">
-              <img src="https://univote-system.web.app/logo.png" alt="UniVote Logo" style="max-width: 150px;">
+              <img src="https://ad0591da-b426-4a84-876d-4e36567ce223-00-3ktlote48pnrm.worf.replit.dev/assets/univote_logo.png" alt="UniVote Logo" style="max-width: 150px;">
             </div>
             <h2 style="color: #005A9C; text-align: center;">Vote Successfully Recorded</h2>
             <p style="margin-bottom: 20px; color: #666;">Your vote for <strong>${candidateName}</strong> in the "<strong>${electionName}</strong>" election has been successfully recorded on the blockchain.</p>
