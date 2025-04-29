@@ -1,13 +1,30 @@
 import express, { type Request, Response, NextFunction } from "express";
+import session from "express-session";
 import { registerRoutes } from "./routes";
 import { registerDashboardRoutes } from "./dashboard-routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
 
+// Trust proxy is necessary for DigitalOcean / Heroku / etc.
+app.set("trust proxy", 1);
+
+// Configure sessions
+app.use(session({
+  secret: "mVkB6DoWcoZj8/vRmtAzDl2U643k7nMmu2Ug2jjXTZ8SUaekJRjFsPPX/4dkYgDDXII4aQefpeI9vlljAcrLLg==",
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === "production", // set to true only in production
+    httpOnly: true,
+    sameSite: "lax",
+    maxAge: 1000 * 60 * 60 * 2 // 2 hours
+  }
+}));
+
 // Increase JSON and URL-encoded payload size limits to 10MB
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: false, limit: '10mb' }));
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: false, limit: "10mb" }));
 
 // Custom middleware to log API requests and responses
 app.use((req, res, next) => {
@@ -41,8 +58,8 @@ app.use((req, res, next) => {
 });
 
 // Optional: Health check route for DigitalOcean
-app.get('/health', (_req: Request, res: Response) => {
-  res.status(200).send('OK');
+app.get("/health", (_req: Request, res: Response) => {
+  res.status(200).send("OK");
 });
 
 (async () => {
@@ -60,8 +77,8 @@ app.get('/health', (_req: Request, res: Response) => {
     throw err;
   });
 
-  // API-specific error handling middleware
-  app.use('/api/*', (err: any, req: Request, res: Response, _next: NextFunction) => {
+  // API-specific error handler
+  app.use("/api/*", (err: any, req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
@@ -69,21 +86,25 @@ app.get('/health', (_req: Request, res: Response) => {
     console.error(`API Error (${status}):`, message, err.stack);
   });
 
-  // Setup Vite middleware only in development
+  // Setup Vite dev middleware only in development
   if (app.get("env") === "development") {
     await setupVite(app, server);
   } else {
     serveStatic(app);
   }
 
-  // Serve the app on dynamic PORT from environment (important for DigitalOcean)
+  // Serve the app on provided PORT (used by DigitalOcean)
   const port = parseInt(process.env.PORT || "5000", 10);
 
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
-    log(`Serving on port ${port}`);
-  });
+  server.listen(
+    {
+      port,
+      host: "0.0.0.0",
+      reusePort: true
+    },
+    () => {
+      log(`Serving on port ${port}`);
+    }
+  );
 })();
+
