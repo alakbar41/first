@@ -4,10 +4,12 @@ import { registerDashboardRoutes } from "./dashboard-routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
+
 // Increase JSON and URL-encoded payload size limits to 10MB
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
+// Custom middleware to log API requests and responses
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -38,12 +40,18 @@ app.use((req, res, next) => {
   next();
 });
 
+// Optional: Health check route for DigitalOcean
+app.get('/health', (_req: Request, res: Response) => {
+  res.status(200).send('OK');
+});
+
 (async () => {
   const server = await registerRoutes(app);
-  
+
   // Register dashboard routes
   registerDashboardRoutes(app);
 
+  // General error handling middleware
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
@@ -52,33 +60,30 @@ app.use((req, res, next) => {
     throw err;
   });
 
-  // Error handler middleware for API routes
+  // API-specific error handling middleware
   app.use('/api/*', (err: any, req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
-    
+
     res.status(status).json({ message });
     console.error(`API Error (${status}):`, message, err.stack);
   });
-  
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
+
+  // Setup Vite middleware only in development
   if (app.get("env") === "development") {
     await setupVite(app, server);
   } else {
     serveStatic(app);
   }
 
-  // ALWAYS serve the app on port 5000
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = 5000;
+  // Serve the app on dynamic PORT from environment (important for DigitalOcean)
+  const port = parseInt(process.env.PORT || "5000", 10);
+
   server.listen({
     port,
     host: "0.0.0.0",
     reusePort: true,
   }, () => {
-    log(`serving on port ${port}`);
+    log(`Serving on port ${port}`);
   });
 })();
